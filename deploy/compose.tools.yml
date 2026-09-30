@@ -1,0 +1,54 @@
+# Verification toolbox for the test VM. Stock images only, source bind-mounted.
+# Driven by scripts/vm.sh; always run with project name "hoje-test".
+name: hoje-test
+
+x-user: &user
+  user: "${HOJE_UID:-1000}:${HOJE_GID:-1000}"
+
+services:
+  tools-db:
+    profiles: [tools]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hoje
+      POSTGRES_PASSWORD: hoje
+      POSTGRES_DB: hoje
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoje -d hoje"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend-tools:
+    profiles: [tools]
+    <<: *user
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+    working_dir: /src/backend
+    depends_on:
+      tools-db:
+        condition: service_healthy
+    environment:
+      HOME: /tmp
+      UV_CACHE_DIR: /cache/uv
+      UV_LINK_MODE: copy
+      HOJE_ENV: test
+      HOJE_DATABASE_URL: postgresql+asyncpg://hoje:hoje@tools-db:5432/hoje
+      HOJE_SECRET_KEY: dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktMDAwMDA=
+    volumes:
+      - ${HOJE_SRC:?}:/src
+      - ${HOJE_ROOT:?}/cache/uv:/cache/uv
+
+  frontend-tools:
+    profiles: [tools]
+    <<: *user
+    image: node:24-bookworm-slim
+    working_dir: /src/frontend
+    environment:
+      HOME: /tmp
+      npm_config_cache: /cache/npm
+      CI: "true"
+    volumes:
+      - ${HOJE_SRC:?}:/src
+      - ${HOJE_ROOT:?}/cache/npm:/cache/npm

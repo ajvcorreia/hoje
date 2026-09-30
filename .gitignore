@@ -1,0 +1,35 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+id_ecdsa*
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+# Node
+node_modules/
+dist/
+coverage/
+frontend/test-results/
+frontend/playwright-report/
+# Backups and data
+backups/
+*.dump
+*.sql.gz
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+# Claude worktrees
+.claude/worktrees/
