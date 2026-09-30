@@ -20,7 +20,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.13-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="hoje-api" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: API and worker" \
-      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="Hoje"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

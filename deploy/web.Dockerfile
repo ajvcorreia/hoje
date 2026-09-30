@@ -12,7 +12,6 @@ RUN npm run build
 FROM caddy:2-alpine AS runtime
 LABEL org.opencontainers.image.title="hoje-web" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: web (Caddy + SPA)" \
-      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="Hoje"
 # Non-root Caddy that can still bind 80/443 via file capability.
 RUN apk add --no-cache libcap \
