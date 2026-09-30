@@ -1,0 +1,83 @@
+# Hoje web tier: static SPA + reverse proxy to the API.
+# SITE_ADDRESS: a domain (automatic HTTPS) or ":8080" (plain HTTP, test VM).
+# API_UPSTREAM: defaults to api:8000.
+{
+	admin off
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Local-only health endpoint for the container HEALTHCHECK.
+http://127.0.0.1:2020 {
+	bind 127.0.0.1
+	handle /caddy-health {
+		respond "ok" 200
+	}
+	handle {
+		respond 404
+	}
+}
+
+{$SITE_ADDRESS} {
+	log {
+		output stdout
+		format json
+	}
+
+
+	header {
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	# API and probes. flush_interval -1 keeps the SSE stream unbuffered.
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			flush_interval -1
+			header_down -Server
+		}
+	}
+	handle /healthz {
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			header_down -Server
+		}
+	}
+	handle /readyz {
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			header_down -Server
+		}
+	}
+
+	# Static SPA. Compression is enabled per static handle only: encoding /api/* would buffer SSE.
+	root * /srv
+
+	# Hashed build output: cache forever.
+	handle /assets/* {
+		encode zstd gzip
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle /manifest.webmanifest {
+		encode zstd gzip
+		header Content-Type "application/manifest+json"
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	# Everything else falls back to index.html (client-side routing).
+	handle {
+		encode zstd gzip
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
