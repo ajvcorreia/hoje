@@ -1,0 +1,108 @@
+# Local development stack. Usage: docker compose -f deploy/compose.dev.yml up --build
+# Override anything via deploy/.env.dev or shell variables. DEV ONLY: never use in production.
+name: hoje
+
+x-api-env: &api-env
+  HOJE_ENV: development
+  HOJE_LOG_LEVEL: ${HOJE_LOG_LEVEL:-DEBUG}
+  HOJE_DATABASE_URL: postgresql+asyncpg://hoje:${POSTGRES_PASSWORD:-hoje-dev}@db:5432/hoje
+  # DEV-ONLY key (32 bytes base64). Never reuse outside local development.
+  HOJE_SECRET_KEY: ${HOJE_SECRET_KEY:-ZGV2LW9ubHktaG9qZS1rZXktZGV2LW9ubHktMDAwMDA=}
+  HOJE_PUBLIC_URL: ${HOJE_PUBLIC_URL:-http://localhost:5173}
+  HOJE_INSECURE_COOKIES: "true"
+  HOJE_ALLOW_REGISTRATION: "true"
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_STARTTLS: "false"
+  SMTP_FROM: hoje@localhost
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hoje
+      POSTGRES_DB: hoje
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hoje-dev}
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoje -d hoje"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../backend
+    image: hoje-dev/api:local
+    command:
+      - sh
+      - -c
+      - python -m hoje.migrate && exec uvicorn hoje.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/hoje --proxy-headers --forwarded-allow-ips='*'
+    environment:
+      <<: *api-env
+    volumes:
+      - ../backend/hoje:/app/hoje
+      - ../backend/migrations:/app/migrations
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  worker:
+    image: hoje-dev/api:local
+    command: ["python", "-m", "hoje.worker"]
+    environment:
+      <<: *api-env
+    volumes:
+      - ../backend/hoje:/app/hoje
+    healthcheck:
+      test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  web-dev:
+    image: node:24-bookworm-slim
+    working_dir: /app/frontend
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    environment:
+      VITE_API_PROXY: http://api:8000
+      npm_config_cache: /npm-cache
+    volumes:
+      - ../frontend:/app/frontend
+      - web_node_modules:/app/frontend/node_modules
+      - npm_cache_dev:/npm-cache
+    ports:
+      - "127.0.0.1:5173:5173"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata_dev:
+  web_node_modules:
+  npm_cache_dev:

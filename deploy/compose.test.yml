@@ -1,0 +1,136 @@
+# LAN test stack (plain HTTP). Real settings live in deploy/.env.test (see test.env.example);
+# compose does not auto-load that name, so pass it explicitly (all values have throwaway defaults):
+#   docker compose -p hoje-test --env-file deploy/.env.test -f deploy/compose.test.yml up -d --build
+name: hoje-test
+
+x-hardening: &hardening
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  tmpfs:
+    - /tmp
+
+x-api-env: &api-env
+  HOJE_ENV: test
+  HOJE_LOG_LEVEL: ${HOJE_LOG_LEVEL:-INFO}
+  HOJE_DATABASE_URL: postgresql+asyncpg://hoje:${POSTGRES_PASSWORD:-hoje-test-password}@db:5432/hoje
+  # Throwaway default (32 bytes base64); override in deploy/.env.test.
+  HOJE_SECRET_KEY: ${HOJE_SECRET_KEY:-dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktMDAwMDA=}
+  HOJE_PUBLIC_URL: ${HOJE_PUBLIC_URL:-http://192.168.10.189:8190}
+  HOJE_INSECURE_COOKIES: "true"
+  HOJE_ALLOW_REGISTRATION: ${HOJE_ALLOW_REGISTRATION:-true}
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_STARTTLS: "false"
+  SMTP_FROM: hoje@test.local
+
+services:
+  db:
+    image: postgres:17-alpine
+    <<: *hardening
+    # postgres entrypoint needs these to init the data dir and drop to the postgres user
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    environment:
+      POSTGRES_USER: hoje
+      POSTGRES_DB: hoje
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hoje-test-password}
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    networks: [internal]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoje -d hoje"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    image: ${HOJE_API_IMAGE:-hoje-test/api:local}
+    build:
+      context: ../backend
+    <<: *hardening
+    environment:
+      <<: *api-env
+    networks: [internal, edge]
+    mem_limit: 256m
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: ${HOJE_API_IMAGE:-hoje-test/api:local}
+    <<: *hardening
+    command: ["python", "-m", "hoje.worker"]
+    environment:
+      <<: *api-env
+    networks: [internal]
+    mem_limit: 192m
+    healthcheck:
+      test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: ${HOJE_WEB_IMAGE:-hoje-test/web:local}
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    <<: *hardening
+    # caddy binary carries file capability cap_net_bind_service, which must be in the bounding set
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp
+      - /data
+      - /config
+    environment:
+      SITE_ADDRESS: ":8080"
+      API_UPSTREAM: api:8000
+    ports:
+      - "${HOJE_TEST_PORT:-8190}:8080"
+    networks: [edge]
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    <<: *hardening
+    user: "10001:10001"
+    environment:
+      MP_DATABASE: /tmp/mailpit.db
+      MP_MAX_MESSAGES: "500"
+    ports:
+      - "${HOJE_MAILPIT_PORT:-8191}:8025"
+    networks:
+      internal:
+      edge:
+    mem_limit: 64m
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
+  edge:
+
+volumes:
+  pgdata_test:
