@@ -27,7 +27,7 @@ sync() {
   cd "$REPO"
   git ls-files -co --exclude-standard | while IFS= read -r f; do [ -e "$f" ] && printf '%s\n' "$f"; done \
     | tar -czf - -T - \
-    | vm "set -e; mkdir -p $REMOTE_SRC $REMOTE_ROOT/cache/uv $REMOTE_ROOT/cache/npm; cd $REMOTE_SRC;
+    | vm "set -e; mkdir -p $REMOTE_SRC/backend $REMOTE_SRC/frontend $REMOTE_ROOT/cache/uv $REMOTE_ROOT/cache/npm; cd $REMOTE_SRC;
           find . -mindepth 1 \( -path ./frontend/node_modules -o -path ./backend/.venv \) -prune -o -type f -print0 | xargs -0 -r rm -f;
           tar -xzf -"
   echo "synced -> $HOJE_VM:$REMOTE_SRC" >&2
