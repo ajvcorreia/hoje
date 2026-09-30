@@ -1,0 +1,47 @@
+/* Semantic design tokens. Light by default; dark via data-theme or prefers-color-scheme. */
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #eef0f3;
+  --border: #dfe3e8;
+  --text: #1a1d21;
+  --text-muted: #5b6470;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --today: #e8f0fe;
+  --weekend: #f0f2f5;
+  --danger: #c62828;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #111418;
+    --surface: #181c21;
+    --surface-muted: #20252b;
+    --border: #2f363e;
+    --text: #e8eaed;
+    --text-muted: #9aa3ad;
+    --accent: #6ea0ff;
+    --accent-contrast: #0b1220;
+    --today: #1c2a44;
+    --weekend: #1b1f24;
+    --danger: #ff7b72;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #111418;
+  --surface: #181c21;
+  --surface-muted: #20252b;
+  --border: #2f363e;
+  --text: #e8eaed;
+  --text-muted: #9aa3ad;
+  --accent: #6ea0ff;
+  --accent-contrast: #0b1220;
+  --today: #1c2a44;
+  --weekend: #1b1f24;
+  --danger: #ff7b72;
+}

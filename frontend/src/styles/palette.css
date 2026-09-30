@@ -1,0 +1,83 @@
+/* Category palette. Mirrors palette.ts (verified by palette.test.ts); WCAG AA text on fill. */
+:root {
+  --cat-slate-fill: #e2e8f0;
+  --cat-slate-text: #1e293b;
+  --cat-red-fill: #fee2e2;
+  --cat-red-text: #991b1b;
+  --cat-orange-fill: #ffedd5;
+  --cat-orange-text: #9a3412;
+  --cat-amber-fill: #fef3c7;
+  --cat-amber-text: #92400e;
+  --cat-lime-fill: #ecfccb;
+  --cat-lime-text: #3f6212;
+  --cat-green-fill: #dcfce7;
+  --cat-green-text: #166534;
+  --cat-teal-fill: #ccfbf1;
+  --cat-teal-text: #115e59;
+  --cat-cyan-fill: #cffafe;
+  --cat-cyan-text: #155e75;
+  --cat-blue-fill: #dbeafe;
+  --cat-blue-text: #1e40af;
+  --cat-indigo-fill: #e0e7ff;
+  --cat-indigo-text: #3730a3;
+  --cat-violet-fill: #ede9fe;
+  --cat-violet-text: #5b21b6;
+  --cat-pink-fill: #fce7f3;
+  --cat-pink-text: #9d174d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --cat-slate-fill: #334155;
+    --cat-slate-text: #e2e8f0;
+    --cat-red-fill: #7f1d1d;
+    --cat-red-text: #fecaca;
+    --cat-orange-fill: #7c2d12;
+    --cat-orange-text: #fed7aa;
+    --cat-amber-fill: #78350f;
+    --cat-amber-text: #fde68a;
+    --cat-lime-fill: #365314;
+    --cat-lime-text: #d9f99d;
+    --cat-green-fill: #14532d;
+    --cat-green-text: #bbf7d0;
+    --cat-teal-fill: #134e4a;
+    --cat-teal-text: #99f6e4;
+    --cat-cyan-fill: #164e63;
+    --cat-cyan-text: #a5f3fc;
+    --cat-blue-fill: #1e3a8a;
+    --cat-blue-text: #bfdbfe;
+    --cat-indigo-fill: #312e81;
+    --cat-indigo-text: #c7d2fe;
+    --cat-violet-fill: #4c1d95;
+    --cat-violet-text: #ddd6fe;
+    --cat-pink-fill: #831843;
+    --cat-pink-text: #fbcfe8;
+  }
+}
+
+:root[data-theme='dark'] {
+  --cat-slate-fill: #334155;
+  --cat-slate-text: #e2e8f0;
+  --cat-red-fill: #7f1d1d;
+  --cat-red-text: #fecaca;
+  --cat-orange-fill: #7c2d12;
+  --cat-orange-text: #fed7aa;
+  --cat-amber-fill: #78350f;
+  --cat-amber-text: #fde68a;
+  --cat-lime-fill: #365314;
+  --cat-lime-text: #d9f99d;
+  --cat-green-fill: #14532d;
+  --cat-green-text: #bbf7d0;
+  --cat-teal-fill: #134e4a;
+  --cat-teal-text: #99f6e4;
+  --cat-cyan-fill: #164e63;
+  --cat-cyan-text: #a5f3fc;
+  --cat-blue-fill: #1e3a8a;
+  --cat-blue-text: #bfdbfe;
+  --cat-indigo-fill: #312e81;
+  --cat-indigo-text: #c7d2fe;
+  --cat-violet-fill: #4c1d95;
+  --cat-violet-text: #ddd6fe;
+  --cat-pink-fill: #831843;
+  --cat-pink-text: #fbcfe8;
+}
