@@ -9,7 +9,13 @@ from typing import Any
 import structlog
 
 REDACTED = "[REDACTED]"
-_SENSITIVE_KEY = re.compile(r"password|token|secret|code|cookie|authorization", re.IGNORECASE)
+# Match whole words in snake/kebab-case keys ("new_password", "csrf_token", "recovery_codes",
+# "set-cookie") but not look-alikes such as "status_code" or "token_count".
+_SENSITIVE_KEY = re.compile(
+    r"(^|[_-])(password|passwd|token|secret|cookie|authorization|otp|totp)s?$"
+    r"|^(code|codes|mfa_code|recovery_codes?|totp_code)$",
+    re.IGNORECASE,
+)
 
 
 def _redact(value: Any) -> Any:

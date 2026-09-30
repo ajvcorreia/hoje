@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from hoje.config import Settings
+from hoje.logging import REDACTED, redact_processor
 from hoje.main import create_app
 
 KEY = base64.b64encode(b"k" * 32).decode()
@@ -73,6 +74,26 @@ def test_config_accepts_test_env_with_insecure_cookies():
     s = Settings(_env_file=None, HOJE_ENV="test", HOJE_INSECURE_COOKIES=True, **BASE_ENV)
     assert s.insecure_cookies
     assert len(s.secret_key_bytes) == 32
+
+
+def test_log_redaction_hides_secrets_but_not_lookalikes():
+    event = {
+        "event": "x",
+        "password": "a",
+        "new_password": "b",
+        "csrf_token": "c",
+        "code": "d",
+        "recovery_codes": ["e"],
+        "headers": {"Set-Cookie": "f", "Authorization": "g", "accept": "json"},
+        "status_code": 200,
+        "token_count": 3,
+    }
+    out = redact_processor(None, "info", event)
+    for key in ("password", "new_password", "csrf_token", "code", "recovery_codes"):
+        assert out[key] == REDACTED
+    assert out["headers"] == {"Set-Cookie": REDACTED, "Authorization": REDACTED, "accept": "json"}
+    assert out["status_code"] == 200
+    assert out["token_count"] == 3
 
 
 def test_config_rejects_bad_secret_key():
