@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './palette.css';
+
+/* Map CSS variables into Tailwind utilities (bg-surface, text-muted, border-border, bg-cat-red-fill, ...). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-today: var(--today);
+  --color-weekend: var(--weekend);
+  --color-danger: var(--danger);
+  --color-cat-slate-fill: var(--cat-slate-fill);
+  --color-cat-slate-text: var(--cat-slate-text);
+  --color-cat-red-fill: var(--cat-red-fill);
+  --color-cat-red-text: var(--cat-red-text);
+  --color-cat-orange-fill: var(--cat-orange-fill);
+  --color-cat-orange-text: var(--cat-orange-text);
+  --color-cat-amber-fill: var(--cat-amber-fill);
+  --color-cat-amber-text: var(--cat-amber-text);
+  --color-cat-lime-fill: var(--cat-lime-fill);
+  --color-cat-lime-text: var(--cat-lime-text);
+  --color-cat-green-fill: var(--cat-green-fill);
+  --color-cat-green-text: var(--cat-green-text);
+  --color-cat-teal-fill: var(--cat-teal-fill);
+  --color-cat-teal-text: var(--cat-teal-text);
+  --color-cat-cyan-fill: var(--cat-cyan-fill);
+  --color-cat-cyan-text: var(--cat-cyan-text);
+  --color-cat-blue-fill: var(--cat-blue-fill);
+  --color-cat-blue-text: var(--cat-blue-text);
+  --color-cat-indigo-fill: var(--cat-indigo-fill);
+  --color-cat-indigo-text: var(--cat-indigo-text);
+  --color-cat-violet-fill: var(--cat-violet-fill);
+  --color-cat-violet-text: var(--cat-violet-text);
+  --color-cat-pink-fill: var(--cat-pink-fill);
+  --color-cat-pink-text: var(--cat-pink-text);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--text);
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+  }
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
