@@ -20,9 +20,32 @@ See [docs/PLAN.md](docs/PLAN.md) for architectural decisions, database contracts
 
 ## Quick start
 
-Local development environment setup.
+Everything runs in containers; you only need Docker with Compose v2.
 
-> TODO (phase 1)
+**Development stack** (hot reload for API and frontend, Mailpit for email):
+
+```bash
+docker compose -f deploy/compose.dev.yml up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend (Vite) | http://localhost:5173 |
+| API + Swagger UI | http://localhost:8000/api/docs |
+| Mailpit | http://localhost:8025 |
+
+**Test stack** (production-like images, plain HTTP on a LAN port, throwaway database):
+
+```bash
+cp deploy/test.env.example deploy/.env.test   # then edit; the file must exist for --env-file
+docker compose -p hoje-test --env-file deploy/.env.test -f deploy/compose.test.yml up -d --build --wait
+```
+
+The app is then on port `8190` and Mailpit on `8191`. Stop and wipe it with
+`docker compose -p hoje-test -f deploy/compose.test.yml down -v`.
+
+**Regenerating contracts** after changing API schemas: run `uv run python -m hoje.openapi` in
+`backend/`, then `npm run gen:api` in `frontend/`. CI fails if either file is stale.
 
 ## Environment variables
 
