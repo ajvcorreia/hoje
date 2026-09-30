@@ -1,0 +1,9 @@
+[
+  {"name": "Vacation", "colour": "teal", "is_leave": true, "sort_order": 0},
+  {"name": "Holidays", "colour": "amber", "is_leave": false, "sort_order": 1},
+  {"name": "Important", "colour": "red", "is_leave": false, "sort_order": 2},
+  {"name": "Events", "colour": "blue", "is_leave": false, "sort_order": 3},
+  {"name": "Visits", "colour": "violet", "is_leave": false, "sort_order": 4},
+  {"name": "Flights", "colour": "cyan", "is_leave": false, "sort_order": 5},
+  {"name": "Finance", "colour": "green", "is_leave": false, "sort_order": 6}
+]
