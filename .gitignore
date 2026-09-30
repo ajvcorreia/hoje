@@ -33,3 +33,6 @@ Thumbs.db
 .vscode/
 # Claude worktrees
 .claude/worktrees/
+
+# MSYS temp dirs left on the network share
+.msys*/
