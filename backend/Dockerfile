@@ -24,7 +24,11 @@ LABEL org.opencontainers.image.title="hoje-api" \
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
-RUN groupadd --system --gid 10001 hoje \
+# The app runs from its own venv; pip (and its vendored msgpack/setuptools, flagged by
+# scanners) is not needed at runtime.
+RUN python -m pip uninstall -y -q pip \
+ && rm -rf /usr/local/lib/python3.13/ensurepip \
+ && groupadd --system --gid 10001 hoje \
  && useradd --system --uid 10001 --gid hoje --home-dir /nonexistent --shell /usr/sbin/nologin hoje
 WORKDIR /app
 COPY --from=builder --chown=root:root /app /app

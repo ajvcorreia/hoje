@@ -20,13 +20,7 @@ http://127.0.0.1:2020 {
 	}
 }
 
-{$SITE_ADDRESS} {
-	log {
-		output stdout
-		format json
-	}
-
-
+(security_headers) {
 	header {
 		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -36,6 +30,22 @@ http://127.0.0.1:2020 {
 		Cross-Origin-Opener-Policy "same-origin"
 		X-Frame-Options "DENY"
 		-Server
+	}
+}
+
+{$SITE_ADDRESS} {
+	log {
+		output stdout
+		format json
+	}
+
+	import security_headers
+
+	# Error responses (e.g. a missing /assets/ file) bypass the route above, so repeat the
+	# headers here and never leak the server banner.
+	handle_errors {
+		import security_headers
+		respond "{err.status_code} {err.status_text}" {err.status_code}
 	}
 
 	# API and probes. flush_interval -1 keeps the SSE stream unbuffered.

@@ -9,7 +9,27 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY frontend/ ./
 RUN npm run build
 
+# Caddy compiled with the current Go toolchain and patched dependencies: the upstream
+# release binary lags behind Go and x/* security fixes, which fails the image scan.
+FROM golang:1.26-alpine AS caddy
+ARG CADDY_VERSION=v2.11.4
+WORKDIR /src
+RUN printf '%s\n' 'package main' \
+      'import (' \
+      '	caddycmd "github.com/caddyserver/caddy/v2/cmd"' \
+      '	_ "github.com/caddyserver/caddy/v2/modules/standard"' \
+      ')' \
+      'func main() { caddycmd.Main() }' > main.go \
+ && go mod init hoje/caddy
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go get github.com/caddyserver/caddy/v2@${CADDY_VERSION} \
+        golang.org/x/crypto@v0.55.0 \
+        google.golang.org/grpc@v1.83.2 \
+ && go mod tidy \
+ && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /usr/bin/caddy .
+
 FROM caddy:2-alpine AS runtime
+COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 LABEL org.opencontainers.image.title="hoje-web" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: web (Caddy + SPA)" \
       org.opencontainers.image.vendor="Hoje"
