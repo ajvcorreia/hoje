@@ -1,7 +1,6 @@
 """Test configuration and fixtures. Smoke tests need no database; DB tests use isolated
 databases."""
 
-import asyncio
 import base64
 import os
 import secrets
@@ -92,15 +91,6 @@ async def _drop_test_database(base_url: str, db_name: str) -> None:
         await conn.close()
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> asyncio.AbstractEventLoop:
-    """Provide the event loop for async tests."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
-
-
 @pytest_asyncio.fixture(scope="session")
 async def db_url() -> AsyncIterator[str]:
     """Session-scoped fixture: create an isolated test database and provide its URL."""
@@ -183,7 +173,12 @@ async def db_session(engine: AsyncEngine, _run_migrations: None) -> AsyncIterato
         trans = await conn.begin()
         try:
             # Use the "join an external transaction" pattern
-            session = async_sessionmaker(conn, class_=AsyncSession, expire_on_commit=False)()
+            session = async_sessionmaker(
+                conn,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                join_transaction_mode="create_savepoint",
+            )()
             async with session:
                 yield session
         finally:
