@@ -12,7 +12,8 @@ export function useLeaveBalance(year: number, enabled = true) {
   return useQuery({
     queryKey: balanceKey(year),
     enabled,
-    queryFn: async () => unwrap(await api.GET('/api/v1/leave/balance', { params: { query: { year } } })),
+    queryFn: async () =>
+      unwrap(await api.GET('/api/v1/leave/balance', { params: { query: { year } } })),
   });
 }
 
@@ -67,7 +68,8 @@ export function useLeavePreview(params: PreviewParams | null) {
             end_date: params.endDate,
             category_id: params.categoryId,
             repeat: params.repeat,
-            repeat_until: params.repeat !== 'none' && params.repeatUntil ? params.repeatUntil : null,
+            repeat_until:
+              params.repeat !== 'none' && params.repeatUntil ? params.repeatUntil : null,
             exclude_event_id: params.excludeEventId ?? null,
           },
         }),
@@ -93,4 +95,12 @@ export function daysLabel(value: number, unit = 'day'): string {
 export function pillText(remaining: number): string {
   const n = Number(remaining);
   return n < 0 ? `Vacation: ${formatDays(-n)} over` : `Vacation: ${formatDays(n)} left`;
+}
+
+/** Toast text when a saved booking overdraws, or null. */
+export function overdrawMessage(impacts: readonly LeaveImpact[] | undefined): string | null {
+  const over = impacts?.find((i) => i.exceeds);
+  return over
+    ? `Vacation balance exceeded: ${daysLabel(-over.remaining_after)} over in ${over.year}`
+    : null;
 }

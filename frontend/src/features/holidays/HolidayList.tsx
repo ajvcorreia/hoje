@@ -29,9 +29,7 @@ export function HolidayCards({ holidays }: { holidays: readonly HolidayDay[] | u
         >
           <span className="break-words text-sm font-medium italic">{h.name}</span>
           <span className="break-words text-xs text-text-muted">
-            {[h.calendarName, h.estimated ? 'estimated' : '']
-              .filter(Boolean)
-              .join(' · ')}
+            {[h.calendarName, h.estimated ? 'estimated' : ''].filter(Boolean).join(' · ')}
           </span>
         </li>
       ))}

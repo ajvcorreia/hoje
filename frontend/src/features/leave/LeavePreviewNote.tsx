@@ -27,11 +27,3 @@ export function LeavePreviewNote({ impacts }: { impacts: readonly LeaveImpact[] 
     </div>
   );
 }
-
-/** Toast text when a saved booking overdraws, or null. */
-export function overdrawMessage(impacts: readonly LeaveImpact[] | undefined): string | null {
-  const over = impacts?.find((i) => i.exceeds);
-  return over
-    ? `Vacation balance exceeded: ${daysLabel(-over.remaining_after)} over in ${over.year}`
-    : null;
-}

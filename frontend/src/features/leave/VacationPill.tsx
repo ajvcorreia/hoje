@@ -6,13 +6,7 @@ import { formatShortDate, todayIso } from '../../lib/dates';
 import { describeError } from '../../lib/errors';
 import { useIsDesktop } from '../../lib/useIsDesktop';
 import { EventEditor } from '../events/EventEditor';
-import {
-  daysLabel,
-  formatDays,
-  pillText,
-  useHasVacationCategory,
-  useLeaveBalance,
-} from './api';
+import { daysLabel, formatDays, pillText, useHasVacationCategory, useLeaveBalance } from './api';
 
 const currentYear = () => Number(todayIso().slice(0, 4));
 

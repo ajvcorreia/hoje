@@ -228,3 +228,16 @@ export function isNonWorkingDay(list: readonly HolidayDay[] | undefined): boolea
 export function holidayText(list: readonly HolidayDay[]): string {
   return list.map((h) => h.name).join(' · ');
 }
+
+/** All holidays of one calendar in `year`, enabled or not (for the settings editor). */
+export function useCalendarHolidays(calendarId: string, year: number) {
+  return useQuery({
+    queryKey: [...HOLIDAYS_KEY, 'calendar', calendarId, year] as const,
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/holiday-calendars/{calendar_id}/holidays', {
+          params: { path: { calendar_id: calendarId }, query: { year } },
+        }),
+      ),
+  });
+}
