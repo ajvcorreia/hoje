@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { ToastProvider } from '../components/ui/Toast';
+import { RealtimeStatus } from '../features/realtime/RealtimeStatus';
+import { useRealtime } from '../features/realtime/useRealtime';
 import { CalendarIcon, SettingsIcon } from './icons';
 import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
@@ -74,6 +76,7 @@ function BottomNav() {
 export function AppShell() {
   // The calendar fills the viewport on desktop (no page scroll, no width cap).
   const isCalendar = useLocation().pathname === '/';
+  useRealtime();
   return (
     <ToastProvider>
       <Shell isCalendar={isCalendar} />
@@ -98,6 +101,7 @@ function Shell({ isCalendar }: { isCalendar: boolean }) {
           <HeaderNav />
           {/* Slot for the future "Vacation: N left" pill and filter/search. */}
           <div data-slot="header-actions" className="ml-auto flex items-center gap-2">
+            <RealtimeStatus />
             <UserMenu />
           </div>
         </div>

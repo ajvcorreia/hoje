@@ -1,4 +1,5 @@
 import createClient, { type Middleware } from 'openapi-fetch';
+import { getClientId } from './clientId';
 import { csrfStore } from './csrf';
 import type { paths } from './schema';
 
@@ -57,6 +58,16 @@ export const csrfMiddleware: Middleware = {
   },
 };
 
+/** Tags every write with this tab's id so the live-sync stream can tell own changes from others. */
+export const clientIdMiddleware: Middleware = {
+  onRequest({ request }) {
+    if (!SAFE_METHODS.has(request.method.toUpperCase())) {
+      request.headers.set('X-Hoje-Client', getClientId());
+    }
+    return request;
+  },
+};
+
 export const problemMiddleware: Middleware = {
   async onResponse({ response }) {
     if (response.ok) return undefined;
@@ -85,7 +96,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
     credentials: 'same-origin',
     fetch: options.fetch ?? ((request: Request) => globalThis.fetch(request)),
   });
-  client.use(csrfMiddleware, problemMiddleware);
+  client.use(csrfMiddleware, clientIdMiddleware, problemMiddleware);
   return client;
 }
 
