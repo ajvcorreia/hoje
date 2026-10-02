@@ -4,7 +4,11 @@ import { btnDanger, btnPrimary, btnSecondary, inputClass } from '../../component
 import { Dialog } from '../../components/ui/Dialog';
 import { Field } from '../../components/ui/Field';
 import { FormError } from '../../components/ui/FormError';
+import { useToast } from '../../components/ui/useToast';
 import { describeError } from '../../lib/errors';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import { useLeavePreview, type PreviewParams } from '../leave/api';
+import { LeavePreviewNote, overdrawMessage } from '../leave/LeavePreviewNote';
 import { formatDayHeading, todayIso } from '../../lib/dates';
 import { useCategories, useDefaultCategoryId } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
@@ -74,6 +78,9 @@ export function EventEditor({
   );
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const PREVIEW_DEBOUNCE_MS = 300;
+
 type FormProps =
   | { mode: 'create'; initialDate: string; onClose(): void }
   | {
@@ -91,6 +98,7 @@ function EditorForm(props: FormProps) {
   const create = useCreateEvent();
   const update = useUpdateEvent();
   const remove = useDeleteEvent();
+  const toast = useToast();
 
   const [form, setForm] = useState<EventFormState>(() =>
     props.mode === 'edit' ? formFromEvent(props.event) : blankForm(props.initialDate),
@@ -131,6 +139,28 @@ function EditorForm(props: FormProps) {
   const categoryId = form.categoryId || defaultCategoryId || '';
   const selectedCategory = categories?.find((c) => c.id === categoryId);
 
+  // Vacation categories: ask the server what this booking does to the balance (debounced).
+  const rangeOk =
+    ISO_DATE.test(form.startDate) &&
+    ISO_DATE.test(form.endDate) &&
+    form.endDate >= form.startDate &&
+    (form.repeat === 'none' || !form.repeatUntil || form.repeatUntil >= form.startDate);
+  const wanted: PreviewParams | null =
+    selectedCategory?.is_leave && rangeOk
+      ? {
+          startDate: form.startDate,
+          endDate: form.endDate,
+          categoryId,
+          repeat: form.repeat,
+          repeatUntil: form.repeatUntil,
+          excludeEventId: editing?.id,
+        }
+      : null;
+  const wantedKey = wanted ? JSON.stringify(wanted) : '';
+  const settledKey = useDebouncedValue(wantedKey, PREVIEW_DEBOUNCE_MS);
+  const preview = useLeavePreview(settledKey ? (JSON.parse(settledKey) as PreviewParams) : null);
+  const impacts = wanted ? preview.data : undefined;
+
   const onStartDate = (value: string) =>
     setForm((f) => ({
       ...f,
@@ -148,15 +178,15 @@ function EditorForm(props: FormProps) {
     setError(null);
     setBusy(true);
     try {
-      if (editing) {
-        await update.mutateAsync({
-          id: editing.id,
-          version: baseVersion,
-          patch: toUpdatePatch({ ...form, categoryId }),
-        });
-      } else {
-        await create.mutateAsync(toCreateBody(form));
-      }
+      const saved = editing
+        ? await update.mutateAsync({
+            id: editing.id,
+            version: baseVersion,
+            patch: toUpdatePatch({ ...form, categoryId }),
+          })
+        : await create.mutateAsync(toCreateBody(form));
+      const warning = overdrawMessage(saved.leave_impact);
+      if (warning) toast.show({ message: warning, durationMs: 8000 });
       onClose();
     } catch (e) {
       const current = conflictCurrent(e);
@@ -233,6 +263,7 @@ function EditorForm(props: FormProps) {
       </div>
 
       <p className="text-sm text-text-muted">{formatDayHeading(form.startDate)}</p>
+      <LeavePreviewNote impacts={impacts} />
 
       <div>
         <button

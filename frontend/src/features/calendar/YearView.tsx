@@ -8,6 +8,7 @@ import {
   monthName,
 } from '../../lib/dates';
 import { groupByDay } from '../events/occurrences';
+import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
 
 interface YearViewProps {
   year: number;
@@ -16,13 +17,16 @@ interface YearViewProps {
   categories: Category[];
   today: string;
   onOpenDay(date: string, anchor: HTMLElement): void;
+  /** Holidays of enabled calendars by date. */
+  holidays?: ReadonlyMap<string, HolidayDay[]>;
 }
 
 const MAX_DOTS = 3;
 
-function dayLabel(iso: string, year: number, count: number): string {
+function dayLabel(iso: string, year: number, count: number, holidays?: HolidayDay[]): string {
   const base = `${formatDayHeading(iso)} ${year}`;
-  return count > 0 ? `${base}, ${count} ${count === 1 ? 'event' : 'events'}` : base;
+  const events = count > 0 ? `${base}, ${count} ${count === 1 ? 'event' : 'events'}` : base;
+  return holidays ? `${events}, holiday: ${holidayText(holidays)}` : events;
 }
 
 /**
@@ -30,7 +34,14 @@ function dayLabel(iso: string, year: number, count: number): string {
  * category colour and carries up to three dots for further events. Opens the same day
  * popover as the month grid.
  */
-export function YearView({ year, occurrences, categories, today, onOpenDay }: YearViewProps) {
+export function YearView({
+  year,
+  occurrences,
+  categories,
+  today,
+  onOpenDay,
+  holidays = NO_HOLIDAYS,
+}: YearViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const colourOf = useMemo(() => new Map(categories.map((c) => [c.id, c.colour])), [categories]);
   const byDay = useMemo(
@@ -105,6 +116,7 @@ export function YearView({ year, occurrences, categories, today, onOpenDay }: Ye
                   const events = byDay.get(iso) ?? [];
                   const first = events[0];
                   const dots = Math.min(MAX_DOTS, Math.max(0, events.length - 1));
+                  const dayHolidays = holidays.get(iso);
                   return (
                     <button
                       key={iso}
@@ -112,12 +124,20 @@ export function YearView({ year, occurrences, categories, today, onOpenDay }: Ye
                       className="yr-day"
                       data-date={iso}
                       data-today={iso === today || undefined}
+                      data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
                       data-cat={first ? colourOf.get(first.event.category_id) : undefined}
                       tabIndex={iso === activeFocus ? 0 : -1}
-                      aria-label={dayLabel(iso, year, events.length)}
+                      aria-label={dayLabel(iso, year, events.length, dayHolidays)}
                       onFocus={() => setFocusDate(iso)}
                     >
                       <span aria-hidden="true">{Number(iso.slice(8))}</span>
+                      {dayHolidays ? (
+                        <i
+                          className="yr-hol"
+                          data-cat={dayHolidays[0]?.colour}
+                          aria-hidden="true"
+                        />
+                      ) : null}
                       {dots > 0 ? (
                         <span className="yr-dots" aria-hidden="true">
                           {events.slice(1, 1 + dots).map((o) => (
