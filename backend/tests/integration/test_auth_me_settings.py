@@ -1,143 +1,115 @@
-"""User profile and settings tests: timezone, weekend days, email configuration."""
+"""Current-user profile and email settings endpoints."""
 
 import pytest
+
+from ._auth import EMAIL, TEST_ORIGIN
 
 pytestmark = pytest.mark.db
 
 
-TEST_PASSWORD = "correct horse battery staple 42"
+async def patch_me(api, body: dict):
+    return await api.client.patch("/api/v1/me", json=body, headers=await api.headers())
 
 
-async def csrf(auth_client) -> str | None:
-    """Extract CSRF token from /auth/state, or None if not authenticated."""
-    resp = await auth_client.get("/api/v1/auth/state")
-    data = resp.json()
-    return data.get("csrf_token")
+async def test_get_me(api):
+    await api.register_ok()
 
+    resp = await api.client.get("/api/v1/me")
 
-async def register_and_login(auth_client, email: str, password: str):
-    """Register and login a user."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
-
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password},
-        headers=headers,
-    )
-    assert resp.status_code == 201
-
-
-async def test_get_me(auth_client):
-    """GET /me returns current user info."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-
-    resp = await auth_client.get("/api/v1/me")
     assert resp.status_code == 200
-
     user = resp.json()
-    assert user["email"] == "alice@example.com"
+    assert user["email"] == EMAIL
     assert user["timezone"] == "UTC"
     assert user["weekend_days"] == [6, 7]
     assert user["totp_enabled"] is False
 
 
-async def test_patch_me_timezone(auth_client):
-    """PATCH /me with timezone."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_patch_me_updates_timezone_and_weekend_days_persistently(api):
+    await api.register_ok()
 
-    token = await csrf(auth_client)
-    resp = await auth_client.patch(
-        "/api/v1/me",
-        json={"timezone": "Europe/Lisbon"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    resp = await patch_me(api, {"timezone": "Europe/Lisbon", "weekend_days": [5, 6, 7]})
+
     assert resp.status_code == 200
-    user = resp.json()
-    assert user["timezone"] == "Europe/Lisbon"
+    assert resp.json()["timezone"] == "Europe/Lisbon"
+    assert resp.json()["weekend_days"] == [5, 6, 7]
+    stored = (await api.client.get("/api/v1/me")).json()
+    assert stored["timezone"] == "Europe/Lisbon"
+    assert stored["weekend_days"] == [5, 6, 7]
 
 
-async def test_patch_me_weekend_days(auth_client):
-    """PATCH /me with weekend_days."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_patch_me_changes_only_the_given_fields(api):
+    await api.register_ok()
 
-    token = await csrf(auth_client)
-    resp = await auth_client.patch(
-        "/api/v1/me",
-        json={"weekend_days": [5, 6, 7]},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    resp = await patch_me(api, {"timezone": "Asia/Dubai"})
+
     assert resp.status_code == 200
-    user = resp.json()
-    assert user["weekend_days"] == [5, 6, 7]
+    assert resp.json()["timezone"] == "Asia/Dubai"
+    assert resp.json()["weekend_days"] == [6, 7]
 
 
-async def test_patch_me_invalid_timezone(auth_client):
-    """PATCH /me with invalid timezone: validation error."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+@pytest.mark.parametrize(
+    "body",
+    [{"timezone": "Mars/Olympus"}, {"weekend_days": [0, 8]}, {"weekend_days": [6, 6, 7]}],
+    ids=["unknown-timezone", "day-out-of-range", "duplicate-days"],
+)
+async def test_patch_me_rejects_invalid_values(api, body):
+    await api.register_ok()
 
-    token = await csrf(auth_client)
-    resp = await auth_client.patch(
-        "/api/v1/me",
-        json={"timezone": "Mars/Olympus"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    resp = await patch_me(api, body)
+
     assert resp.status_code == 422
-    # Should contain validation error details
-    assert "errors" in resp.json()
+    unchanged = (await api.client.get("/api/v1/me")).json()
+    assert unchanged["timezone"] == "UTC"
+    assert unchanged["weekend_days"] == [6, 7]
 
 
-async def test_patch_me_invalid_weekend_days_out_of_range(auth_client):
-    """PATCH /me with invalid weekend_days (out of range): validation error."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-
-    token = await csrf(auth_client)
-    resp = await auth_client.patch(
-        "/api/v1/me",
-        json={"weekend_days": [0, 8]},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+async def test_me_endpoints_require_authentication(api):
+    patch = await api.client.patch(
+        "/api/v1/me", json={"timezone": "UTC"}, headers={"Origin": TEST_ORIGIN}
     )
-    assert resp.status_code == 422
+
+    assert patch.status_code == 401
+    assert (await api.client.get("/api/v1/me")).status_code == 401
 
 
-async def test_patch_me_invalid_weekend_days_duplicates(auth_client):
-    """PATCH /me with duplicate weekend_days: validation error."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_email_settings_report_the_mailer(api, outbox_mailer):
+    await api.register_ok()
 
-    token = await csrf(auth_client)
-    resp = await auth_client.patch(
-        "/api/v1/me",
-        json={"weekend_days": [6, 6, 7]},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 422
+    resp = await api.client.get("/api/v1/settings/email")
 
-
-async def test_settings_email_configured(auth_client):
-    """GET /settings/email reports configured status."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-
-    resp = await auth_client.get("/api/v1/settings/email")
     assert resp.status_code == 200
-
-    settings = resp.json()
-    assert "configured" in settings
-    assert isinstance(settings["configured"], bool)
-    assert "from_address" in settings
+    assert resp.json() == {"configured": True, "from_address": outbox_mailer.from_address}
 
 
-async def test_settings_email_test_503_when_unconfigured(auth_client):
-    """POST /settings/email/test → 503 when SMTP is not configured."""
-    # The test environment doesn't have SMTP configured by default
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_email_settings_require_authentication(api):
+    assert (await api.client.get("/api/v1/settings/email")).status_code == 401
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/settings/email/test",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    # Since SMTP is not configured, should get 503
-    # (or 202 if the MemoryMailer is used, which is always configured)
-    assert resp.status_code in (202, 503)
+
+async def test_test_email_is_sent_to_the_user(api, outbox_mailer):
+    await api.register_ok()
+
+    resp = await api.post("/settings/email/test")
+
+    assert resp.status_code == 202
+    assert [(m.to, m.kind) for m in outbox_mailer.outbox] == [(EMAIL, "test")]
+
+
+async def test_test_email_is_503_when_email_is_not_configured(api, outbox_mailer):
+    outbox_mailer.configured = False
+    await api.register_ok()
+
+    resp = await api.post("/settings/email/test")
+
+    assert resp.status_code == 503
+    assert outbox_mailer.outbox == []
+
+
+async def test_test_email_is_limited_to_five_per_window(api, outbox_mailer):
+    await api.register_ok()
+    for _ in range(5):
+        assert (await api.post("/settings/email/test")).status_code == 202
+
+    resp = await api.post("/settings/email/test")
+
+    assert resp.status_code == 429
+    assert len(outbox_mailer.outbox) == 5
