@@ -1,713 +1,302 @@
-"""2FA tests: TOTP setup, recovery codes, replay protection, throttling."""
+"""Two-factor authentication: enrolment, MFA login, replay protection, recovery codes."""
 
-from datetime import UTC, datetime, timedelta
+import re
+from urllib.parse import unquote
 
 import pytest
-import pyotp
 
-from hoje import clock
+from ._auth import EMAIL, PASSWORD, TEST_ORIGIN
 
 pytestmark = pytest.mark.db
 
-
-TEST_PASSWORD = "correct horse battery staple 42"
-
-
-async def csrf(auth_client) -> str | None:
-    """Extract CSRF token from /auth/state, or None if not authenticated."""
-    resp = await auth_client.get("/api/v1/auth/state")
-    data = resp.json()
-    return data.get("csrf_token")
+RECOVERY_CODE = re.compile(r"^[A-Z0-9]{5}-[A-Z0-9]{5}$")
 
 
-async def register_and_login(auth_client, email: str, password: str):
-    """Register and login a user."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
+@pytest.fixture
+async def two_factor(api):
+    """Alice is registered, logged in, and has 2FA enabled (the enrolment step is spent)."""
+    await api.register_ok()
+    return await api.enable_2fa()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password},
-        headers=headers,
+
+async def me(api) -> dict:
+    resp = await api.client.get("/api/v1/me")
+    assert resp.status_code == 200
+    return resp.json()
+
+
+# --- enrolment -------------------------------------------------------------------------------
+
+
+async def test_setup_requires_authentication(api):
+    resp = await api.client.post(
+        "/api/v1/auth/2fa/setup", json={"password": PASSWORD}, headers={"Origin": TEST_ORIGIN}
     )
-    assert resp.status_code == 201
+
+    assert resp.status_code == 401
 
 
-async def test_2fa_setup_requires_password(auth_client):
-    """2FA setup without correct password: 400."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+async def test_setup_rejects_a_wrong_password(api):
+    await api.register_ok()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": "wrongpassword"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    resp = await api.post("/auth/2fa/setup", {"password": "not my password"})
+
     assert resp.status_code == 400
 
 
-async def test_2fa_setup_returns_uri_secret_svg(auth_client):
-    """2FA setup with correct password returns otpauth_uri, secret, qr_svg."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+async def test_setup_returns_otpauth_uri_secret_and_qr_svg(api):
+    await api.register_ok()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    resp = await api.post("/auth/2fa/setup", {"password": PASSWORD})
+
     assert resp.status_code == 200
     body = resp.json()
-
-    # Check otpauth_uri format
-    assert "otpauth_uri" in body
-    assert "otpauth://totp/" in body["otpauth_uri"]
-    assert "Hoje" in body["otpauth_uri"], "Issuer should be 'Hoje'"
-    assert "alice@example.com" in body["otpauth_uri"]
-
-    # Check secret is base32
-    assert "secret" in body
-    secret = body["secret"]
-    assert len(secret) > 0
-    # Base32 characters
-    try:
-        pyotp.TOTP(secret)  # Should not raise
-    except Exception:
-        pytest.fail("Secret should be valid base32")
-
-    # Check QR SVG
-    assert "qr_svg" in body
-    assert body["qr_svg"].startswith("<svg"), "QR should be an SVG string"
+    assert body["otpauth_uri"].startswith("otpauth://totp/")
+    assert "issuer=Hoje" in body["otpauth_uri"]
+    assert EMAIL in unquote(body["otpauth_uri"])
+    assert f"secret={body['secret']}" in body["otpauth_uri"]
+    assert body["qr_svg"].startswith("<svg")
+    assert (await me(api))["totp_enabled"] is False  # not enabled until confirmed
 
 
-async def test_2fa_enable_wrong_code_400(auth_client):
-    """Enable with wrong code: 400."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+async def test_enable_without_setup_is_a_conflict(api):
+    await api.register_ok()
 
-    # Setup
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
+    resp = await api.post("/auth/2fa/enable", {"code": "123456"})
 
-    # Try to enable with wrong code
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": "000000"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    assert resp.status_code == 409
+
+
+async def test_enable_with_a_wrong_code_is_rejected(api):
+    await api.register_ok()
+    await api.post("/auth/2fa/setup", {"password": PASSWORD})
+
+    resp = await api.post("/auth/2fa/enable", {"code": "000000"})
+
     assert resp.status_code == 400
+    assert (await me(api))["totp_enabled"] is False
 
 
-async def test_2fa_enable_correct_code_returns_recovery_codes(auth_client, monkeypatch):
-    """Enable with correct TOTP code: returns 10 recovery codes in XXXXX-XXXXX format."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_enable_returns_ten_recovery_codes_and_turns_2fa_on(api, two_factor):
+    codes = two_factor.recovery_codes
 
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    assert len(codes) == len(set(codes)) == 10
+    assert all(RECOVERY_CODE.match(code) for code in codes)
+    assert (await me(api))["totp_enabled"] is True
 
-    # Setup
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
 
-    # Generate correct TOTP code
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
+async def test_enable_rotates_the_session_and_revokes_the_old_one(api):
+    await api.register_ok()
+    before = api.session_cookie
 
-    # Enable with correct code
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+    await api.enable_2fa()
+
+    assert api.session_cookie != before
+    assert (await me(api))["totp_enabled"] is True
+    api.client.cookies.set("hoje_session", before)  # the pre-enrolment session is gone
+    assert (await api.client.get("/api/v1/me")).status_code == 401
+
+
+async def test_setup_when_already_enabled_is_a_conflict(api, two_factor):
+    resp = await api.post("/auth/2fa/setup", {"password": PASSWORD})
+
+    assert resp.status_code == 409
+
+
+# --- login with a second factor --------------------------------------------------------------
+
+
+async def test_login_with_2fa_requires_a_second_step(api, two_factor):
+    await api.login_to_mfa()
+
+    state = await api.state()
+    assert state["authenticated"] is False
+    assert state["stage"] == "mfa_pending"
+    assert (await api.client.get("/api/v1/me")).status_code == 401
+
+
+async def test_totp_code_completes_login_and_rotates_the_session(api, two_factor):
+    await api.login_to_mfa()
+    pending = api.session_cookie
+
+    resp = await api.login_mfa(await api.next_code(two_factor))
+
     assert resp.status_code == 200
-    body = resp.json()
-
-    # Check recovery codes format
-    assert "recovery_codes" in body
-    codes = body["recovery_codes"]
-    assert len(codes) == 10, "Should have 10 recovery codes"
-    for code in codes:
-        assert "-" in code, "Recovery code should have hyphen"
-        parts = code.split("-")
-        assert len(parts) == 2, "Should be XXXXX-XXXXX"
-        assert len(parts[0]) == 5 and len(parts[1]) == 5
+    assert resp.json() == {"status": "ok"}
+    assert api.session_cookie != pending
+    assert (await api.state())["stage"] == "active"
+    assert (await me(api))["email"] == EMAIL
 
 
-async def test_2fa_enable_disables_other_sessions(auth_client, monkeypatch):
-    """Enabling 2FA revokes other sessions and rotates the current cookie."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_mfa_without_a_pending_session_is_unauthorised(api, two_factor):
+    api.client.cookies.clear()
 
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    cookie_before = auth_client.cookies.get("hoje_session") or auth_client.cookies.get(
-        "__Host-hoje_session"
+    anonymous = await api.login_mfa("123456")
+    assert anonymous.status_code == 401
+
+    await api.login_to_mfa()
+    await api.login_mfa(await api.next_code(two_factor))  # now fully logged in
+    already_active = await api.login_mfa("123456")
+    assert already_active.status_code == 401
+
+
+async def test_mfa_step_requires_the_csrf_token(api, two_factor):
+    await api.login_to_mfa()
+
+    resp = await api.client.post(
+        "/api/v1/auth/login/mfa",
+        json={"code": await api.next_code(two_factor)},
+        headers={"Origin": TEST_ORIGIN},
     )
 
-    token = await csrf(auth_client)
-
-    # Setup
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    # Enable
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Cookie should have rotated
-    cookie_after = auth_client.cookies.get("hoje_session") or auth_client.cookies.get(
-        "__Host-hoje_session"
-    )
-    assert cookie_before != cookie_after, "Cookie should have rotated"
+    assert resp.status_code == 403
 
 
-async def test_login_with_2fa_returns_mfa_required(auth_client, monkeypatch):
-    """After enabling 2FA, login returns mfa_required."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_wrong_totp_code_is_rejected(api, two_factor):
+    await api.login_to_mfa()
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    resp = await api.login_mfa("000000")
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Logout and login again
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # Login
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "mfa_required"
+    assert resp.status_code == 401
+    assert (await api.state())["stage"] == "mfa_pending"
 
 
-async def test_mfa_pending_session_401_on_protected_endpoints(auth_client, monkeypatch):
-    """With mfa_pending session, protected endpoints return 401."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_a_used_totp_code_cannot_be_replayed(api, two_factor):
+    code = await api.next_code(two_factor)
+    await api.login_to_mfa()
+    assert (await api.login_mfa(code)).status_code == 200
 
-    # Setup 2FA and logout
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    await api.login_to_mfa()
+    replay = await api.login_mfa(code)  # same time step, already consumed
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
+    assert replay.status_code == 401
+    assert (await api.login_mfa(await api.next_code(two_factor))).status_code == 200
 
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
 
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+async def test_the_enrolment_code_cannot_be_used_to_log_in(api, two_factor):
+    await api.login_to_mfa()
 
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
+    resp = await api.login_mfa(two_factor.code(api.clock))  # same step as the enrolment code
 
-    # Login (mfa_pending)
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Should not be able to access /me
-    resp = await auth_client.get("/api/v1/me")
     assert resp.status_code == 401
 
 
-async def test_mfa_with_totp_code(auth_client, monkeypatch):
-    """MFA with valid TOTP code: login succeeds."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_an_older_code_is_rejected_after_a_newer_one_was_accepted(api, two_factor):
+    older = await api.next_code(two_factor)
+    newer = await api.next_code(two_factor)
+    await api.login_to_mfa()
+    assert (await api.login_mfa(newer)).status_code == 200
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    await api.login_to_mfa()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # Login
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Generate a new TOTP code (advance clock by 30s to get next code)
-    state["now"] += timedelta(seconds=30)
-    code = totp.at(state["now"])
-
-    # MFA
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
+    assert (await api.login_mfa(older)).status_code == 401
 
 
-async def test_totp_replay_rejected(auth_client, monkeypatch):
-    """Replaying the same TOTP code at next login: 401."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_recovery_code_is_single_use(api, two_factor):
+    used, other = two_factor.recovery_codes[:2]
+    await api.login_to_mfa()
+    assert (await api.login_mfa(used)).status_code == 200
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # First login with MFA
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    state["now"] += timedelta(seconds=30)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Try to use the same code again (within the same time step)
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # Login again with same code (should fail because it's been used)
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": code},  # same code
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 401
+    await api.login_to_mfa()
+    assert (await api.login_mfa(used)).status_code == 401
+    assert (await api.login_mfa(other)).status_code == 200
 
 
-async def test_recovery_code_single_use(auth_client, monkeypatch):
-    """Recovery code works once, fails on second use."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_five_wrong_codes_lock_mfa_even_for_the_right_code(api, two_factor):
+    await api.login_to_mfa()
+    for _ in range(5):
+        assert (await api.login_mfa("000000")).status_code == 401
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    resp = await api.login_mfa(await api.next_code(two_factor))
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    recovery_code = resp.json()["recovery_codes"][0]
-
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # First login with recovery code
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": recovery_code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Second attempt with same recovery code
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": recovery_code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 401
-
-
-async def test_mfa_throttle_5_failures(auth_client, monkeypatch):
-    """5 bad MFA codes → 429 on 6th."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
-
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # Login
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    # 5 failures
-    for i in range(5):
-        token = await csrf(auth_client)
-        resp = await auth_client.post(
-            "/api/v1/auth/login/mfa",
-            json={"code": "000000"},
-            headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-        )
-        assert resp.status_code == 401
-
-    # 6th should be throttled
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": "000000"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
     assert resp.status_code == 429
+    assert "Retry-After" in resp.headers
+    assert (await api.state())["stage"] == "mfa_pending"
 
 
-async def test_2fa_disable(auth_client, monkeypatch):
-    """Disable 2FA requires password and code."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_pending_login_expires_after_ten_minutes(api, two_factor):
+    await api.login_to_mfa()
+    api.clock.advance(minutes=10, seconds=1)
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
+    resp = await api.login_mfa(await api.next_code(two_factor))  # a valid, unused code
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
+    assert resp.status_code == 401
+    assert (await api.state())["authenticated"] is False
 
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
 
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
+async def test_pending_login_is_still_valid_just_before_ten_minutes(api, two_factor):
+    await api.login_to_mfa()
+    api.clock.advance(minutes=9, seconds=29)
 
-    # Generate new code for disable
-    state["now"] += timedelta(seconds=30)
-    code = totp.at(state["now"])
+    resp = await api.login_mfa(await api.next_code(two_factor))  # +30 s: 9 min 59 s
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/disable",
-        json={"password": TEST_PASSWORD, "code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 204
-
-    # Should be able to login without 2FA now
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
 
 
-async def test_2fa_recovery_codes_regenerate(auth_client, monkeypatch):
-    """Regenerate recovery codes: old ones stop working, 10 new ones issued."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+# --- disabling and recovery codes ------------------------------------------------------------
 
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
 
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+async def test_disable_with_password_and_code_restores_single_step_login(api, two_factor):
+    resp = await api.post(
+        "/auth/2fa/disable", {"password": PASSWORD, "code": await api.next_code(two_factor)}
     )
-    secret = resp.json()["secret"]
 
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
+    assert resp.status_code == 204
+    assert (await me(api))["totp_enabled"] is False
+    api.client.cookies.clear()
+    login = await api.login()
+    assert login.json() == {"status": "ok"}
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+
+async def test_disable_accepts_a_recovery_code(api, two_factor):
+    resp = await api.post(
+        "/auth/2fa/disable", {"password": PASSWORD, "code": two_factor.recovery_codes[0]}
     )
-    old_recovery_code = resp.json()["recovery_codes"][0]
 
-    # Regenerate codes
-    state["now"] += timedelta(seconds=30)
-    code = totp.at(state["now"])
+    assert resp.status_code == 204
+    assert (await me(api))["totp_enabled"] is False
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/recovery-codes",
-        json={"password": TEST_PASSWORD, "code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+
+async def test_disable_rejects_a_wrong_password_or_code(api, two_factor):
+    wrong_password = await api.post(
+        "/auth/2fa/disable", {"password": "nope nope nope", "code": await api.next_code(two_factor)}
     )
+    wrong_code = await api.post("/auth/2fa/disable", {"password": PASSWORD, "code": "000000"})
+
+    assert wrong_password.status_code == 400
+    assert wrong_code.status_code == 400
+    assert (await me(api))["totp_enabled"] is True
+
+
+async def test_disable_when_not_enabled_is_a_conflict(api):
+    await api.register_ok()
+
+    resp = await api.post("/auth/2fa/disable", {"password": PASSWORD, "code": "123456"})
+
+    assert resp.status_code == 409
+
+
+async def test_regenerating_recovery_codes_replaces_the_old_ones(api, two_factor):
+    old_codes = two_factor.recovery_codes
+
+    resp = await api.post(
+        "/auth/2fa/recovery-codes",
+        {"password": PASSWORD, "code": await api.next_code(two_factor)},
+    )
+
     assert resp.status_code == 200
     new_codes = resp.json()["recovery_codes"]
     assert len(new_codes) == 10
-    assert old_recovery_code not in new_codes
+    assert not set(new_codes) & set(old_codes)
+    await api.login_to_mfa()
+    assert (await api.login_mfa(old_codes[0])).status_code == 401
+    assert (await api.login_mfa(new_codes[0])).status_code == 200
 
-    # Old code should not work
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+async def test_regenerating_recovery_codes_needs_a_totp_code_not_a_recovery_code(api, two_factor):
+    resp = await api.post(
+        "/auth/2fa/recovery-codes",
+        {"password": PASSWORD, "code": two_factor.recovery_codes[0]},
     )
 
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": old_recovery_code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 401
-
-
-async def test_mfa_pending_expires_10_minutes(auth_client, monkeypatch):
-    """MFA pending session expires after 10 minutes."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
-
-    # Setup and enable 2FA
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/2fa/setup",
-        json={"password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    secret = resp.json()["secret"]
-
-    totp = pyotp.TOTP(secret)
-    code = totp.at(state["now"])
-
-    token = await csrf(auth_client)
-    await auth_client.post(
-        "/api/v1/auth/2fa/enable",
-        json={"code": code},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-
-    await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": await csrf(auth_client)},
-    )
-    auth_client.cookies.clear()
-
-    # Login to mfa_pending
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 200
-
-    # Advance time by 10 minutes + 1 second
-    state["now"] += timedelta(minutes=10, seconds=1)
-
-    # MFA should no longer work
-    token = await csrf(auth_client)
-    resp = await auth_client.post(
-        "/api/v1/auth/login/mfa",
-        json={"code": "000000"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
-    )
-    assert resp.status_code == 401
+    assert resp.status_code == 400
