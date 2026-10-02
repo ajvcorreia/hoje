@@ -1,0 +1,150 @@
+# Throwaway end-to-end stack for Playwright. Never shares anything with compose.test.yml:
+# same compose project name (hoje-test, the only one allowed on the VM) but distinct service,
+# network and image names, a tmpfs database and no volumes.
+#
+# Run it via deploy/e2e.sh, which tears down ONLY the services named here. Do not use
+# `down --remove-orphans` or `down -v` with this file: orphan removal would also remove the
+# containers of the LAN test stack that lives in the same project.
+name: hoje-test
+
+x-hardening: &hardening
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  tmpfs:
+    - /tmp
+
+x-api-env: &api-env
+  HOJE_ENV: test
+  HOJE_LOG_LEVEL: WARNING
+  HOJE_DATABASE_URL: postgresql+asyncpg://hoje:e2e-password@e2e-db:5432/hoje
+  # Throwaway key (32 bytes base64); this stack holds no real data.
+  HOJE_SECRET_KEY: ZTJlLWtleS1lMmUta2V5LWUyZS1rZXktZTJlLWtleTA=
+  # Playwright drives the browser at this origin, so the Origin check passes.
+  HOJE_PUBLIC_URL: http://e2e-web:8080
+  HOJE_INSECURE_COOKIES: "true"
+  HOJE_ALLOW_REGISTRATION: "true"
+  SMTP_HOST: e2e-mailpit
+  SMTP_PORT: "1025"
+  SMTP_STARTTLS: "false"
+  SMTP_FROM: hoje@e2e.local
+
+services:
+  e2e-db:
+    image: postgres:17-alpine
+    <<: *hardening
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+      - /var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: hoje
+      POSTGRES_DB: hoje
+      POSTGRES_PASSWORD: e2e-password
+    networks: [e2e_internal]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoje -d hoje"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  e2e-mailpit:
+    image: axllent/mailpit:latest
+    <<: *hardening
+    user: "10001:10001"
+    environment:
+      MP_DATABASE: /tmp/mailpit.db
+      MP_MAX_MESSAGES: "100"
+    networks: [e2e_internal]
+    mem_limit: 64m
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  e2e-api:
+    image: ${HOJE_API_IMAGE:-hoje-test/api:e2e}
+    build:
+      context: ../backend
+    <<: *hardening
+    environment:
+      <<: *api-env
+    networks: [e2e_internal, e2e_edge]
+    mem_limit: 256m
+    depends_on:
+      e2e-db:
+        condition: service_healthy
+      e2e-mailpit:
+        condition: service_healthy
+
+  e2e-worker:
+    image: ${HOJE_API_IMAGE:-hoje-test/api:e2e}
+    <<: *hardening
+    command: ["python", "-m", "hoje.worker"]
+    environment:
+      <<: *api-env
+    networks: [e2e_internal]
+    mem_limit: 192m
+    healthcheck:
+      test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    depends_on:
+      e2e-api:
+        condition: service_healthy
+
+  e2e-web:
+    image: ${HOJE_WEB_IMAGE:-hoje-test/web:e2e}
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    <<: *hardening
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp
+      - /data
+      - /config
+    environment:
+      SITE_ADDRESS: ":8080"
+      API_UPSTREAM: e2e-api:8000
+    ports:
+      - "${HOJE_E2E_PORT:-8192}:8080"
+    networks: [e2e_edge]
+    mem_limit: 128m
+    depends_on:
+      e2e-api:
+        condition: service_healthy
+
+  playwright:
+    profiles: [e2e]
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /work
+    user: "${HOJE_UID:-1000}:${HOJE_GID:-1000}"
+    init: true
+    shm_size: 1gb
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 3g
+    environment:
+      HOME: /tmp
+      npm_config_cache: /tmp/npm
+      CI: ${CI:-}
+      E2E_BASE_URL: http://e2e-web:8080
+    volumes:
+      - ../frontend:/work
+    # The frontend directory is bind-mounted, usually without node_modules: install first.
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
+    networks: [e2e_edge]
+    depends_on:
+      e2e-web:
+        condition: service_started
+
+networks:
+  e2e_internal:
+    internal: true
+  e2e_edge:
