@@ -9,6 +9,8 @@ import { routes } from '../app/router';
 export interface RecordedCall {
   method: string;
   path: string;
+  /** Raw query string, e.g. "?reassign_to=abc" (empty when none). */
+  search: string;
   body: unknown;
 }
 
@@ -37,7 +39,7 @@ export function mockApi(routesTable: Record<string, Reply | null>) {
     } catch {
       body = undefined;
     }
-    const call = { method: input.method, path: url.pathname, body };
+    const call = { method: input.method, path: url.pathname, search: url.search, body };
     calls.push(call);
     const key = `${input.method} ${url.pathname}`;
     if (!(key in routesTable)) return problem(404, `no mock for ${key}`);

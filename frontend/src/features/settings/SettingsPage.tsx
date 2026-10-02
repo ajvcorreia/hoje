@@ -1,6 +1,7 @@
 import { THEMES, type Theme } from '../../lib/theme';
 import { useTheme } from '../../app/useTheme';
 import { inputClass } from '../../components/ui/classes';
+import { CategoriesSection } from './CategoriesSection';
 import { AccountSection } from './AccountSection';
 import { EmailSection } from './EmailSection';
 import { SecuritySection } from './SecuritySection';
@@ -36,6 +37,7 @@ export function SettingsPage() {
             </select>
           </div>
         </SettingsSection>
+        <CategoriesSection />
         <AccountSection />
         <SecuritySection />
         <EmailSection />
