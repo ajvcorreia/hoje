@@ -257,13 +257,11 @@ async def auth_client(
     are all replaced by the test transaction's ``db_session`` and ``outbox_mailer``.
     """
     import httpx
+    from argon2 import PasswordHasher
+    from integration._auth import TEST_ORIGIN
 
     from hoje.api.deps import get_mailer, get_session_factory
-    from integration._auth import TEST_ORIGIN
     from hoje.config import get_settings
-
-    from argon2 import PasswordHasher
-
     from hoje.security import passwords
 
     # Cheap argon2 parameters: the tests hash many passwords, and none depends on the cost.
@@ -298,8 +296,9 @@ async def auth_client(
 @pytest.fixture
 def frozen_clock(monkeypatch: pytest.MonkeyPatch):
     """Freeze ``hoje.clock.now`` at a fixed instant; tests move time with ``advance``."""
-    from hoje import clock
     from integration._auth import FrozenClock
+
+    from hoje import clock
 
     frozen = FrozenClock()
     monkeypatch.setattr(clock, "now", lambda: frozen.now)
