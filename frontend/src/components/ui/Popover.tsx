@@ -58,14 +58,22 @@ export function Popover({ anchor, label, onClose, children, className }: Popover
     place();
   }, [place]);
 
+  // Focus only once the panel is positioned: while `pos` is null it is `visibility: hidden`,
+  // and browsers silently refuse to focus elements inside a hidden subtree.
+  const focusedRef = useRef(false);
   useEffect(() => {
+    if (!pos || focusedRef.current) return;
+    focusedRef.current = true;
     const panel = panelRef.current;
     (
       panel?.querySelector<HTMLElement>('[data-autofocus]') ??
       panel?.querySelector<HTMLElement>(FOCUSABLE) ??
       panel
     )?.focus();
+  }, [pos]);
 
+  useEffect(() => {
+    const panel = panelRef.current;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();

@@ -50,9 +50,7 @@ test('add an event from the day popover, open it, delete and undo', async ({ pag
   await expect.poll(async () => (await api.events(date, date)).length).toBe(1);
 });
 
-// App bug: the popover tries to focus the type-to-add input while the panel is still
-// `visibility: hidden` (position not computed yet), so focus stays on the day cell.
-test.fixme('the day popover focuses the type-to-add field on open', async ({ page, account }) => {
+test('the day popover focuses the type-to-add field on open', async ({ page, account }) => {
   void account;
   await page.goto('/');
   await page.locator(`[data-date="${dateInCurrentMonth(15)}"]`).click();
