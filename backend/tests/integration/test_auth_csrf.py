@@ -35,9 +35,7 @@ async def test_csrf_token_of_an_earlier_session_is_rejected(api):
     api.client.cookies.clear()
     assert (await api.login()).status_code == 200  # new session, new CSRF secret
 
-    resp = await api.client.post(
-        LOGOUT, headers={"Origin": TEST_ORIGIN, "X-CSRF-Token": old_token}
-    )
+    resp = await api.client.post(LOGOUT, headers={"Origin": TEST_ORIGIN, "X-CSRF-Token": old_token})
 
     assert resp.status_code == 403
 

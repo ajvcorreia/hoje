@@ -247,9 +247,7 @@ def outbox_mailer(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def auth_client(
-    db_session: AsyncSession, outbox_mailer, monkeypatch: pytest.MonkeyPatch
-):
+async def auth_client(db_session: AsyncSession, outbox_mailer, monkeypatch: pytest.MonkeyPatch):
     """An httpx client for auth tests.
 
     Cookies are insecure (``hoje_session``) so they travel over http, the public URL is
