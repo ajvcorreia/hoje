@@ -19,8 +19,14 @@ export class ApiError extends Error {
   readonly errors: ProblemFieldError[];
   /** The full parsed problem body, e.g. the `current` item of a 409 conflict. */
   readonly body: Record<string, unknown>;
+  /** Seconds from a `Retry-After` header (429 lockouts), when present. */
+  readonly retryAfter: number | null;
 
-  constructor(status: number, body: Record<string, unknown> = {}) {
+  constructor(
+    status: number,
+    body: Record<string, unknown> = {},
+    retryAfter: number | null = null,
+  ) {
     const title = typeof body.title === 'string' ? body.title : `Request failed (${status})`;
     const detail = typeof body.detail === 'string' ? body.detail : null;
     super(detail ?? title);
@@ -31,7 +37,14 @@ export class ApiError extends Error {
     this.type = typeof body.type === 'string' ? body.type : 'about:blank';
     this.errors = Array.isArray(body.errors) ? (body.errors as ProblemFieldError[]) : [];
     this.body = body;
+    this.retryAfter = retryAfter;
   }
+}
+
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
 }
 
 export const csrfMiddleware: Middleware = {
@@ -56,7 +69,7 @@ export const problemMiddleware: Middleware = {
     } catch {
       // Malformed problem body: fall back to the status alone.
     }
-    throw new ApiError(response.status, body);
+    throw new ApiError(response.status, body, parseRetryAfter(response.headers.get('retry-after')));
   },
 };
 
@@ -67,7 +80,8 @@ export interface ApiClientOptions {
 
 export function createApiClient(options: ApiClientOptions = {}) {
   const client = createClient<paths>({
-    baseUrl: options.baseUrl ?? '',
+    // Absolute same-origin URL: Request() rejects relative URLs outside a browser (tests).
+    baseUrl: options.baseUrl ?? globalThis.location?.origin ?? '',
     credentials: 'same-origin',
     fetch: options.fetch ?? ((request: Request) => globalThis.fetch(request)),
   });
@@ -91,7 +105,11 @@ export function unwrap<T>(result: { data?: T; error?: unknown; response: Respons
       // 204 and friends carry no body; callers of such endpoints should not use unwrap.
       return undefined as T;
     }
-    throw new ApiError(result.response.status, body);
+    throw new ApiError(
+      result.response.status,
+      body,
+      parseRetryAfter(result.response.headers.get('retry-after')),
+    );
   }
   return result.data;
 }
