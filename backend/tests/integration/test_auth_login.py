@@ -1,221 +1,163 @@
-"""Login tests: authentication, cookies, throttling, timeouts."""
-
-from datetime import UTC, datetime, timedelta
+"""Login, logout, session lifetime and lockout."""
 
 import pytest
+from sqlalchemy import select
 
-from hoje import clock
-from hoje.security import passwords as pwd_module
+from hoje.config import get_settings
+from hoje.models import AuthThrottle
+from hoje.security.tokens import email_key
+
+from ._auth import EMAIL, PASSWORD
 
 pytestmark = pytest.mark.db
 
-
-TEST_PASSWORD = "correct horse battery staple 42"
-
-
-async def csrf(auth_client) -> str | None:
-    """Extract CSRF token from /auth/state, or None if not authenticated."""
-    resp = await auth_client.get("/api/v1/auth/state")
-    data = resp.json()
-    return data.get("csrf_token")
+INVALID_LOGIN = "Invalid email or password"
 
 
-async def register_user(auth_client, email: str, password: str):
-    """Register a user and return the client (which now has the session cookie)."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
-
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password},
-        headers=headers,
-    )
-    assert resp.status_code == 201
-    return auth_client
+@pytest.fixture
+async def registered(api):
+    """Alice exists; the client is anonymous."""
+    await api.register_ok()
+    api.client.cookies.clear()
+    return api
 
 
-async def logout(auth_client):
-    """Logout and return the response."""
-    token = await csrf(auth_client)
-    headers = {"Origin": "http://localhost:8080"}
-    if token:
-        headers["X-CSRF-Token"] = token
+async def test_login_ok_starts_an_active_session(registered):
+    resp = await registered.login()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers=headers,
-    )
-    return resp
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+    state = await registered.state()
+    assert state["authenticated"] is True
+    assert state["stage"] == "active"
 
 
-async def login(auth_client, email: str, password: str) -> tuple[int, dict]:
-    """Login and return (status_code, response_json)."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
+async def test_login_cookie_is_httponly_lax_and_not_secure_when_insecure_cookies_on(registered):
+    resp = await registered.login()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/login",
-        json={"email": email, "password": password},
-        headers=headers,
-    )
-    return resp.status_code, resp.json() if resp.text else {}
+    cookie = resp.headers["set-cookie"].lower()
+    assert cookie.startswith("hoje_session=")
+    assert "httponly" in cookie
+    assert "samesite=lax" in cookie
+    assert "path=/" in cookie
+    assert "secure" not in cookie
 
 
-async def test_login_ok(auth_client):
-    """Login with correct credentials: 200, status ok."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    # Clear the cookie to simulate a fresh login
-    auth_client.cookies.clear()
+async def test_login_cookie_is_host_prefixed_and_secure_by_default(registered, monkeypatch):
+    monkeypatch.setenv("HOJE_INSECURE_COOKIES", "false")
+    get_settings.cache_clear()
 
-    status, body = await login(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 200
-    assert body["status"] == "ok"
+    resp = await registered.login()
 
-    # Should have a session cookie
-    assert "hoje_session" in auth_client.cookies
+    cookie = resp.headers["set-cookie"].lower()
+    assert cookie.startswith("__host-hoje_session=")
+    assert "secure" in cookie
+    assert "httponly" in cookie
 
 
-async def test_login_sets_cookie_attributes(auth_client):
-    """Cookie must be HttpOnly, SameSite=Lax, Path=/."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    auth_client.cookies.clear()
+@pytest.mark.parametrize(
+    ("email", "password"),
+    [(EMAIL, "not the password at all"), ("nobody@example.com", PASSWORD)],
+    ids=["wrong-password", "unknown-email"],
+)
+async def test_bad_credentials_give_the_same_401(registered, email, password):
+    resp = await registered.login(email, password)
 
-    status, _ = await login(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 200
-
-    # Check the Set-Cookie header in the response
-    # httpx doesn't expose Set-Cookie directly, but we can verify the cookie was set
-    cookies = auth_client.cookies
-    assert "hoje_session" in cookies or "__Host-hoje_session" in cookies
-
-
-async def test_wrong_password_401(auth_client):
-    """Wrong password: 401."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    auth_client.cookies.clear()
-
-    status, body = await login(auth_client, "alice@example.com", "wrongpassword")
-    assert status == 401
-    assert body["detail"] == "Invalid email or password"
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == INVALID_LOGIN
+    assert "set-cookie" not in resp.headers
+    assert (await registered.state())["authenticated"] is False
 
 
-async def test_unknown_email_401(auth_client):
-    """Unknown email: 401 with same message as wrong password."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    auth_client.cookies.clear()
+async def test_logout_revokes_the_session_on_the_server(registered):
+    await registered.login()
+    cookie = registered.session_cookie
 
-    status, body = await login(auth_client, "unknown@example.com", "anypassword")
-    assert status == 401
-    assert body["detail"] == "Invalid email or password"
+    resp = await registered.logout()
 
-
-async def test_logout(auth_client):
-    """Logout clears the session."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-
-    # Should be authenticated
-    resp = await auth_client.get("/api/v1/auth/state")
-    assert resp.json()["authenticated"] is True
-
-    # Logout
-    resp = await logout(auth_client)
     assert resp.status_code == 204
-
-    # Should no longer be authenticated
-    resp = await auth_client.get("/api/v1/auth/state")
-    assert resp.json()["authenticated"] is False
-
-
-async def test_session_rotation_on_login(auth_client):
-    """Session cookie value changes on login."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    cookie_after_register = auth_client.cookies.get("hoje_session") or auth_client.cookies.get(
-        "__Host-hoje_session"
-    )
-
-    auth_client.cookies.clear()
-    status, _ = await login(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 200
-
-    cookie_after_login = auth_client.cookies.get("hoje_session") or auth_client.cookies.get(
-        "__Host-hoje_session"
-    )
-
-    # Should be different tokens
-    assert cookie_after_login != cookie_after_register
+    assert (await registered.state())["authenticated"] is False
+    registered.client.cookies.set("hoje_session", cookie)  # replay the old cookie
+    assert (await registered.client.get("/api/v1/me")).status_code == 401
 
 
-async def test_throttle_5_failures_then_429(auth_client, monkeypatch):
-    """5 wrong attempts on the account: 6th returns 429."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_login_rotates_the_session(registered):
+    await registered.login()
+    first = registered.session_cookie
 
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    auth_client.cookies.clear()
+    await registered.login()  # logging in again while holding a session
 
-    # 5 failures
+    assert registered.session_cookie != first
+    registered.client.cookies.set("hoje_session", first)
+    assert (await registered.client.get("/api/v1/me")).status_code == 401
+
+
+async def test_five_failures_lock_the_account_before_credentials_are_checked(registered):
+    for _ in range(5):
+        assert (await registered.login(password="wrong")).status_code == 401
+
+    resp = await registered.login()  # correct password, but locked
+
+    assert resp.status_code == 429
+    assert int(resp.headers["Retry-After"]) == 60
+    assert (await registered.state())["authenticated"] is False
+
+
+async def test_lock_expires_after_retry_after(registered, frozen_clock):
+    for _ in range(5):
+        await registered.login(password="wrong")
+    assert (await registered.login()).status_code == 429
+
+    frozen_clock.advance(seconds=61)
+
+    assert (await registered.login()).status_code == 200
+
+
+async def test_failures_across_accounts_lock_the_client_ip(registered):
     for i in range(5):
-        status, _ = await login(auth_client, "alice@example.com", "wrong")
-        assert status == 401, f"Attempt {i+1} should succeed"
+        assert (await registered.login(f"nobody{i}@example.com", "wrong")).status_code == 401
 
-    # 6th attempt should be throttled
-    status, body = await login(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 429
-    assert "Retry-After" in body or status == 429
+    resp = await registered.login()  # a different account, correct password
+
+    assert resp.status_code == 429
 
 
-async def test_successful_login_resets_throttle(auth_client):
-    """Successful login resets the failure counter."""
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
-    auth_client.cookies.clear()
+async def test_success_clears_the_account_failure_counter(registered, db_session):
+    for _ in range(3):
+        await registered.login(password="wrong")
+    acct_key = f"login:acct:{email_key(EMAIL)}"
+    failures = await db_session.scalar(
+        select(AuthThrottle.failures).where(AuthThrottle.key == acct_key)
+    )
+    assert failures == 3
 
-    # 4 failures
-    for _ in range(4):
-        status, _ = await login(auth_client, "alice@example.com", "wrong")
-        assert status == 401
+    assert (await registered.login()).status_code == 200
 
-    # Successful login
-    status, _ = await login(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 200
-
-    # Now we should be able to fail again
-    auth_client.cookies.clear()
-    status, _ = await login(auth_client, "alice@example.com", "wrong")
-    assert status == 401
+    assert await db_session.scalar(select(AuthThrottle).where(AuthThrottle.key == acct_key)) is None
 
 
-async def test_idle_timeout_7_days(auth_client, monkeypatch):
-    """Idle for 7 days + 1 minute: 401 on /me."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_session_expires_after_seven_idle_days(registered, frozen_clock):
+    await registered.login()
 
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
+    frozen_clock.advance(days=7, minutes=1)
 
-    # Advance time by 7 days + 1 minute
-    state["now"] += timedelta(days=7, minutes=1)
-
-    resp = await auth_client.get("/api/v1/me")
-    assert resp.status_code == 401
+    assert (await registered.client.get("/api/v1/me")).status_code == 401
 
 
-async def test_absolute_timeout_30_days(auth_client, monkeypatch):
-    """Absolute timeout after 30 days even with activity."""
-    state = {"now": datetime(2026, 10, 2, 12, 0, tzinfo=UTC)}
-    monkeypatch.setattr(clock, "now", lambda: state["now"])
+async def test_session_survives_just_under_seven_idle_days(registered, frozen_clock):
+    await registered.login()
 
-    await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
+    frozen_clock.advance(days=6, hours=23)
 
-    # Advance time by 29 days, touch /me to refresh last_seen_at
-    state["now"] += timedelta(days=6)
-    for _ in range(4):
-        resp = await auth_client.get("/api/v1/me")
-        assert resp.status_code == 200
-        state["now"] += timedelta(days=6)
+    assert (await registered.client.get("/api/v1/me")).status_code == 200
 
-    # Now advance past absolute timeout (30 days)
-    resp = await auth_client.get("/api/v1/me")
-    assert resp.status_code == 401
+
+async def test_session_expires_after_thirty_days_even_when_active(registered, frozen_clock):
+    await registered.login()
+    for _ in range(5):  # activity every 5 days keeps the idle timeout away
+        frozen_clock.advance(days=5)
+        assert (await registered.client.get("/api/v1/me")).status_code == 200
+
+    frozen_clock.advance(days=5, minutes=1)  # day 30 + 1 min
+
+    assert (await registered.client.get("/api/v1/me")).status_code == 401
