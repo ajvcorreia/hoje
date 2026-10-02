@@ -70,7 +70,7 @@ describe('pill text', () => {
 describe('vacation pill', () => {
   it('shows the remaining days in the header', async () => {
     mockApi(routes());
-    renderApp();
+    renderApp('/settings'); // the header is all we need; the grid makes role queries slow
     expect(
       await screen.findByRole('button', { name: 'Vacation: 16.5 left' }, { timeout: 5000 }),
     ).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe('vacation pill', () => {
 
   it('shows overdrawn balances as "over" in the danger colour', async () => {
     mockApi(routes({ 'GET /api/v1/leave/balance': { ...BALANCE, remaining: -3 } }));
-    renderApp();
+    renderApp('/settings');
     const pill = await screen.findByRole('button', { name: 'Vacation: 3 over' }, { timeout: 5000 });
     expect(pill).toHaveClass('text-danger');
   });
