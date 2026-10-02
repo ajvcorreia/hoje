@@ -79,7 +79,8 @@
 }
 
 .cal-col {
-  border-left: 1px solid var(--border);
+  position: relative;
+  border-left: 1px solid var(--border-strong);
 }
 
 .cal-gutter {
@@ -126,7 +127,7 @@
 
 .cal-empty {
   background: var(--bg);
-  border-bottom: 1px solid transparent;
+  border-bottom: 1px solid var(--border);
 }
 
 .cal-empty[data-weekend] {
@@ -145,7 +146,7 @@
   color: var(--text);
   background: var(--surface);
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
   cursor: pointer;
 }
 
@@ -221,6 +222,48 @@
 
 .cal-ev[data-join-next] {
   bottom: -1px;
+}
+
+/* Rotated title running along a whole multi-day block (vertical label mode). */
+.cal-vlabel {
+  position: absolute;
+  top: calc(var(--head-h) + var(--seg-row) * var(--row-h));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: calc(var(--seg-len) * var(--row-h));
+  padding: 2px 0;
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  color: var(--ev-text);
+  pointer-events: none;
+}
+
+.cal-vlabel[data-lane='full'] {
+  left: 0;
+  right: 0;
+  padding-left: 1.5rem;
+}
+
+.cal-vlabel[data-lane='0'] {
+  left: 0;
+  right: 50%;
+  padding-left: 1.5rem;
+}
+
+.cal-vlabel[data-lane='1'] {
+  left: 50%;
+  right: 0;
+}
+
+.cal-vlabel-text {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .cal-more {

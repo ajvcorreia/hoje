@@ -1,4 +1,5 @@
 import { THEMES, type Theme } from '../../lib/theme';
+import { useMultidayLabelMode, type MultidayLabelMode } from '../../lib/multidayLabels';
 import { useTheme } from '../../app/useTheme';
 import { inputClass } from '../../components/ui/classes';
 import { CategoriesSection } from './CategoriesSection';
@@ -12,6 +13,7 @@ const LABELS: Record<Theme, string> = { system: 'System', light: 'Light', dark: 
 
 export function SettingsPage() {
   const [theme, setTheme] = useTheme();
+  const [labelMode, setLabelMode] = useMultidayLabelMode();
   return (
     <section aria-labelledby="settings-heading" className="max-w-xl">
       <h1 id="settings-heading" className="text-lg font-semibold">
@@ -34,6 +36,20 @@ export function SettingsPage() {
                   {LABELS[t]}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="multiday-labels" className="block text-sm font-medium">
+              Multi-day event names
+            </label>
+            <select
+              id="multiday-labels"
+              value={labelMode}
+              onChange={(e) => setLabelMode(e.target.value as MultidayLabelMode)}
+              className={`${inputClass} mt-2`}
+            >
+              <option value="horizontal">Horizontal</option>
+              <option value="vertical">Vertical</option>
             </select>
           </div>
         </SettingsSection>
