@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
+import { useFitColumns } from '../../lib/fitColumns';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
@@ -10,7 +13,9 @@ import { AccountSection } from './AccountSection';
 import { EmailSection } from './EmailSection';
 import { SecuritySection } from './SecuritySection';
 import { SessionSection } from './SessionSection';
+import { HolidaysSection } from './HolidaysSection';
 import { SettingsSection } from './SettingsSection';
+import { VacationSection } from './VacationSection';
 
 const LABELS: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
 const SIZE_LABELS: Record<TextSize, string> = {
@@ -25,6 +30,12 @@ export function SettingsPage() {
   const [textSize, setTextSize] = useTextSize();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
+  const [fitColumns, setFitColumns] = useFitColumns();
+  // Links like /settings#vacation: scroll to the section once the page is there.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
+  }, [hash]);
   return (
     <section aria-labelledby="settings-heading" className="max-w-xl">
       <h1 id="settings-heading" className="text-lg font-semibold">
@@ -84,8 +95,22 @@ export function SettingsPage() {
             />
             Strike through past days
           </label>
+          <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={fitColumns}
+              onChange={(e) => setFitColumns(e.target.checked)}
+              className="size-4"
+            />
+            Fit columns to text
+          </label>
+          <p className="mt-1 text-xs text-text-muted">
+            Widens each month so no title is cut off; the calendar then scrolls sideways.
+          </p>
         </SettingsSection>
         <CategoriesSection />
+        <VacationSection />
+        <HolidaysSection />
         <AccountSection />
         <SecuritySection />
         <EmailSection />

@@ -12,8 +12,8 @@ export interface ChangeMessage {
 }
 
 /**
- * Which cached queries a remote change makes stale. Phase 5 fills in the leave / holiday
- * entries with its own keys; unknown prefixes are harmless (nothing matches).
+ * Which cached queries a remote change makes stale. Keys: `['leave', ...]` (balances,
+ * previews), `['holidays', ...]` (overlays and per-calendar lists), `['holiday-calendars']`.
  */
 const KEYS: Record<RealtimeEntity, (c: ChangeMessage) => QueryKey[]> = {
   event: (c) => [
@@ -27,8 +27,8 @@ const KEYS: Record<RealtimeEntity, (c: ChangeMessage) => QueryKey[]> = {
   category: () => [['categories'], ['occurrences'], ['leave']],
   user: () => [['auth', 'state'], ['me'], ['occurrences']],
   leave_policy: () => [['leave']],
-  holiday: () => [['holidays'], ['leave']],
-  holiday_calendar: () => [['holidays'], ['leave']],
+  holiday: () => [['holidays'], ['holiday-calendars'], ['leave']],
+  holiday_calendar: () => [['holidays'], ['holiday-calendars'], ['leave']],
 };
 
 export function keysForChange(change: ChangeMessage): QueryKey[] {

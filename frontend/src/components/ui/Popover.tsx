@@ -20,6 +20,8 @@ interface PopoverProps {
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  /** `side` (default) opens beside the anchor; `below` opens under it, right edges aligned. */
+  placement?: 'side' | 'below';
 }
 
 const GAP = 6;
@@ -30,7 +32,14 @@ const MARGIN = 8;
  * first focusable child); Esc and clicks outside close it, and focus returns to the anchor.
  * It flips/clamps to stay inside the viewport.
  */
-export function Popover({ anchor, label, onClose, children, className }: PopoverProps) {
+export function Popover({
+  anchor,
+  label,
+  onClose,
+  children,
+  className,
+  placement = 'side',
+}: PopoverProps) {
   const labelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -45,14 +54,14 @@ export function Popover({ anchor, label, onClose, children, className }: Popover
     const a = anchor.getBoundingClientRect();
     const w = panel.offsetWidth;
     const h = panel.offsetHeight;
-    let left = a.right + GAP;
-    if (left + w > window.innerWidth - MARGIN) left = a.left - GAP - w;
+    let left = placement === 'below' ? a.right - w : a.right + GAP;
+    if (placement === 'side' && left + w > window.innerWidth - MARGIN) left = a.left - GAP - w;
     left = Math.min(Math.max(MARGIN, left), Math.max(MARGIN, window.innerWidth - w - MARGIN));
-    let top = a.top;
+    let top = placement === 'below' ? a.bottom + GAP : a.top;
     if (top + h > window.innerHeight - MARGIN) top = window.innerHeight - h - MARGIN;
     top = Math.max(MARGIN, top);
     setPos({ top, left });
-  }, [anchor]);
+  }, [anchor, placement]);
 
   useLayoutEffect(() => {
     place();

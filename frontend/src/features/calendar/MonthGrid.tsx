@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -22,7 +23,10 @@ import {
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { useFitColumns } from '../../lib/fitColumns';
 import { toLayoutInput } from '../events/occurrences';
+import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
+import { measurerFor, monthFitWidth, readFitFonts, type FitFonts } from './fitWidth';
 import {
   GRID_ROWS,
   layoutMonth,
@@ -58,12 +62,18 @@ interface MonthGridProps {
   /** A day cell was activated (click, Enter or Space). */
   onOpenDay(date: string, anchor: HTMLElement): void;
   scrollRequest: ScrollRequest | null;
+  /** Holidays of enabled calendars by date (empty when the Holidays chip is off). */
+  holidays?: ReadonlyMap<string, HolidayDay[]>;
 }
 
 interface MonthColumnProps {
   year: number;
   month: number;
   inputs: LayoutInput[];
+  /** This month's holidays by date. */
+  holidays: ReadonlyMap<string, HolidayDay[]>;
+  /** Width (px) the event area needs to show every title; set only by "Fit columns to text". */
+  fit?: number;
   weekendDays: number[];
   today: string;
   /** Day (1-based) holding the roving tabindex in this column, or 0. */
@@ -80,6 +90,8 @@ const MonthColumn = memo(function MonthColumn({
   year,
   month,
   inputs,
+  holidays,
+  fit,
   weekendDays,
   today,
   tabDay,
@@ -176,9 +188,10 @@ const MonthColumn = memo(function MonthColumn({
     const placed = d.lanes.filter((l) => l !== null);
     const single = d.total === 1;
     const lead = single ? placed[0] : d.lanes[0];
+    const dayHolidays = holidays.get(iso);
     const label = `${formatDayHeading(iso)} ${year}${
       d.total > 0 ? `, ${d.total} ${d.total === 1 ? 'event' : 'events'}` : ''
-    }`;
+    }${dayHolidays ? `, holiday: ${holidayText(dayHolidays)}` : ''}`;
     cells.push(
       <button
         key={row}
@@ -187,6 +200,7 @@ const MonthColumn = memo(function MonthColumn({
         data-date={iso}
         data-row={row}
         data-weekend={weekend}
+        data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
         data-today={isToday || undefined}
         data-past={(strikePast && iso < today) || undefined}
         data-cat={lead?.input.colour}
@@ -197,6 +211,19 @@ const MonthColumn = memo(function MonthColumn({
         <span className="cal-num" aria-hidden="true">
           {day}
         </span>
+        {dayHolidays && d.total === 0 ? (
+          <span className="cal-hol" data-cat={dayHolidays[0]?.colour} data-holiday="">
+            {holidayText(dayHolidays)}
+          </span>
+        ) : null}
+        {dayHolidays && d.total > 0 ? (
+          <span
+            className="cal-hol-mark"
+            data-cat={dayHolidays[0]?.colour}
+            aria-hidden="true"
+            title={holidayText(dayHolidays)}
+          />
+        ) : null}
         {placed.map((p) => (
           <span
             key={p.lane}
@@ -221,7 +248,13 @@ const MonthColumn = memo(function MonthColumn({
       className="cal-col"
       data-month={month}
       data-weeks={weeks || undefined}
-      style={{ '--m-start': offset, '--m-len': dim } as CSSProperties}
+      style={
+        {
+          '--m-start': offset,
+          '--m-len': dim,
+          ...(fit === undefined ? null : { '--col-fit': `${fit}px` }),
+        } as CSSProperties
+      }
     >
       <div className="cal-head" data-current={isCurrentMonth || undefined}>
         {monthName(month)}
@@ -268,11 +301,45 @@ export function MonthGrid({
   today,
   onOpenDay,
   scrollRequest,
+  holidays = NO_HOLIDAYS,
 }: MonthGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
+  const [fitColumns] = useFitColumns();
+  const [fonts, setFonts] = useState<FitFonts | null>(null);
+
+  // Fit columns: re-read the cell font on mount, on text-size changes and once web fonts load.
+  useLayoutEffect(() => {
+    if (!fitColumns) return;
+    const root = gridRef.current;
+    const measure = () => {
+      const next = readFitFonts(root);
+      setFonts((prev) =>
+        prev && next && prev.normal === next.normal && prev.chip === next.chip ? prev : next,
+      );
+    };
+    measure();
+    const observer = new MutationObserver(measure);
+    observer.observe(document.documentElement, { attributes: true });
+    const fontSet = document.fonts as FontFaceSet | undefined;
+    void fontSet?.ready.then(measure);
+    fontSet?.addEventListener?.('loadingdone', measure);
+    return () => {
+      observer.disconnect();
+      fontSet?.removeEventListener?.('loadingdone', measure);
+    };
+  }, [fitColumns]);
+
+  const holidaysByMonth = useMemo(() => {
+    const buckets = Array.from({ length: 12 }, () => new Map<string, HolidayDay[]>());
+    for (const [date, list] of holidays) {
+      if (!date.startsWith(`${year}-`)) continue;
+      buckets[Number(date.slice(5, 7)) - 1]?.set(date, list);
+    }
+    return buckets;
+  }, [holidays, year]);
   const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
 
   useEffect(() => {
@@ -304,6 +371,19 @@ export function MonthGrid({
     }
     return buckets;
   }, [occurrences, categories, year]);
+
+  // Required event-area width per month; memoised on the month inputs, holidays and font.
+  const fits = useMemo(() => {
+    if (!fitColumns || !fonts) return null;
+    const measure = measurerFor(fonts);
+    return inputsByMonth.map((inputs, month) => {
+      const names = new Map<number, string>();
+      for (const [date, list] of holidaysByMonth[month] ?? []) {
+        names.set(Number(date.slice(8, 10)), holidayText(list));
+      }
+      return monthFitWidth(layoutMonth(inputs, year, month), names, measure);
+    });
+  }, [fitColumns, fonts, inputsByMonth, holidaysByMonth, year]);
 
   // Roving tabindex.
   const defaultFocus = today.startsWith(`${year}-`) ? today : `${year}-01-01`;
@@ -359,9 +439,18 @@ export function MonthGrid({
     el.scrollLeft += event.deltaY;
   }, []);
 
+  // Per-column tracks: max(--col-min, lead + 2 * gap + fit); the strip is as wide as their sum.
+  const lead = `var(--num-w) + ${weeks ? 'var(--wk-w-on)' : '0px'} + 2 * var(--gap)`;
+  const track = (fit: number) => `max(var(--col-min), calc(${lead} + ${fit}px))`;
   const style = {
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
+    ...(fits
+      ? {
+          gridTemplateColumns: `var(--gutter-w) ${fits.map((f) => `minmax(${track(f)}, 1fr)`).join(' ')}`,
+          width: `max(100%, calc(var(--gutter-w) + ${fits.map(track).join(' + ')}))`,
+        }
+      : null),
   } as CSSProperties;
 
   const focusMonth = Number(activeFocus.slice(5, 7)) - 1;
@@ -383,6 +472,7 @@ export function MonthGrid({
         role="group"
         aria-label={`Calendar ${year}`}
         className="cal-grid"
+        data-fit={fits ? '' : undefined}
         style={style}
       >
         <div className="cal-gutter" aria-hidden="true">
@@ -403,6 +493,8 @@ export function MonthGrid({
             year={year}
             month={month}
             inputs={inputs}
+            holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
+            fit={fits?.[month]}
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}

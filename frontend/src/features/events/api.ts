@@ -18,10 +18,17 @@ import type {
 import { AUTH_STATE_KEY } from '../../app/useAuthState';
 import { useToast } from '../../components/ui/useToast';
 import { useDefaultCategoryId } from '../categories/api';
+import { LEAVE_KEY } from '../leave/api';
 
 /** Root of every occurrences query key: `['occurrences', from, to, ...categoryIds]`. */
 export const OCCURRENCES_KEY = ['occurrences'] as const;
 export const eventKey = (id: string) => ['event', id] as const;
+
+/** After any event write: refetch the occurrences and the vacation balance. */
+function refreshEvents(qc: QueryClient) {
+  void qc.invalidateQueries({ queryKey: LEAVE_KEY });
+  return qc.invalidateQueries({ queryKey: OCCURRENCES_KEY });
+}
 
 /**
  * Occurrences (expanded repeats) overlapping `[from, to]` (inclusive ISO dates).
@@ -182,7 +189,7 @@ export function useCreateEvent() {
       qc.setQueryData(eventKey(event.id), event);
       rememberCategory(qc, event.category_id);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
+    onSettled: () => refreshEvents(qc),
   });
 }
 
@@ -213,7 +220,7 @@ export function useUpdateEvent() {
       qc.setQueryData(eventKey(event.id), event);
       rememberCategory(qc, event.category_id);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
+    onSettled: () => refreshEvents(qc),
   });
 }
 
@@ -228,7 +235,7 @@ export function useRestoreEvent() {
           params: { path: { event_id: id } },
         }),
       ),
-    onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
+    onSettled: () => refreshEvents(qc),
   });
 }
 
@@ -280,7 +287,7 @@ export function useDeleteEvent() {
         },
       });
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
+    onSettled: () => refreshEvents(qc),
   });
 }
 

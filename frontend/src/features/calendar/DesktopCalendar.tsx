@@ -9,6 +9,7 @@ import { CategoryChips } from '../categories/CategoryChips';
 import { useOccurrences } from '../events/api';
 import { EventEditor } from '../events/EventEditor';
 import { filterVisible, groupByDay } from '../events/occurrences';
+import { useHolidayOverlay } from '../holidays/api';
 import { AgendaView } from './AgendaView';
 import { DayPopover } from './DayPopover';
 import { MonthGrid, type ScrollRequest } from './MonthGrid';
@@ -52,6 +53,7 @@ export function DesktopCalendar() {
   );
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
   const categoryList = categories ?? [];
+  const holidays = useHolidayOverlay(year);
 
   const openDay = useCallback((date: string, anchor: HTMLElement) => {
     setPopover({ date, anchor });
@@ -138,6 +140,7 @@ export function DesktopCalendar() {
           today={today}
           onOpenDay={openDay}
           scrollRequest={scrollRequest}
+          holidays={holidays}
         />
       ) : view === 'year' ? (
         <YearView
@@ -146,6 +149,7 @@ export function DesktopCalendar() {
           categories={categoryList}
           today={today}
           onOpenDay={openDay}
+          holidays={holidays}
         />
       ) : (
         <AgendaView
@@ -160,6 +164,7 @@ export function DesktopCalendar() {
           date={popover.date}
           anchor={popover.anchor}
           occurrences={byDay.get(popover.date) ?? []}
+          holidays={holidays.get(popover.date)}
           onClose={closePopover}
           onSelectEvent={(eventId) => {
             setPopover(null);

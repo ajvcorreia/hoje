@@ -4,6 +4,8 @@ import { parseIso } from '../../../lib/dates';
 import { categoryMap, useCategories } from '../../categories/api';
 import { QuickAdd } from '../../events/QuickAdd';
 import { formatTimeRange, occurrenceKey } from '../../events/occurrences';
+import type { HolidayDay } from '../../holidays/api';
+import { HolidayCards } from '../../holidays/HolidayList';
 import { dayOfLabel } from './mobileLib';
 
 interface DayViewProps {
@@ -11,16 +13,19 @@ interface DayViewProps {
   /** The day's visible occurrences, all-day first then by start time. */
   occurrences: Occurrence[];
   loading: boolean;
+  /** The day's holidays, shown as non-interactive cards above the events. */
+  holidays?: HolidayDay[];
   onSelectEvent(eventId: string): void;
 }
 
 /** The selected day's heading and its events as stacked cards. */
-export function DayView({ date, occurrences, loading, onSelectEvent }: DayViewProps) {
+export function DayView({ date, occurrences, loading, holidays, onSelectEvent }: DayViewProps) {
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold">{format(parseIso(date), 'EEEE, d MMMM')}</h2>
+      <HolidayCards holidays={holidays} />
       {occurrences.length === 0 ? (
         <p className="text-sm text-text-muted">{loading ? 'Loading…' : 'No events'}</p>
       ) : (

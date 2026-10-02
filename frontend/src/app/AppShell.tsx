@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { ToastProvider } from '../components/ui/Toast';
+import { VacationPill } from '../features/leave/VacationPill';
 import { RealtimeStatus } from '../features/realtime/RealtimeStatus';
 import { useRealtime } from '../features/realtime/useRealtime';
 import { CalendarIcon, SettingsIcon } from './icons';
@@ -99,8 +100,8 @@ function Shell({ isCalendar }: { isCalendar: boolean }) {
         <div className="mx-auto flex h-12 max-w-6xl items-center gap-4 px-4">
           <span className="text-base font-semibold tracking-tight">Hoje</span>
           <HeaderNav />
-          {/* Slot for the future "Vacation: N left" pill and filter/search. */}
           <div data-slot="header-actions" className="ml-auto flex items-center gap-2">
+            <VacationPill />
             <RealtimeStatus />
             <UserMenu />
           </div>

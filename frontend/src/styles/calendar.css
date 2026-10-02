@@ -57,6 +57,9 @@
 .cal-scroll {
   --gutter-w: 2rem;
   --col-min: 180px;
+  --num-w: 1.75rem;
+  --wk-w-on: 1.5rem;
+  --gap: 3px;
   overflow: auto;
   overscroll-behavior: contain;
   background: var(--surface);
@@ -82,10 +85,8 @@
  * last two tracks; --lead is the width taken by the two narrow sub-columns.
  */
 .cal-col {
-  --num-w: 1.75rem;
   --wk-w: 0px;
   --lead: calc(var(--wk-w) + var(--num-w));
-  --gap: 3px;
   position: relative;
   display: grid;
   grid-template-columns: var(--wk-w) var(--num-w) minmax(0, 1fr);
@@ -110,7 +111,7 @@
 }
 
 .cal-col[data-weeks] {
-  --wk-w: 1.5rem;
+  --wk-w: var(--wk-w-on);
 }
 
 .cal-col > .cal-head {
@@ -157,6 +158,7 @@
 }
 
 .cal-wd[data-weekend],
+.cal-cell[data-holiday-off],
 .cal-cell[data-weekend] {
   background: var(--weekend);
 }
@@ -411,4 +413,74 @@
 .cal-vlabel[data-past] .cal-vlabel-text {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
+}
+
+/* ---- Holidays ------------------------------------------------------------- */
+/* A holiday on a day without events fills the event area: hatched, italic name. */
+.cal-hol {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: var(--num-w);
+  box-sizing: border-box;
+  padding: 0 4px;
+  overflow: hidden;
+  font-style: italic;
+  line-height: var(--row-h);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ev-text);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ev-fill) 0 4px,
+    color-mix(in srgb, var(--ev-fill) 40%, var(--surface)) 4px 8px
+  );
+}
+
+/* A holiday on a day that has events: only a small triangle in the corner of the day number. */
+.cal-hol-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  border-top: 8px solid var(--ev-text);
+  border-right: 8px solid transparent;
+}
+
+.cal-cell[data-past] .cal-hol {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* "Fit columns to text": titles are never truncated, the column is wide enough. */
+.cal-grid[data-fit] .cal-ev,
+.cal-grid[data-fit] .cal-hol {
+  text-overflow: clip;
+}
+
+.yr-day[data-holiday-off] {
+  background: var(--weekend);
+}
+
+.yr-hol {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  background: var(--ev-text);
+  border-radius: 9999px;
+}
+
+.m-hol-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ev-text);
+  border-radius: 9999px;
 }

@@ -89,7 +89,10 @@ export function useUpdateCategory() {
     },
     onSettled: (_data, _error, { patch }) => {
       // Vacation flags are recomputed on the server without bumping event versions.
-      if (patch.is_leave !== undefined) void qc.invalidateQueries({ queryKey: ['occurrences'] });
+      if (patch.is_leave !== undefined) {
+        void qc.invalidateQueries({ queryKey: ['occurrences'] });
+        void qc.invalidateQueries({ queryKey: ['leave'] });
+      }
       return qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
   });

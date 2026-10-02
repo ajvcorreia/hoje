@@ -6,12 +6,15 @@ import { DayEventList } from '../../events/DayEventList';
 import { occurrenceKey } from '../../events/occurrences';
 import { QuickAdd } from '../../events/QuickAdd';
 import { useWeekNumbers } from '../../../lib/weekNumbers';
+import { NO_HOLIDAYS, isNonWorkingDay, type HolidayDay } from '../../holidays/api';
+import { HolidayCards } from '../../holidays/HolidayList';
 
 interface MonthViewProps {
   selected: string;
   today: string;
   weekendDays: readonly number[];
   byDay: ReadonlyMap<string, Occurrence[]>;
+  holidays?: ReadonlyMap<string, HolidayDay[]>;
   onSelect(date: string): void;
   onSelectEvent(eventId: string): void;
 }
@@ -24,6 +27,7 @@ export function MonthView({
   today,
   weekendDays,
   byDay,
+  holidays = NO_HOLIDAYS,
   onSelect,
   onSelectEvent,
 }: MonthViewProps) {
@@ -60,6 +64,7 @@ export function MonthView({
                   selected={day === selected}
                   today={day === today}
                   weekend={isWeekend(day, weekendDays)}
+                  holidays={holidays.get(day)}
                   onSelect={onSelect}
                 />
               ),
@@ -68,6 +73,7 @@ export function MonthView({
         ))}
       </div>
       <h2 className="text-base font-semibold">{format(parseIso(selected), 'EEEE, d MMMM')}</h2>
+      <HolidayCards holidays={holidays.get(selected)} />
       <DayEventList date={selected} occurrences={selectedEvents} onSelect={onSelectEvent} />
       <QuickAdd date={selected} inputId={`m-quick-add-${selected}`} />
     </div>
@@ -81,6 +87,7 @@ interface MonthCellProps {
   selected: boolean;
   today: boolean;
   weekend: boolean;
+  holidays: HolidayDay[] | undefined;
   onSelect(date: string): void;
 }
 
@@ -91,15 +98,19 @@ function MonthCell({
   selected,
   today,
   weekend,
+  holidays,
   onSelect,
 }: MonthCellProps) {
   const count = occurrences.length;
+  const shaded = weekend || isNonWorkingDay(holidays);
   return (
     <span role="gridcell" className="min-w-0">
       <button
         type="button"
         data-date={day}
-        aria-label={`${format(parseIso(day), 'EEEE d MMMM')}, ${count} ${count === 1 ? 'event' : 'events'}`}
+        aria-label={`${format(parseIso(day), 'EEEE d MMMM')}, ${count} ${count === 1 ? 'event' : 'events'}${
+          holidays ? `, holiday: ${holidays.map((h) => h.name).join(', ')}` : ''
+        }`}
         aria-current={today ? 'date' : undefined}
         aria-pressed={selected}
         onClick={() => onSelect(day)}
@@ -108,13 +119,14 @@ function MonthCell({
             ? 'border-accent bg-accent text-accent-contrast'
             : today
               ? 'border-accent bg-today'
-              : weekend
+              : shaded
                 ? 'border-transparent bg-weekend'
                 : 'border-transparent'
         }`}
       >
         <span aria-hidden="true">{Number(day.slice(8, 10))}</span>
         <span aria-hidden="true" className="flex h-1.5 items-center gap-0.5">
+          {holidays ? <span data-cat={holidays[0]?.colour} className="m-hol-dot" /> : null}
           {occurrences.slice(0, MAX_DOTS).map((o) => (
             <span key={occurrenceKey(o)} data-cat={colourOf(o)} className="m-dot" />
           ))}
