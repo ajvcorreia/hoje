@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from hoje.constants import Colour
+from hoje.schemas.common import Problem
 
 CategoryName = Annotated[str, Field(min_length=1, max_length=40)]
 IconName = Annotated[str, Field(min_length=1, max_length=64)]
@@ -45,3 +46,9 @@ class CategoryUpdate(BaseModel):
 
 class CategoryOrder(BaseModel):
     ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class CategoryConflict(Problem):
+    """409 body for a stale ``version``: a problem document plus the current category."""
+
+    current: Category
