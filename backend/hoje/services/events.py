@@ -230,7 +230,8 @@ async def update(
         category = await _live_category(db, user.id, body.category_id)
     else:
         category = await db.scalar(select(Category).where(Category.id == event.category_id))
-    assert category is not None
+    if category is None:  # pragma: no cover - FK guarantees it
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
 
     values = {
         name: getattr(body, name) if name in sent else getattr(event, name)

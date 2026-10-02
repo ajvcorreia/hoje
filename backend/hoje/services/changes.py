@@ -19,13 +19,11 @@ async def publish(
     user_id: uuid.UUID,
     entity: Entity,
     op: Op,
-    id: uuid.UUID,  # noqa: A002 - mirrors the SSE payload field
+    id: uuid.UUID,
     version: int | None,
 ) -> None:
     """Record a change inside the caller's transaction (no-op until Phase 4)."""
-    log.debug(
-        "change", user_id=str(user_id), entity=entity, op=op, id=str(id), version=version
-    )
+    log.debug("change", user_id=str(user_id), entity=entity, op=op, id=str(id), version=version)
 
 
 class VersionConflict(Exception):
