@@ -1,10 +1,11 @@
-import { format } from 'date-fns';
+import { format, getISOWeek } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { WEEKDAY_LETTERS, isWeekend, monthMatrix, parseIso, splitIso } from '../../../lib/dates';
 import { categoryMap, useCategories } from '../../categories/api';
 import { DayEventList } from '../../events/DayEventList';
 import { occurrenceKey } from '../../events/occurrences';
 import { QuickAdd } from '../../events/QuickAdd';
+import { useWeekNumbers } from '../../../lib/weekNumbers';
 
 interface MonthViewProps {
   selected: string;
@@ -27,6 +28,8 @@ export function MonthView({
   onSelectEvent,
 }: MonthViewProps) {
   const { data: categories } = useCategories();
+  const [showWeeks] = useWeekNumbers();
+  const cols = showWeeks ? 'grid-cols-[1.5rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7';
   const byId = categoryMap(categories);
   const [year, month] = splitIso(selected);
   const weeks = monthMatrix(year, month);
@@ -34,7 +37,8 @@ export function MonthView({
   return (
     <div className="space-y-3">
       <div role="grid" aria-label={format(new Date(year, month, 1), 'MMMM yyyy')}>
-        <div role="row" className="grid grid-cols-7 text-center text-xs text-text-muted">
+        <div role="row" className={`grid ${cols} text-center text-xs text-text-muted`}>
+          {showWeeks ? <span role="columnheader" aria-label="Week" /> : null}
           {WEEKDAY_LETTERS.map((letter, i) => (
             <span key={i} role="columnheader" aria-label={format(new Date(2024, 0, 1 + i), 'EEEE')}>
               {letter}
@@ -42,7 +46,8 @@ export function MonthView({
           ))}
         </div>
         {weeks.map((week, w) => (
-          <div key={w} role="row" className="grid grid-cols-7">
+          <div key={w} role="row" className={`grid ${cols}`}>
+            {showWeeks ? <WeekNumber week={week} /> : null}
             {week.map((day, c) =>
               day === null ? (
                 <span key={c} role="gridcell" className="min-h-12" />
@@ -115,6 +120,21 @@ function MonthCell({
           ))}
         </span>
       </button>
+    </span>
+  );
+}
+
+/** ISO week number of a (possibly padded) Monday-first week row. */
+function WeekNumber({ week }: { week: (string | null)[] }) {
+  const first = week.find((d): d is string => d !== null);
+  const n = first ? getISOWeek(parseIso(first)) : null;
+  return (
+    <span
+      role="rowheader"
+      aria-label={n === null ? undefined : `Week ${n}`}
+      className="flex items-center justify-center text-[0.625rem] tabular-nums text-text-muted"
+    >
+      {n}
     </span>
   );
 }

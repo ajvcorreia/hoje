@@ -732,6 +732,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Label Vertical
+             * @default false
+             */
+            label_vertical: boolean;
             /** Notes */
             notes?: string | null;
             /**
@@ -803,6 +808,11 @@ export interface components {
             end_date?: string | null;
             /** End Time */
             end_time?: string | null;
+            /**
+             * Label Vertical
+             * @default false
+             */
+            label_vertical: boolean;
             /** Notes */
             notes?: string | null;
             /**
@@ -843,6 +853,8 @@ export interface components {
             end_date?: string | null;
             /** End Time */
             end_time?: string | null;
+            /** Label Vertical */
+            label_vertical?: boolean | null;
             /** Notes */
             notes?: string | null;
             /** Reminders */

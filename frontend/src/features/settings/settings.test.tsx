@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ME, authState, mockApi, problem, renderApp } from '../../test/utils';
 
 const base = {
@@ -170,5 +170,33 @@ describe('session', () => {
     const section = (await screen.findByRole('heading', { name: 'Session' })).closest('section')!;
     await userEvent.click(within(section).getByRole('button', { name: 'Log out' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+  });
+});
+
+describe('appearance settings', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-text-size');
+  });
+
+  it('applies and stores the text size, and has no multi-day names setting', async () => {
+    mockApi({ ...base, 'GET /api/v1/me': ME });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('Text size');
+    expect(select).toHaveValue('default');
+    expect(screen.queryByLabelText('Multi-day event names')).not.toBeInTheDocument();
+    await userEvent.selectOptions(select, 'Large');
+    expect(document.documentElement).toHaveAttribute('data-text-size', 'large');
+    expect(window.localStorage.getItem('hoje.textSize')).toBe('large');
+  });
+
+  it('toggles week numbers', async () => {
+    mockApi({ ...base, 'GET /api/v1/me': ME });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('Show week numbers');
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    expect(box).not.toBeChecked();
+    expect(window.localStorage.getItem('hoje.weekNumbers')).toBe('off');
   });
 });

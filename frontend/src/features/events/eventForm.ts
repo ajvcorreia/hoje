@@ -25,6 +25,8 @@ export interface EventFormState {
   repeat: 'none' | 'monthly' | 'yearly';
   repeatUntil: string;
   notes: string;
+  /** Draw the name rotated along the block (multi-day events only). */
+  labelVertical: boolean;
 }
 
 export function blankForm(date: string): EventFormState {
@@ -43,6 +45,7 @@ export function blankForm(date: string): EventFormState {
     repeat: 'none',
     repeatUntil: '',
     notes: '',
+    labelVertical: false,
   };
 }
 
@@ -83,6 +86,7 @@ export function formFromEvent(event: HojeEvent): EventFormState {
     repeat: event.repeat,
     repeatUntil: event.repeat_until ?? '',
     notes: event.notes ?? '',
+    labelVertical: event.label_vertical,
   };
 }
 
@@ -133,6 +137,7 @@ function common(form: EventFormState) {
     repeat: form.repeat,
     repeat_until: form.repeat === 'none' ? null : form.repeatUntil || null,
     notes: form.notes.trim() ? form.notes : null,
+    label_vertical: form.labelVertical,
   };
 }
 

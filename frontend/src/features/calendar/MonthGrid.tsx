@@ -11,6 +11,7 @@ import {
   type MouseEvent,
   type WheelEvent,
 } from 'react';
+import { getISOWeek } from 'date-fns';
 import type { Category, Occurrence } from '../../api/types';
 import {
   WEEKDAY_LETTERS,
@@ -19,7 +20,7 @@ import {
   formatDayHeading,
   monthName,
 } from '../../lib/dates';
-import { useMultidayLabelMode } from '../../lib/multidayLabels';
+import { useWeekNumbers } from '../../lib/weekNumbers';
 import { toLayoutInput } from '../events/occurrences';
 import {
   GRID_ROWS,
@@ -66,8 +67,8 @@ interface MonthColumnProps {
   today: string;
   /** Day (1-based) holding the roving tabindex in this column, or 0. */
   tabDay: number;
-  /** Draw multi-day titles rotated along the whole block. */
-  vertical: boolean;
+  /** Show the ISO week-number sub-column. */
+  weeks: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -79,7 +80,7 @@ const MonthColumn = memo(function MonthColumn({
   weekendDays,
   today,
   tabDay,
-  vertical,
+  weeks,
 }: MonthColumnProps) {
   const layout = useMemo(() => layoutMonth(inputs, year, month), [inputs, year, month]);
   const offset = firstDayRow(year, month, WEEK_START);
@@ -88,7 +89,7 @@ const MonthColumn = memo(function MonthColumn({
   const isCurrentMonth = today.startsWith(prefix);
   const title = `${monthName(month)} ${year}`;
 
-  // Vertical mode: one label per block segment of 2+ days in this column.
+  // One rotated label per block segment of 2+ days whose event asks for a vertical name.
   const segments: {
     key: string;
     title: string;
@@ -99,31 +100,50 @@ const MonthColumn = memo(function MonthColumn({
     split: boolean;
   }[] = [];
   const verticalStarts = new Set<string>();
-  if (vertical) {
-    for (let day = 1; day <= dim; day += 1) {
-      const d = layout[day - 1] as DayLayout;
-      for (const p of d.lanes) {
-        if (!p || !p.showTitle || !p.joinNext) continue;
-        let len = 1;
-        let split = d.total > 1;
-        for (;;) {
-          const next = layout[day - 1 + len];
-          const q = next?.lanes[p.lane];
-          if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
-          if (next.total > 1) split = true;
-          len += 1;
-        }
-        verticalStarts.add(`${day}:${p.lane}`);
-        segments.push({
-          key: `${p.input.key}:${day}`,
-          title: p.input.title,
-          colour: p.input.colour,
-          row: day - 1 + offset,
-          len,
-          lane: p.lane,
-          split,
-        });
+  for (let day = 1; day <= dim; day += 1) {
+    const d = layout[day - 1] as DayLayout;
+    for (const p of d.lanes) {
+      if (!p || !p.showTitle || !p.joinNext || !p.input.labelVertical) continue;
+      let len = 1;
+      let split = d.total > 1;
+      for (;;) {
+        const next = layout[day - 1 + len];
+        const q = next?.lanes[p.lane];
+        if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
+        if (next.total > 1) split = true;
+        len += 1;
       }
+      verticalStarts.add(`${day}:${p.lane}`);
+      segments.push({
+        key: `${p.input.key}:${day}`,
+        title: p.input.title,
+        colour: p.input.colour,
+        row: day - 1 + offset,
+        len,
+        lane: p.lane,
+        split,
+      });
+    }
+  }
+
+  // Week segments: rows are Monday-aligned, so a week is a contiguous run of rows.
+  const weekCells = [];
+  if (weeks) {
+    for (let day = 1; day <= dim;) {
+      const row = day - 1 + offset;
+      const len = Math.min(7 - (row % 7), dim - day + 1);
+      weekCells.push(
+        <div
+          key={`w${day}`}
+          className="cal-wk"
+          data-week={getISOWeek(new Date(year, month, day))}
+          title={`Week ${getISOWeek(new Date(year, month, day))}`}
+          style={{ gridRow: `${row + 2} / span ${len}` }}
+        >
+          {getISOWeek(new Date(year, month, day))}
+        </div>,
+      );
+      day += len;
     }
   }
 
@@ -131,8 +151,17 @@ const MonthColumn = memo(function MonthColumn({
   for (let row = 0; row < GRID_ROWS; row += 1) {
     const day = row - offset + 1;
     const weekend = weekendDays.includes(((WEEK_START - 1 + row) % 7) + 1) || undefined;
+    const gridRow = { gridRow: row + 2 };
     if (day < 1 || day > dim) {
-      cells.push(<div key={row} className="cal-empty" data-row={row} data-weekend={weekend} />);
+      cells.push(
+        <div
+          key={row}
+          className="cal-empty"
+          data-row={row}
+          data-weekend={weekend}
+          style={gridRow}
+        />,
+      );
       continue;
     }
     const d = layout[day - 1] as DayLayout;
@@ -156,6 +185,7 @@ const MonthColumn = memo(function MonthColumn({
         data-cat={lead?.input.colour}
         tabIndex={day === tabDay ? 0 : -1}
         aria-label={label}
+        style={gridRow}
       >
         <span className="cal-num" aria-hidden="true">
           {day}
@@ -178,10 +208,17 @@ const MonthColumn = memo(function MonthColumn({
   }
 
   return (
-    <div role="group" aria-label={title} className="cal-col" data-month={month}>
+    <div
+      role="group"
+      aria-label={title}
+      className="cal-col"
+      data-month={month}
+      data-weeks={weeks || undefined}
+    >
       <div className="cal-head" data-current={isCurrentMonth || undefined}>
         {monthName(month)}
       </div>
+      {weekCells}
       {cells}
       {segments.map((seg) => (
         <span
@@ -208,7 +245,7 @@ const GUTTER_ROWS = Array.from({ length: GRID_ROWS }, (_, row) => row);
  * `ResizeObserver` turns that into `--row-h = (height - header) / 37`, so all 37 rows fit
  * without vertical scrolling; if that would be under {@link MIN_ROW_HEIGHT} the rows stay
  * at 16 px and the container scrolls vertically (headers and gutter are sticky). Columns
- * are `minmax(150px, 1fr)`, giving a horizontal scroll strip when narrow.
+ * are `minmax(180px, 1fr)`, giving a horizontal scroll strip when narrow.
  *
  * Cells are plain buttons with a roving tabindex; arrow keys move between days.
  * Clicks, Enter and Space are delegated to a single handler (`onOpenDay`).
@@ -224,7 +261,7 @@ export function MonthGrid({
 }: MonthGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [labelMode] = useMultidayLabelMode();
+  const [weeks] = useWeekNumbers();
   const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
 
   useEffect(() => {
@@ -358,7 +395,7 @@ export function MonthGrid({
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}
-            vertical={labelMode === 'vertical'}
+            weeks={weeks}
           />
         ))}
       </div>

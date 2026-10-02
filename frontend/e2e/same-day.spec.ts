@@ -15,7 +15,11 @@ test('one event fills the whole cell', async ({ page, api }) => {
   await expect(events).toHaveAttribute('data-lane', 'full');
   const cellBox = await cell.boundingBox();
   const eventBox = await events.boundingBox();
-  expect(eventBox?.width).toBeGreaterThan((cellBox?.width ?? 0) - TOLERANCE);
+  // The event area is the cell minus the day-number sub-column.
+  const numBox = await cell.locator('.cal-num').boundingBox();
+  const area = (cellBox?.width ?? 0) - (numBox?.width ?? 0);
+  expect(eventBox?.width).toBeGreaterThan(area - TOLERANCE);
+  expect(eventBox?.x).toBeGreaterThan((cellBox?.x ?? 0) + (numBox?.width ?? 0) - TOLERANCE);
 });
 
 test('two events render as two halves side by side', async ({ page, api }) => {
@@ -31,10 +35,13 @@ test('two events render as two halves side by side', async ({ page, api }) => {
   const left = await events.nth(0).boundingBox();
   const right = await events.nth(1).boundingBox();
   expect(cellBox && left && right).toBeTruthy();
+  const numWidth = (await cell.locator('.cal-num').boundingBox())?.width ?? 0;
   expect(Math.abs((left?.y ?? 0) - (right?.y ?? 99))).toBeLessThan(1);
   expect(right?.x).toBeGreaterThan((left?.x ?? 0) + 10);
   for (const box of [left, right]) {
-    expect(Math.abs((box?.width ?? 0) - (cellBox?.width ?? 0) / 2)).toBeLessThan(TOLERANCE);
+    expect(Math.abs((box?.width ?? 0) - ((cellBox?.width ?? 0) - numWidth) / 2)).toBeLessThan(
+      TOLERANCE,
+    );
   }
   await expect(events.nth(0)).toHaveText('Alpha');
   await expect(events.nth(1)).toHaveText('Bravo');

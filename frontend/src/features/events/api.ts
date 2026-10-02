@@ -124,8 +124,8 @@ function rememberCategory(qc: QueryClient, categoryId: string) {
 let tempCounter = 0;
 
 /** Body of a new event: the server defaults (all-day, no repeat, no reminders) may be omitted. */
-export type NewEvent = Omit<EventCreate, 'all_day' | 'reminders' | 'repeat'> &
-  Partial<Pick<EventCreate, 'all_day' | 'reminders' | 'repeat'>>;
+export type NewEvent = Omit<EventCreate, 'all_day' | 'reminders' | 'repeat' | 'label_vertical'> &
+  Partial<Pick<EventCreate, 'all_day' | 'reminders' | 'repeat' | 'label_vertical'>>;
 
 /**
  * `POST /events`. Optimistically inserts the new (non-repeating) event into every cached
@@ -157,6 +157,7 @@ export function useCreateEvent() {
         repeat: body.repeat ?? 'none',
         repeat_until: body.repeat_until ?? null,
         counts_as_leave: false,
+        label_vertical: body.label_vertical ?? false,
         reminders: body.reminders ?? [],
         version: 1,
         created_at: now,

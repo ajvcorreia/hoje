@@ -72,3 +72,17 @@ async def test_extensions_exist(db_session: AsyncSession) -> None:
 
     missing = expected_extensions - extensions
     assert not missing, f"Missing extensions: {missing}"
+
+
+@pytest.mark.asyncio
+async def test_events_label_vertical_column(db_session: AsyncSession) -> None:
+    """0002 adds events.label_vertical as NOT NULL boolean defaulting to false."""
+    row = (
+        await db_session.execute(
+            text(
+                "SELECT data_type, is_nullable, column_default FROM information_schema.columns "
+                "WHERE table_name = 'events' AND column_name = 'label_vertical'"
+            )
+        )
+    ).one()
+    assert row == ("boolean", "NO", "false")

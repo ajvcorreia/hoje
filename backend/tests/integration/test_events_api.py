@@ -418,3 +418,27 @@ async def test_search_filters_by_category(alice, work):
     await alice.make_event(title="Alpha two", category_id=other["id"])
     resp = await alice.get("/events/search", params={"q": "alpha", "category_ids": other["id"]})
     assert [e["title"] for e in resp.json()["items"]] == ["Alpha two"]
+
+
+async def test_label_vertical_create_patch_and_occurrences(alice, work):
+    plain = await alice.make_event(title="Plain", start_date="2026-03-10", end_date="2026-03-12")
+    assert plain["label_vertical"] is False
+    vertical = await alice.make_event(
+        title="Trip", start_date="2026-03-14", end_date="2026-03-17", label_vertical=True
+    )
+    assert vertical["label_vertical"] is True
+
+    resp = await alice.patch(f"/events/{plain['id']}", {"version": 1, "label_vertical": True})
+    assert resp.status_code == 200
+    assert resp.json()["event"]["label_vertical"] is True
+    # Omitting it keeps the value; false toggles it back off.
+    resp = await alice.patch(f"/events/{plain['id']}", {"version": 2, "title": "Renamed"})
+    assert resp.json()["event"]["label_vertical"] is True
+    resp = await alice.patch(f"/events/{plain['id']}", {"version": 3, "label_vertical": False})
+    assert resp.json()["event"]["label_vertical"] is False
+    resp = await alice.patch(f"/events/{plain['id']}", {"version": 4, "label_vertical": None})
+    assert resp.status_code == 422
+
+    got = (await alice.get("/events", params={"from": "2026-03-01", "to": "2026-03-31"})).json()
+    flags = {o["event"]["title"]: o["event"]["label_vertical"] for o in got["occurrences"]}
+    assert flags == {"Renamed": False, "Trip": True}
