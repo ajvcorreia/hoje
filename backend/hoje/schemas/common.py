@@ -60,6 +60,7 @@ class RealtimeChange(BaseModel):
     op: Literal["create", "update", "delete"]
     id: uuid.UUID
     version: int | None = None
+    client_id: str | None = None
 
 
 JsonObject = dict[str, Any]

@@ -1,13 +1,19 @@
-"""Change hook: every mutation announces itself here (Phase 4 turns this into pg_notify)."""
+"""Change hook: every mutation announces itself here via ``pg_notify`` (Phase 4 live sync).
 
+``publish`` runs inside the caller's transaction, so Postgres delivers the notification only if
+the mutation commits. The payload carries identifiers only, never titles or other content.
+"""
+
+import json
 import uuid
 from typing import Literal
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hoje.logging import get_logger
+from hoje.request_context import current_client_id
 
-log = get_logger(__name__)
+CHANNEL = "hoje_changes"
 
 Entity = Literal["event", "category", "leave_policy", "holiday", "holiday_calendar", "user"]
 Op = Literal["create", "update", "delete"]
@@ -22,8 +28,21 @@ async def publish(
     id: uuid.UUID,
     version: int | None,
 ) -> None:
-    """Record a change inside the caller's transaction (no-op until Phase 4)."""
-    log.debug("change", user_id=str(user_id), entity=entity, op=op, id=str(id), version=version)
+    """Queue a NOTIFY on the caller's transaction (delivered on commit, dropped on rollback)."""
+    payload = json.dumps(
+        {
+            "u": str(user_id),
+            "entity": entity,
+            "op": op,
+            "id": str(id),
+            "version": version,
+            "client_id": current_client_id(),
+        },
+        separators=(",", ":"),
+    )
+    await db.execute(
+        text("SELECT pg_notify(:channel, :payload)"), {"channel": CHANNEL, "payload": payload}
+    )
 
 
 class VersionConflict(Exception):
