@@ -24,7 +24,10 @@ test('setup, log out, log in', async ({ page, isMobile }) => {
     await page.getByRole('button', { name: /account menu/i }).click();
     await page.getByRole('menuitem', { name: 'Log out' }).click();
   }
-  await expect(page).toHaveURL(/\/login/);
+  // With registration open (the e2e stack) the route guard sends anonymous visitors to /setup.
+  await expect(page).toHaveURL(/\/(login|setup)$/);
+  await page.goto(`${BASE_URL}/login`);
+  await expect(page).toHaveURL(/\/login$/);
 
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);

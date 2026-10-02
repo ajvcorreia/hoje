@@ -20,7 +20,6 @@ htmlcov/
 node_modules/
 dist/
 coverage/
-frontend/test-results/
 frontend/playwright-report/
 # Backups and data
 backups/
@@ -36,3 +35,6 @@ Thumbs.db
 
 # MSYS temp dirs left on the network share
 .msys*/
+
+# Playwright failure artifacts copied out by deploy/e2e.sh
+e2e-artifacts/
