@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Event as HojeEvent } from '../../api/types';
 import { btnDanger, btnPrimary, btnSecondary, inputClass } from '../../components/ui/classes';
 import { Dialog } from '../../components/ui/Dialog';
@@ -8,6 +8,8 @@ import { describeError } from '../../lib/errors';
 import { formatDayHeading, todayIso } from '../../lib/dates';
 import { useCategories, useDefaultCategoryId } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
+import { getClientId } from '../../api/clientId';
+import { subscribeChanges } from '../realtime/store';
 import { conflictCurrent, useCreateEvent, useDeleteEvent, useEvent, useUpdateEvent } from './api';
 import {
   blankForm,
@@ -61,7 +63,12 @@ export function EventEditor({
           </button>
         </div>
       ) : (
-        <EditorForm mode="edit" event={existing.data} onClose={onClose} />
+        <EditorForm
+          mode="edit"
+          event={existing.data}
+          onClose={onClose}
+          refetchEvent={async () => (await existing.refetch()).data}
+        />
       )}
     </Dialog>
   );
@@ -69,7 +76,12 @@ export function EventEditor({
 
 type FormProps =
   | { mode: 'create'; initialDate: string; onClose(): void }
-  | { mode: 'edit'; event: HojeEvent; onClose(): void };
+  | {
+      mode: 'edit';
+      event: HojeEvent;
+      onClose(): void;
+      refetchEvent(): Promise<HojeEvent | undefined>;
+    };
 
 function EditorForm(props: FormProps) {
   const { onClose } = props;
@@ -88,6 +100,30 @@ function EditorForm(props: FormProps) {
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<HojeEvent | null>(null);
   const [busy, setBusy] = useState(false);
+  const [remote, setRemote] = useState<{ op: 'update' | 'delete' } | null>(null);
+
+  // Another device changed (or deleted) this event while the editor is open.
+  const editingId = editing?.id;
+  useEffect(() => {
+    if (!editingId) return;
+    return subscribeChanges((change) => {
+      if (change.entity !== 'event' || change.id !== editingId) return;
+      if (change.client_id === getClientId()) return;
+      if (change.op === 'delete') setRemote({ op: 'delete' });
+      else if (change.version > version) setRemote({ op: 'update' });
+    });
+  }, [editingId, version]);
+
+  const loadLatest = async () => {
+    if (props.mode !== 'edit') return;
+    const latest = await props.refetchEvent();
+    if (!latest) return;
+    setForm(formFromEvent(latest));
+    setVersion(latest.version);
+    setRemote(null);
+    setConflict(null);
+    setError(null);
+  };
 
   const set = <K extends keyof EventFormState>(key: K, value: EventFormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -358,6 +394,35 @@ function EditorForm(props: FormProps) {
           </div>
         ) : null}
       </div>
+
+      {remote ? (
+        <div
+          role="alert"
+          className="space-y-2 rounded-md border border-border bg-surface-muted p-3 text-sm"
+        >
+          <p className="font-medium">
+            {remote.op === 'delete'
+              ? 'This event was deleted on another device.'
+              : 'This event was changed on another device.'}
+          </p>
+          <div className="flex gap-2">
+            {remote.op === 'delete' ? (
+              <button type="button" className={btnPrimary} onClick={onClose}>
+                Close
+              </button>
+            ) : (
+              <>
+                <button type="button" className={btnPrimary} onClick={() => void loadLatest()}>
+                  Load latest
+                </button>
+                <button type="button" className={btnSecondary} onClick={() => setRemote(null)}>
+                  Keep editing
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {conflict ? (
         <div
