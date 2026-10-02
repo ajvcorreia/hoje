@@ -31,18 +31,20 @@ async def test_healthz(client: httpx.AsyncClient):
     assert r.json() == {"status": "ok"}
 
 
-async def test_stub_returns_501_problem(client: httpx.AsyncClient):
+async def test_protected_endpoint_returns_401_problem(client: httpx.AsyncClient):
     r = await client.get("/api/v1/me")
-    assert r.status_code == 501
+    assert r.status_code == 401
     assert r.headers["content-type"].startswith("application/problem+json")
     body = r.json()
-    assert body["status"] == 501
-    assert body["detail"] == "Not implemented yet"
+    assert body["status"] == 401
+    assert body["detail"] == "Not authenticated"
 
 
 async def test_validation_error_is_problem_without_input_echo(client: httpx.AsyncClient):
     r = await client.post(
-        "/api/v1/auth/login", json={"email": "not-an-email", "password": "hunter2-secret"}
+        "/api/v1/auth/login",
+        json={"email": "not-an-email", "password": "hunter2-secret"},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert r.status_code == 422
     assert r.headers["content-type"].startswith("application/problem+json")

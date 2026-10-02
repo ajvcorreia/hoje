@@ -14,3 +14,18 @@ PROBLEM_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {**_PROBLEM, "description": "Validation error"},
     501: {**_PROBLEM, "description": "Not implemented yet"},
 }
+
+_PROBLEM_DESCRIPTIONS = {
+    400: "Bad request or failed re-authentication",
+    401: "Not authenticated or invalid credentials",
+    403: "Forbidden",
+    409: "Conflict with the current state",
+    429: "Too many attempts; see the Retry-After header",
+    502: "Upstream mail server rejected or failed the request",
+    503: "Feature not available (for example SMTP not configured)",
+}
+
+
+def problems(*codes: int) -> dict[int | str, dict[str, Any]]:
+    """Extra documented problem responses for one operation."""
+    return {code: {**_PROBLEM, "description": _PROBLEM_DESCRIPTIONS[code]} for code in codes}
