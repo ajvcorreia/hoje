@@ -3627,13 +3627,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `event: change` with a RealtimeChange JSON payload, and `event: ping` every 25 seconds. */
+            /** @description `event: change` with a RealtimeChange JSON payload, `event: ping` every 25 seconds, and `event: resync` when the server lost and recovered its change feed (refetch everything). At most 10 concurrent streams per user (429 beyond that). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "text/event-stream": {
+                        /** Client Id */
+                        client_id?: string | null;
                         /**
                          * Entity
                          * @enum {string}
