@@ -91,11 +91,15 @@ async def test_weak_password_rejected(auth_client):
 
 async def test_registration_without_origin_rejected(auth_client):
     """POST without Origin header: 403."""
+    headers = {}
     token = await csrf(auth_client)
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/register",
         json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"X-CSRF-Token": token},  # no Origin
+        headers=headers,  # no Origin
     )
     assert resp.status_code == 403
     assert "origin" in resp.json().get("detail", "").lower()
@@ -103,10 +107,14 @@ async def test_registration_without_origin_rejected(auth_client):
 
 async def test_registration_with_wrong_origin_rejected(auth_client):
     """POST with wrong Origin: 403."""
+    headers = {"Origin": "http://evil.com"}
     token = await csrf(auth_client)
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/register",
         json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://evil.com", "X-CSRF-Token": token},
+        headers=headers,
     )
     assert resp.status_code == 403
