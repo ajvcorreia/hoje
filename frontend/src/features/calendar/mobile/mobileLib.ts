@@ -80,4 +80,3 @@ export function dayOfLabel(o: Occurrence, date: string): string | null {
   if (total < 2) return null;
   return `Day ${differenceInCalendarDays(parseIso(date), start) + 1} of ${total}`;
 }
-

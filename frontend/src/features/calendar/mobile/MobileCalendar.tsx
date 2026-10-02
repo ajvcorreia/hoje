@@ -11,14 +11,7 @@ import { occurrencesQuery, useOccurrences } from '../../events/api';
 import { EventEditor } from '../../events/EventEditor';
 import { filterVisible, groupByDay } from '../../events/occurrences';
 import { DayView } from './DayView';
-import {
-  dayRange,
-  loadView,
-  monthRange,
-  saveView,
-  useSwipe,
-  type MobileView,
-} from './mobileLib';
+import { dayRange, loadView, monthRange, saveView, useSwipe, type MobileView } from './mobileLib';
 import { MonthView } from './MonthView';
 import { QuickAddSheet } from './QuickAddSheet';
 import { WeekStrip } from './WeekStrip';
@@ -26,10 +19,7 @@ import { WeekStrip } from './WeekStrip';
 const DEFAULT_WEEKEND = [6, 7];
 
 type Sheet =
-  | { kind: 'quick' }
-  | { kind: 'create'; date: string }
-  | { kind: 'edit'; eventId: string }
-  | null;
+  { kind: 'quick' } | { kind: 'create'; date: string } | { kind: 'edit'; eventId: string } | null;
 
 const VIEWS: { id: MobileView; label: string }[] = [
   { id: 'day', label: 'Day' },

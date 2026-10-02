@@ -7,8 +7,26 @@ const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
 const HOME = 'aaaaaaaa-0000-0000-0000-000000000002';
 
 const CATEGORIES = [
-  { id: WORK, name: 'Work', colour: 'teal', icon: null, sort_order: 0, is_leave: false, hidden: false, version: 1 },
-  { id: HOME, name: 'Home', colour: 'pink', icon: null, sort_order: 1, is_leave: false, hidden: false, version: 1 },
+  {
+    id: WORK,
+    name: 'Work',
+    colour: 'teal',
+    icon: null,
+    sort_order: 0,
+    is_leave: false,
+    hidden: false,
+    version: 1,
+  },
+  {
+    id: HOME,
+    name: 'Home',
+    colour: 'pink',
+    icon: null,
+    sort_order: 1,
+    is_leave: false,
+    hidden: false,
+    version: 1,
+  },
 ];
 
 function makeEvent(id: string, title: string, start: string, end = start, extra = {}) {
@@ -84,7 +102,10 @@ describe('mobile calendar', () => {
 
   it('week strip: Mon-Sun, today marked, dots on days with events, paging requests new ranges', async () => {
     const api = mockApi(
-      baseRoutes([makeEvent('e1', 'Standup', '2026-10-01'), makeEvent('e2', 'Dentist', '2026-10-02')]),
+      baseRoutes([
+        makeEvent('e1', 'Standup', '2026-10-01'),
+        makeEvent('e2', 'Dentist', '2026-10-02'),
+      ]),
     );
     renderApp();
     await dayViewReady();
@@ -147,13 +168,19 @@ describe('mobile calendar', () => {
     const list = await screen.findByRole('list', { name: /Events on 2026-10-02/ });
     await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(3));
     const cards = within(list).getAllByRole('button');
-    expect(cards.map((c) => c.querySelector('span')?.textContent)).toEqual(['Trip', 'Gym', 'Lunch']);
+    expect(cards.map((c) => c.querySelector('span')?.textContent)).toEqual([
+      'Trip',
+      'Gym',
+      'Lunch',
+    ]);
     expect(cards[0]).toHaveTextContent('Home · All day · Day 2 of 3');
     expect(cards[1]).toHaveTextContent('Work · 08:00–09:00');
   });
 
   it('month view: at most three dots per date; tapping a date lists its events below', async () => {
-    const events = Array.from({ length: 5 }, (_, i) => makeEvent(`m${i}`, `Thing ${i}`, '2026-10-15'));
+    const events = Array.from({ length: 5 }, (_, i) =>
+      makeEvent(`m${i}`, `Thing ${i}`, '2026-10-15'),
+    );
     mockApi(baseRoutes(events));
     renderApp();
     await dayViewReady();
