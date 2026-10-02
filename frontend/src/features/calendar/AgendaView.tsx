@@ -59,7 +59,6 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
     );
   }
 
-  let lastMonth = '';
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl pb-6">
@@ -68,10 +67,8 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
             Nothing planned until {formatShortDate(to)}.
           </p>
         ) : null}
-        {groups.map((group) => {
-          const month = group.date.slice(0, 7);
-          const showMonth = month !== lastMonth;
-          lastMonth = month;
+        {groups.map((group, index) => {
+          const showMonth = group.date.slice(0, 7) !== groups[index - 1]?.date.slice(0, 7);
           const date = parseIso(group.date);
           return (
             <div key={group.date}>

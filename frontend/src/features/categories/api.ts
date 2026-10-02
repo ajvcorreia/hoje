@@ -35,13 +35,16 @@ export function useDefaultCategoryId(): string | undefined {
   return categories?.[0]?.id;
 }
 
+/** Body of a new category; `hidden` and `is_leave` default to false on the server. */
+export type NewCategory = Pick<CategoryCreate, 'name' | 'colour'> & Partial<CategoryCreate>;
+
 /** `POST /categories`. */
 export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
     meta: { protected: true },
-    mutationFn: async (body: CategoryCreate) =>
-      unwrap(await api.POST('/api/v1/categories', { body })),
+    mutationFn: async (body: NewCategory) =>
+      unwrap(await api.POST('/api/v1/categories', { body: body as CategoryCreate })),
     onSuccess: () => qc.invalidateQueries({ queryKey: CATEGORIES_KEY }),
   });
 }

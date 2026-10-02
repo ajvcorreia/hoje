@@ -153,9 +153,7 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
           <input
             type="checkbox"
             checked={category.is_leave}
-            onChange={(e) =>
-              update.mutate({ category, patch: { is_leave: e.target.checked } })
-            }
+            onChange={(e) => update.mutate({ category, patch: { is_leave: e.target.checked } })}
             className="size-4"
           />
           Counts as vacation
@@ -205,7 +203,8 @@ function AddCategory({ categories }: { categories: Category[] }) {
           setName('');
           setColour(null);
         },
-        onError: (e) => setError(describeError(e, { 409: 'A category with that name already exists.' })),
+        onError: (e) =>
+          setError(describeError(e, { 409: 'A category with that name already exists.' })),
       },
     );
   };
@@ -229,7 +228,11 @@ function AddCategory({ categories }: { categories: Category[] }) {
           Add
         </button>
       </div>
-      <ColourPicker label="Colour for the new category" value={colour ?? firstUnused} onChange={setColour} />
+      <ColourPicker
+        label="Colour for the new category"
+        value={colour ?? firstUnused}
+        onChange={setColour}
+      />
       <FormError message={error} />
     </form>
   );
@@ -251,7 +254,9 @@ function DeleteCategoryDialog({
   if (others.length === 0) {
     return (
       <Dialog title="Delete category" onClose={onClose}>
-        <p className="text-sm">You need at least one category, so {category.name} cannot be deleted.</p>
+        <p className="text-sm">
+          You need at least one category, so {category.name} cannot be deleted.
+        </p>
         <div className="mt-4">
           <button type="button" className={btnSecondary} onClick={onClose}>
             Close

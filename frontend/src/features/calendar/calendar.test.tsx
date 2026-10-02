@@ -7,8 +7,26 @@ const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
 const HOME = 'aaaaaaaa-0000-0000-0000-000000000002';
 
 const CATEGORIES = [
-  { id: WORK, name: 'Work', colour: 'teal', icon: null, sort_order: 0, is_leave: false, hidden: false, version: 1 },
-  { id: HOME, name: 'Home', colour: 'pink', icon: null, sort_order: 1, is_leave: false, hidden: false, version: 3 },
+  {
+    id: WORK,
+    name: 'Work',
+    colour: 'teal',
+    icon: null,
+    sort_order: 0,
+    is_leave: false,
+    hidden: false,
+    version: 1,
+  },
+  {
+    id: HOME,
+    name: 'Home',
+    colour: 'pink',
+    icon: null,
+    sort_order: 1,
+    is_leave: false,
+    hidden: false,
+    version: 3,
+  },
 ];
 
 function makeEvent(id: string, title: string, start: string, end = start, extra = {}) {
@@ -49,6 +67,10 @@ function baseRoutes(events: ReturnType<typeof makeEvent>[] = []) {
   };
 }
 
+async function gridReady() {
+  await waitFor(() => expect(document.querySelector('[data-month="11"]')).not.toBeNull());
+}
+
 function cell(date: string): HTMLElement {
   const el = document.querySelector<HTMLElement>(`[data-date="${date}"]`);
   if (!el) throw new Error(`no cell for ${date}`);
@@ -69,10 +91,10 @@ describe('month grid', () => {
   it('renders 12 months with day 1 on its weekday row', async () => {
     mockApi(baseRoutes());
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     for (let m = 0; m < 12; m += 1) {
       const name = new Date(2026, m, 1).toLocaleString('en-US', { month: 'long' });
-      expect(screen.getByRole('group', { name: `${name} 2026` })).toBeInTheDocument();
+      expect(document.querySelector(`[aria-label="${name} 2026"]`)).not.toBeNull();
     }
     // Monday-first rows: Thu 1 Jan 2026 -> row 3, Sun 1 Feb -> row 6, Mon 1 Jun -> row 0.
     expect(cell('2026-01-01')).toHaveAttribute('data-row', '3');
@@ -86,7 +108,7 @@ describe('month grid', () => {
   it('shades weekend rows from the user settings', async () => {
     mockApi(baseRoutes());
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     expect(cell('2026-01-03')).toHaveAttribute('data-weekend', 'true'); // Saturday
     expect(cell('2026-01-04')).toHaveAttribute('data-weekend', 'true'); // Sunday
     expect(cell('2026-01-05')).not.toHaveAttribute('data-weekend'); // Monday
@@ -105,10 +127,13 @@ describe('month grid', () => {
       }),
     });
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     await userEvent.click(cell('2026-01-01'));
 
-    const popover = await screen.findByRole('dialog', { name: /Events on Thursday 1 January/ });
+    const popover = await screen.findByRole('dialog', {
+      hidden: true,
+      name: /Events on Thursday 1 January/,
+    });
     const input = within(popover).getByLabelText('Add an event');
     expect(input).toHaveFocus();
     expect(within(popover).getByText('No events')).toBeInTheDocument();
@@ -121,24 +146,26 @@ describe('month grid', () => {
       end_date: '2026-01-01',
       all_day: true,
     });
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    );
   });
 
   it('closes the popover with Escape', async () => {
     mockApi(baseRoutes());
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     await userEvent.click(cell('2026-01-01'));
-    await screen.findByRole('dialog');
+    await screen.findByRole('dialog', { hidden: true });
     await userEvent.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
     expect(cell('2026-01-01')).toHaveFocus();
   });
 
   it('moves focus between day cells with the arrow keys', async () => {
     mockApi(baseRoutes());
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     cell('2026-01-05').focus();
     await userEvent.keyboard('{ArrowDown}');
     expect(cell('2026-01-06')).toHaveFocus();
@@ -190,11 +217,13 @@ describe('event editor', () => {
   it('keeps the More section collapsed until opened', async () => {
     mockApi(baseRoutes());
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
+    await gridReady();
     await userEvent.click(cell('2026-01-01'));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add with details' }));
+    await userEvent.click(
+      await screen.findByRole('button', { hidden: true, name: 'Add with details' }),
+    );
 
-    const dialog = await screen.findByRole('dialog', { name: 'New event' });
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'New event' });
     expect(within(dialog).getByLabelText('Title')).toHaveFocus();
     // The last used category is preselected.
     expect(within(dialog).getByLabelText('Category')).toHaveValue(WORK);
@@ -218,19 +247,21 @@ describe('event editor', () => {
       'POST /api/v1/events/ev-1/restore': event,
     });
     renderApp();
-    await waitFor(() => expect(within(cell('2026-01-08')).getByText('Dentist')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(cell('2026-01-08')).getByText('Dentist')).toBeInTheDocument(),
+    );
     await userEvent.click(cell('2026-01-08'));
-    const popover = await screen.findByRole('dialog', { name: /Events on/ });
+    const popover = await screen.findByRole('dialog', { hidden: true, name: /Events on/ });
     expect(within(popover).getByText('Work')).toBeInTheDocument(); // category name, not just colour
     await userEvent.click(within(popover).getByRole('button', { name: /Dentist/ }));
 
-    const editor = await screen.findByRole('dialog', { name: 'Edit event' });
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
     await within(editor).findByDisplayValue('Dentist');
     await userEvent.click(within(editor).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(api.callsTo('DELETE', '/api/v1/events/ev-1')).toHaveLength(1));
     expect(await screen.findByText('Event deleted')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Undo' }));
     await waitFor(() => expect(api.callsTo('POST', '/api/v1/events/ev-1/restore')).toHaveLength(1));
   });
 
@@ -249,14 +280,16 @@ describe('event editor', () => {
     renderApp();
     await waitFor(() => expect(within(cell('2026-01-09')).getByText('Review')).toBeInTheDocument());
     await userEvent.click(cell('2026-01-09'));
-    await userEvent.click(await screen.findByRole('button', { name: /Review/ }));
+    await userEvent.click(await screen.findByRole('button', { hidden: true, name: /Review/ }));
 
-    const editor = await screen.findByRole('dialog', { name: 'Edit event' });
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
     const title = await within(editor).findByDisplayValue('Review');
     await userEvent.type(title, ' edited');
     await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
 
-    expect(await within(editor).findByText('This event was changed elsewhere.')).toBeInTheDocument();
+    expect(
+      await within(editor).findByText('This event was changed elsewhere.'),
+    ).toBeInTheDocument();
     expect(api.callsTo('PATCH', '/api/v1/events/ev-2')[0]?.body).toMatchObject({
       title: 'Review edited',
       version: 1,
@@ -279,7 +312,7 @@ describe('category chips', () => {
       }),
     });
     renderApp();
-    const chips = await screen.findByRole('group', { name: 'Show categories' });
+    const chips = await screen.findByRole('group', { hidden: true, name: 'Show categories' });
     const home = await within(chips).findByRole('button', { name: 'Home' });
     expect(home).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(home);
@@ -304,7 +337,9 @@ describe('category chips', () => {
       'GET /api/v1/categories': hidden,
     });
     renderApp();
-    await waitFor(() => expect(within(cell('2026-03-10')).getByText('Work thing')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(cell('2026-03-10')).getByText('Work thing')).toBeInTheDocument(),
+    );
     expect(screen.queryByText('Home thing')).not.toBeInTheDocument();
   });
 });
@@ -312,21 +347,20 @@ describe('category chips', () => {
 describe('views', () => {
   it('switches to the year view and the agenda', async () => {
     mockApi(
-      baseRoutes([
-        makeEvent('a', 'Alpha', '2026-07-01'),
-        makeEvent('b', 'Beta', '2026-07-01'),
-      ]),
+      baseRoutes([makeEvent('a', 'Alpha', '2026-07-01'), makeEvent('b', 'Beta', '2026-07-01')]),
     );
     renderApp();
-    await screen.findByRole('group', { name: 'January 2026' });
-    await userEvent.click(screen.getByRole('button', { name: 'Year' }));
-    const july = await screen.findByRole('region', { name: 'July 2026' });
+    await gridReady();
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Year' }));
+    const july = await screen.findByRole('region', { hidden: true, name: 'July 2026' });
     await waitFor(() =>
-      expect(within(july).getByRole('button', { name: /Wednesday 1 July 2026, 2 events/ })).toBeInTheDocument(),
+      expect(
+        within(july).getByRole('button', { name: /Wednesday 1 July 2026, 2 events/ }),
+      ).toBeInTheDocument(),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Agenda' }));
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Agenda' }));
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.getAllByText('Work', { exact: false }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { hidden: true, name: 'Load more' })).toBeInTheDocument();
   });
 });

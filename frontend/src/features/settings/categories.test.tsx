@@ -7,8 +7,26 @@ const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
 const HOME = 'aaaaaaaa-0000-0000-0000-000000000002';
 
 const CATEGORIES = [
-  { id: WORK, name: 'Work', colour: 'teal', icon: null, sort_order: 0, is_leave: false, hidden: false, version: 1 },
-  { id: HOME, name: 'Home', colour: 'pink', icon: null, sort_order: 1, is_leave: true, hidden: false, version: 2 },
+  {
+    id: WORK,
+    name: 'Work',
+    colour: 'teal',
+    icon: null,
+    sort_order: 0,
+    is_leave: false,
+    hidden: false,
+    version: 1,
+  },
+  {
+    id: HOME,
+    name: 'Home',
+    colour: 'pink',
+    icon: null,
+    sort_order: 1,
+    is_leave: true,
+    hidden: false,
+    version: 2,
+  },
 ];
 
 const base = {
@@ -22,7 +40,10 @@ describe('settings › categories', () => {
   it('lists categories and renames one inline', async () => {
     const api = mockApi({
       ...base,
-      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({ ...CATEGORIES[0], ...(call.body as object) }),
+      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({
+        ...CATEGORIES[0],
+        ...(call.body as object),
+      }),
     });
     renderApp('/settings');
     const input = await screen.findByLabelText('Name of Work');
@@ -39,13 +60,19 @@ describe('settings › categories', () => {
   it('recolours with a labelled palette and toggles vacation', async () => {
     const api = mockApi({
       ...base,
-      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({ ...CATEGORIES[0], ...(call.body as object) }),
+      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({
+        ...CATEGORIES[0],
+        ...(call.body as object),
+      }),
     });
     renderApp('/settings');
     await userEvent.click(await screen.findByRole('button', { name: /Colour of Work/ }));
     const picker = screen.getByRole('radiogroup', { name: 'Colour for Work' });
     expect(within(picker).getAllByRole('radio')).toHaveLength(12);
-    expect(within(picker).getByRole('radio', { name: 'Teal' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(picker).getByRole('radio', { name: 'Teal' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
     await userEvent.click(within(picker).getByRole('radio', { name: 'Violet' }));
     await waitFor(() => expect(api.callsTo('PATCH', `/api/v1/categories/${WORK}`)).toHaveLength(1));
     expect(api.callsTo('PATCH', `/api/v1/categories/${WORK}`)[0]?.body).toEqual({
@@ -103,7 +130,9 @@ describe('settings › categories', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Delete Work?' });
     expect(within(dialog).getByLabelText('Move its events to')).toHaveValue(HOME);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(api.callsTo('DELETE', `/api/v1/categories/${WORK}`)).toHaveLength(1));
+    await waitFor(() =>
+      expect(api.callsTo('DELETE', `/api/v1/categories/${WORK}`)).toHaveLength(1),
+    );
     expect(api.callsTo('DELETE', `/api/v1/categories/${WORK}`)[0]?.search).toBe(
       `?reassign_to=${HOME}`,
     );
