@@ -19,6 +19,8 @@ export interface LayoutInput {
   title: string;
   /** Palette key; opaque to the layout, carried through for rendering. */
   colour?: string;
+  /** Draw the title rotated along a multi-day block. */
+  labelVertical?: boolean;
 }
 
 /** An occurrence placed in a lane of a month column. */

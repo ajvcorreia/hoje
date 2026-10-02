@@ -1,6 +1,8 @@
 import { THEMES, type Theme } from '../../lib/theme';
-import { useMultidayLabelMode, type MultidayLabelMode } from '../../lib/multidayLabels';
+import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
+import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useTheme } from '../../app/useTheme';
+import { useTextSize } from '../../app/useTextSize';
 import { inputClass } from '../../components/ui/classes';
 import { CategoriesSection } from './CategoriesSection';
 import { AccountSection } from './AccountSection';
@@ -10,10 +12,17 @@ import { SessionSection } from './SessionSection';
 import { SettingsSection } from './SettingsSection';
 
 const LABELS: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+const SIZE_LABELS: Record<TextSize, string> = {
+  small: 'Small',
+  default: 'Default',
+  large: 'Large',
+  xlarge: 'Extra large',
+};
 
 export function SettingsPage() {
   const [theme, setTheme] = useTheme();
-  const [labelMode, setLabelMode] = useMultidayLabelMode();
+  const [textSize, setTextSize] = useTextSize();
+  const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   return (
     <section aria-labelledby="settings-heading" className="max-w-xl">
       <h1 id="settings-heading" className="text-lg font-semibold">
@@ -39,19 +48,31 @@ export function SettingsPage() {
             </select>
           </div>
           <div className="mt-4">
-            <label htmlFor="multiday-labels" className="block text-sm font-medium">
-              Multi-day event names
+            <label htmlFor="text-size" className="block text-sm font-medium">
+              Text size
             </label>
             <select
-              id="multiday-labels"
-              value={labelMode}
-              onChange={(e) => setLabelMode(e.target.value as MultidayLabelMode)}
+              id="text-size"
+              value={textSize}
+              onChange={(e) => setTextSize(e.target.value as TextSize)}
               className={`${inputClass} mt-2`}
             >
-              <option value="horizontal">Horizontal</option>
-              <option value="vertical">Vertical</option>
+              {TEXT_SIZES.map((s) => (
+                <option key={s} value={s}>
+                  {SIZE_LABELS[s]}
+                </option>
+              ))}
             </select>
           </div>
+          <label className="mt-4 flex min-h-9 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={weekNumbers}
+              onChange={(e) => setWeekNumbers(e.target.checked)}
+              className="size-4"
+            />
+            Show week numbers
+          </label>
         </SettingsSection>
         <CategoriesSection />
         <AccountSection />

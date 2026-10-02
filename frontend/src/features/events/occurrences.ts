@@ -60,6 +60,7 @@ export function toLayoutInput(o: Occurrence, colour?: string): LayoutInput {
     startTime: o.event.start_time,
     title: o.event.title,
     colour,
+    labelVertical: o.event.label_vertical,
   };
 }
 

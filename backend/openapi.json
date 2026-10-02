@@ -417,6 +417,11 @@
             "title": "Id",
             "type": "string"
           },
+          "label_vertical": {
+            "default": false,
+            "title": "Label Vertical",
+            "type": "boolean"
+          },
           "notes": {
             "anyOf": [
               {
@@ -617,6 +622,11 @@
             ],
             "title": "End Time"
           },
+          "label_vertical": {
+            "default": false,
+            "title": "Label Vertical",
+            "type": "boolean"
+          },
           "notes": {
             "anyOf": [
               {
@@ -753,6 +763,17 @@
               }
             ],
             "title": "End Time"
+          },
+          "label_vertical": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Vertical"
           },
           "notes": {
             "anyOf": [

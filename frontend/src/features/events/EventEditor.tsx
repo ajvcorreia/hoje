@@ -271,6 +271,17 @@ function EditorForm(props: FormProps) {
               />
               All day
             </label>
+            {form.endDate > form.startDate ? (
+              <label className="flex min-h-9 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.labelVertical}
+                  onChange={(e) => set('labelVertical', e.target.checked)}
+                  className="size-4"
+                />
+                Show name vertically
+              </label>
+            ) : null}
             {form.allDay ? null : (
               <div className="grid grid-cols-2 gap-3">
                 <Field

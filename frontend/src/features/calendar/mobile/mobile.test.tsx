@@ -44,6 +44,7 @@ function makeEvent(id: string, title: string, start: string, end = start, extra 
     repeat: 'none',
     repeat_until: null,
     counts_as_leave: false,
+    label_vertical: false,
     reminders: [],
     version: 1,
     created_at: '2026-01-01T00:00:00Z',

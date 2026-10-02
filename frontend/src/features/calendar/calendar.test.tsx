@@ -1,7 +1,7 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { storeMultidayLabelMode } from '../../lib/multidayLabels';
+import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
 
 const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -45,6 +45,7 @@ function makeEvent(id: string, title: string, start: string, end = start, extra 
     repeat: 'none',
     repeat_until: null,
     counts_as_leave: false,
+    label_vertical: false,
     reminders: [],
     version: 1,
     created_at: '2026-01-01T00:00:00Z',
@@ -369,16 +370,12 @@ describe('views', () => {
   });
 });
 
-describe('vertical multi-day labels', () => {
-  afterEach(() => {
-    storeMultidayLabelMode('horizontal');
-  });
-
+describe('per-event vertical labels', () => {
   const labels = () => Array.from(document.querySelectorAll<HTMLElement>('.cal-vlabel'));
+  const vertical = { label_vertical: true };
 
   it('renders one rotated label per block with the block height and no horizontal title', async () => {
-    storeMultidayLabelMode('vertical');
-    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-10', '2026-03-13')]));
+    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-10', '2026-03-13', vertical)]));
     renderApp();
     await waitFor(() => expect(labels()).toHaveLength(1));
     const label = labels()[0] as HTMLElement;
@@ -395,9 +392,15 @@ describe('vertical multi-day labels', () => {
     expect(cell('2026-03-10').querySelector('.cal-ev')).toHaveAttribute('data-join-next', 'true');
   });
 
+  it('keeps the horizontal title for multi-day events without the flag', async () => {
+    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-10', '2026-03-13')]));
+    renderApp();
+    await waitFor(() => expect(within(cell('2026-03-10')).getByText('Trip')).toBeInTheDocument());
+    expect(labels()).toHaveLength(0);
+  });
+
   it('starts a new segment in the next month column', async () => {
-    storeMultidayLabelMode('vertical');
-    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-30', '2026-04-02')]));
+    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-30', '2026-04-02', vertical)]));
     renderApp();
     await waitFor(() => expect(labels()).toHaveLength(2));
     expect(labels().map((l) => l.style.getPropertyValue('--seg-len'))).toEqual(['2', '2']);
@@ -407,32 +410,150 @@ describe('vertical multi-day labels', () => {
     ]);
   });
 
-  it('puts the label in the lane of a split block', async () => {
-    storeMultidayLabelMode('vertical');
+  it('puts the label in the lane of a split block; only flagged events rotate', async () => {
     mockApi(
       baseRoutes([
-        makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12'),
+        makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12', vertical),
         makeEvent('other', 'Other', '2026-03-10', '2026-03-12'),
+        makeEvent('solo', 'Solo', '2026-03-05', '2026-03-05', vertical),
       ]),
     );
     renderApp();
-    await waitFor(() => expect(labels()).toHaveLength(2));
-    expect(labels().map((l) => l.getAttribute('data-lane'))).toEqual(['0', '1']);
+    await waitFor(() => expect(labels()).toHaveLength(1));
+    expect(labels()[0]).toHaveAttribute('data-lane', '1');
+    expect(labels()[0]).toHaveTextContent('Trip');
+    expect(within(cell('2026-03-10')).getByText('Other')).toBeInTheDocument();
+    expect(within(cell('2026-03-05')).getByText('Solo')).toBeInTheDocument();
+  });
+});
+
+describe('vertical label option in the editor', () => {
+  it('is offered only for multi-day events and is sent on create', async () => {
+    const api = mockApi({
+      ...baseRoutes(),
+      'POST /api/v1/events': (call) => ({
+        event: makeEvent('new-1', (call.body as { title: string }).title, '2026-01-01'),
+        leave_impact: [],
+      }),
+    });
+    renderApp();
+    await gridReady();
+    await userEvent.click(cell('2026-01-01'));
+    await userEvent.click(
+      await screen.findByRole('button', { hidden: true, name: 'Add with details' }),
+    );
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'New event' });
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Trip');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'More' }));
+    expect(within(dialog).queryByLabelText('Show name vertically')).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByLabelText('End date'), {
+      target: { value: '2026-01-03' },
+    });
+    const box = within(dialog).getByLabelText('Show name vertically');
+    expect(box).not.toBeChecked();
+    await userEvent.click(box);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/events')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/v1/events')[0]?.body).toMatchObject({
+      title: 'Trip',
+      end_date: '2026-01-03',
+      label_vertical: true,
+    });
   });
 
-  it('leaves single-day events and horizontal mode unchanged', async () => {
-    storeMultidayLabelMode('vertical');
-    mockApi(
-      baseRoutes([
-        makeEvent('solo', 'Solo', '2026-03-05'),
-        makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12'),
-      ]),
-    );
+  it('shows the stored value when editing and PATCHes a change', async () => {
+    const event = makeEvent('ev-3', 'Trip', '2026-01-08', '2026-01-10', { label_vertical: true });
+    const api = mockApi({
+      ...baseRoutes([event]),
+      'GET /api/v1/events/ev-3': event,
+      'PATCH /api/v1/events/ev-3': () => ({
+        event: { ...event, label_vertical: false, version: 2 },
+        leave_impact: [],
+      }),
+    });
     renderApp();
-    await waitFor(() => expect(within(cell('2026-03-05')).getByText('Solo')).toBeInTheDocument());
-    expect(labels()).toHaveLength(1);
-    act(() => storeMultidayLabelMode('horizontal'));
-    await waitFor(() => expect(labels()).toHaveLength(0));
-    expect(within(cell('2026-03-10')).getByText('Trip')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('.cal-vlabel')).not.toBeNull());
+    await userEvent.click(cell('2026-01-08'));
+    await userEvent.click(await screen.findByRole('button', { hidden: true, name: /Trip/ }));
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
+    await within(editor).findByDisplayValue('Trip');
+    await userEvent.click(within(editor).getByRole('button', { name: 'More' }));
+    const box = within(editor).getByLabelText('Show name vertically');
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/events/ev-3')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/events/ev-3')[0]?.body).toMatchObject({
+      version: 1,
+      label_vertical: false,
+    });
+  });
+
+  it('is not offered when editing a single-day event', async () => {
+    const event = makeEvent('ev-4', 'Dentist', '2026-01-08');
+    mockApi({ ...baseRoutes([event]), 'GET /api/v1/events/ev-4': event });
+    renderApp();
+    await waitFor(() =>
+      expect(within(cell('2026-01-08')).getByText('Dentist')).toBeInTheDocument(),
+    );
+    await userEvent.click(cell('2026-01-08'));
+    await userEvent.click(await screen.findByRole('button', { hidden: true, name: /Dentist/ }));
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
+    await within(editor).findByDisplayValue('Dentist');
+    await userEvent.click(within(editor).getByRole('button', { name: 'More' }));
+    expect(within(editor).queryByLabelText('Show name vertically')).not.toBeInTheDocument();
+  });
+});
+
+describe('week numbers and day-number column', () => {
+  afterEach(() => {
+    storeWeekNumbers(true);
+  });
+
+  const weekCells = (month: number) =>
+    Array.from(document.querySelectorAll<HTMLElement>(`[data-month="${month}"] .cal-wk`));
+
+  it('numbers the week segments of January 2026 as 1-5, week 1 being Thu 1 to Sun 4', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    const jan = weekCells(0);
+    expect(jan.map((w) => w.textContent)).toEqual(['1', '2', '3', '4', '5']);
+    // Monday-first rows: 1 Jan is row 3 (grid line 5) and week 1 spans 4 rows.
+    expect(jan[0]?.style.gridRow).toBe('5 / span 4');
+    expect(jan[1]?.style.gridRow).toBe('9 / span 7');
+    expect(jan[4]?.style.gridRow).toBe('30 / span 6'); // Mon 26 - Sat 31
+  });
+
+  it('starts week 53 on Monday 28 December 2026', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    const dec = weekCells(11);
+    const last = dec[dec.length - 1] as HTMLElement;
+    expect(last).toHaveTextContent('53');
+    const mondayRow = Number(cell('2026-12-28').getAttribute('data-row'));
+    expect(last.style.gridRow).toBe(`${mondayRow + 2} / span 4`);
+  });
+
+  it('hides week numbers when the setting is off', async () => {
+    storeWeekNumbers(false);
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    expect(document.querySelectorAll('.cal-wk')).toHaveLength(0);
+  });
+
+  it('has a day-number sub-column on every in-month row', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    for (let m = 0; m < 12; m += 1) {
+      const cells = document.querySelectorAll(`[data-month="${m}"] .cal-cell`);
+      const nums = document.querySelectorAll(`[data-month="${m}"] .cal-cell > .cal-num`);
+      expect(cells.length).toBeGreaterThanOrEqual(28);
+      expect(nums).toHaveLength(cells.length);
+    }
   });
 });

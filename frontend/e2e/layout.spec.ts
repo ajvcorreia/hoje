@@ -73,8 +73,19 @@ test.describe('desktop month grid', () => {
   });
 });
 
-test.describe('vertical multi-day labels', () => {
-  test('rotated label spans the whole block and clicks pass through', async ({
+/** ISO 8601 week number of a local date. */
+function isoWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - yearStart) / 86_400_000 + 1) / 7);
+}
+
+test.describe('per-event vertical labels', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  test('large bold rotated label spans the whole block and clicks pass through', async ({
     page,
     account,
     api,
@@ -82,16 +93,21 @@ test.describe('vertical multi-day labels', () => {
     void account;
     const start = dateInCurrentMonth(10);
     const middle = dateInCurrentMonth(11);
-    await api.createEvent('Conference', start, { end_date: dateInCurrentMonth(12) });
-
-    await page.goto('/settings');
-    await page.getByLabel('Multi-day event names').selectOption('vertical');
+    await api.createEvent('Conference', start, {
+      end_date: dateInCurrentMonth(12),
+      label_vertical: true,
+    });
 
     await page.goto('/');
     const label = page.locator('.cal-vlabel');
     await expect(label).toHaveCount(1);
     await expect(label).toHaveText('Conference');
-    await expect(label).toHaveCSS('writing-mode', 'vertical-rl');
+    const text = label.locator('.cal-vlabel-text');
+    await expect(text).toHaveCSS('writing-mode', 'vertical-rl');
+    const weight = await text.evaluate((el) => Number(getComputedStyle(el).fontWeight));
+    expect(weight).toBeGreaterThanOrEqual(700);
+    const size = await text.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(size).toBeGreaterThanOrEqual(18);
 
     const cellBox = await page.locator(`[data-date="${start}"]`).boundingBox();
     const labelBox = await label.boundingBox();
@@ -101,5 +117,63 @@ test.describe('vertical multi-day labels', () => {
 
     await page.locator(`[data-date="${middle}"]`).click();
     await expect(page.getByRole('dialog', { name: /^Events on / })).toBeVisible();
+  });
+
+  test('a multi-day event without the flag keeps a horizontal title', async ({
+    page,
+    account,
+    api,
+  }) => {
+    void account;
+    const start = dateInCurrentMonth(10);
+    await api.createEvent('Retreat', start, { end_date: dateInCurrentMonth(12) });
+    await page.goto('/');
+    await expect(page.locator(`[data-date="${start}"]`)).toContainText('Retreat');
+    await expect(page.locator('.cal-vlabel')).toHaveCount(0);
+  });
+});
+
+test.describe('week numbers, text size and day-number column', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  test('week-number cells show the ISO week of the current month', async ({ page, account }) => {
+    void account;
+    await page.goto('/');
+    const now = new Date();
+    const cells = page.locator(`[data-month="${now.getMonth()}"] .cal-wk`);
+    await expect(cells.first()).toBeVisible();
+    await expect(cells.first()).toHaveText(
+      String(isoWeek(new Date(now.getFullYear(), now.getMonth(), 1))),
+    );
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    await expect(cells.last()).toHaveText(String(isoWeek(last)));
+    // The day number lives in its own outlined sub-column.
+    const num = page.locator(`[data-date="${dateInCurrentMonth(5)}"] .cal-num`);
+    await expect(num).toBeVisible();
+    expect(await num.evaluate((el) => getComputedStyle(el).borderRightWidth)).toBe('1px');
+  });
+
+  test('Large text size increases the root font size', async ({ page, account }) => {
+    void account;
+    await page.goto('/settings');
+    const root = () =>
+      page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+    const before = await root();
+    await page.getByLabel('Text size').selectOption('large');
+    await expect.poll(root).toBeGreaterThan(before);
+    expect(await root()).toBeCloseTo(before * 1.125, 1);
+  });
+
+  test('default text size still fits all rows without vertical scroll', async ({
+    page,
+    account,
+  }) => {
+    void account;
+    await page.goto('/');
+    const scroll = page.locator('.cal-scroll');
+    await expect(scroll).toBeVisible();
+    await expect
+      .poll(() => scroll.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBeLessThanOrEqual(0);
   });
 });

@@ -56,7 +56,7 @@
 /* ---- Desktop month grid -------------------------------------------------- */
 .cal-scroll {
   --gutter-w: 2rem;
-  --col-min: 150px;
+  --col-min: 180px;
   overflow: auto;
   overscroll-behavior: contain;
   background: var(--surface);
@@ -71,16 +71,36 @@
   width: max(100%, calc(var(--gutter-w) + 12 * var(--col-min)));
 }
 
-.cal-col,
 .cal-gutter {
   display: grid;
   grid-template-rows: var(--head-h) repeat(37, var(--row-h));
   min-width: 0;
 }
 
+/*
+ * A month column is a 3-track grid: week number | day number | event area. Day cells span the
+ * last two tracks; --lead is the width taken by the two narrow sub-columns.
+ */
 .cal-col {
+  --num-w: 1.75rem;
+  --wk-w: 0px;
+  --lead: calc(var(--wk-w) + var(--num-w));
   position: relative;
+  display: grid;
+  grid-template-columns: var(--wk-w) var(--num-w) minmax(0, 1fr);
+  grid-template-rows: var(--head-h) repeat(37, var(--row-h));
+  min-width: 0;
+  background: var(--bg);
   border-left: 1px solid var(--border-strong);
+}
+
+.cal-col[data-weeks] {
+  --wk-w: 1.5rem;
+}
+
+.cal-col > .cal-head {
+  grid-row: 1;
+  grid-column: 1 / -1;
 }
 
 .cal-gutter {
@@ -115,7 +135,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 0.625rem;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
 }
@@ -125,9 +145,42 @@
   background: var(--weekend);
 }
 
+/* ISO week number: one outlined cell per week segment inside the month. */
+.cal-wk {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.cal-empty,
+.cal-cell {
+  grid-column: 2 / 4;
+}
+
 .cal-empty {
+  position: relative;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+/* Softer day-number outline on rows outside the month. */
+.cal-empty::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--num-w);
+  content: '';
+  border-right: 1px solid var(--border);
 }
 
 .cal-empty[data-weekend] {
@@ -142,7 +195,7 @@
   overflow: hidden;
   text-align: left;
   font: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text);
   background: var(--surface);
   border: 0;
@@ -163,30 +216,35 @@
   outline-offset: -2px;
 }
 
+/* Day number: its own narrow sub-column with a right outline. */
 .cal-num {
   position: absolute;
-  top: 50%;
-  left: 3px;
+  top: 0;
+  bottom: 0;
+  left: 0;
   z-index: 2;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  transform: translateY(-50%);
-  font-size: 10px;
-  line-height: 1.15rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--num-w);
+  padding: 0;
+  overflow: visible;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
   color: var(--text-muted);
-  border-radius: 9999px;
-}
-
-.cal-cell[data-cat] .cal-num {
-  color: var(--ev-text);
+  border-right: 1px solid var(--border-strong);
 }
 
 .cal-cell[data-today] .cal-num {
+  font-weight: 700;
   color: var(--accent-contrast);
   background: var(--accent);
 }
 
+/* Events live in the area right of the day-number sub-column. */
 .cal-ev {
   position: absolute;
   top: 0;
@@ -203,20 +261,18 @@
 }
 
 .cal-ev[data-lane='full'] {
-  left: 0;
+  left: var(--num-w);
   right: 0;
-  padding-left: 1.5rem;
 }
 
 .cal-ev[data-lane='0'] {
-  left: 0;
-  right: 50%;
-  padding-left: 1.5rem;
+  left: var(--num-w);
+  right: calc((100% - var(--num-w)) / 2);
   border-right: 1px solid var(--surface);
 }
 
 .cal-ev[data-lane='1'] {
-  left: 50%;
+  left: calc(var(--num-w) + (100% - var(--num-w)) / 2);
   right: 0;
 }
 
@@ -224,7 +280,10 @@
   bottom: -1px;
 }
 
-/* Rotated title running along a whole multi-day block (vertical label mode). */
+/*
+ * Per-event vertical name along a whole multi-day block. The outer box is a horizontal size
+ * container so cqi tracks the block width; the inner text is rotated.
+ */
 .cal-vlabel {
   position: absolute;
   top: calc(var(--head-h) + var(--seg-row) * var(--row-h));
@@ -235,26 +294,23 @@
   box-sizing: border-box;
   height: calc(var(--seg-len) * var(--row-h));
   padding: 2px 0;
-  writing-mode: vertical-rl;
-  font-size: 11px;
+  container-type: inline-size;
   color: var(--ev-text);
   pointer-events: none;
 }
 
 .cal-vlabel[data-lane='full'] {
-  left: 0;
+  left: var(--lead);
   right: 0;
-  padding-left: 1.5rem;
 }
 
 .cal-vlabel[data-lane='0'] {
-  left: 0;
-  right: 50%;
-  padding-left: 1.5rem;
+  left: var(--lead);
+  right: calc((100% - var(--lead)) / 2);
 }
 
 .cal-vlabel[data-lane='1'] {
-  left: 50%;
+  left: calc(var(--lead) + (100% - var(--lead)) / 2);
   right: 0;
 }
 
@@ -262,7 +318,13 @@
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
+  writing-mode: vertical-rl;
+  font-size: clamp(0.75rem, 26cqi, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+  text-align: center;
   text-overflow: ellipsis;
 }
 
@@ -272,7 +334,7 @@
   bottom: 50%;
   z-index: 2;
   padding: 1px 4px;
-  font-size: 9px;
+  font-size: 0.5625rem;
   line-height: 1;
   color: var(--text);
   background: var(--surface);
@@ -290,7 +352,7 @@
   justify-content: center;
   padding: 0;
   font: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text);
   cursor: pointer;
   background: transparent;

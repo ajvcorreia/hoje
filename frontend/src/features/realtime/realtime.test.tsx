@@ -266,6 +266,7 @@ describe('edit conflict notice', () => {
     repeat: 'none',
     repeat_until: null,
     counts_as_leave: false,
+    label_vertical: false,
     reminders: [],
     version: 1,
     created_at: '2026-10-01T00:00:00Z',

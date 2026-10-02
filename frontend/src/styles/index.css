@@ -74,3 +74,14 @@
     outline-offset: 2px;
   }
 }
+
+/* Global text size (Settings > Appearance): scales every rem-based size. */
+html[data-text-size='small'] {
+  font-size: 87.5%;
+}
+html[data-text-size='large'] {
+  font-size: 112.5%;
+}
+html[data-text-size='xlarge'] {
+  font-size: 125%;
+}
