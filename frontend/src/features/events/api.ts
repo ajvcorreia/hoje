@@ -1,4 +1,6 @@
 import {
+  keepPreviousData,
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -27,8 +29,8 @@ export const eventKey = (id: string) => ['event', id] as const;
  * `categoryIds` narrows server-side; leave it out to get everything (hidden categories
  * are filtered by the views).
  */
-export function useOccurrences(from: string, to: string, categoryIds?: readonly string[]) {
-  return useQuery({
+export function occurrencesQuery(from: string, to: string, categoryIds?: readonly string[]) {
+  return queryOptions({
     queryKey: [...OCCURRENCES_KEY, from, to, ...(categoryIds ?? [])] as const,
     queryFn: async () => {
       const result = unwrap(
@@ -40,6 +42,19 @@ export function useOccurrences(from: string, to: string, categoryIds?: readonly 
       );
       return result.occurrences;
     },
+  });
+}
+
+/** With `keepPrevious` the last range stays on screen while a new one loads (mobile paging). */
+export function useOccurrences(
+  from: string,
+  to: string,
+  categoryIds?: readonly string[],
+  options?: { keepPrevious?: boolean },
+) {
+  return useQuery({
+    ...occurrencesQuery(from, to, categoryIds),
+    placeholderData: options?.keepPrevious ? keepPreviousData : undefined,
   });
 }
 

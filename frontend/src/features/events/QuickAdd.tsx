@@ -9,6 +9,8 @@ interface QuickAddProps {
   date: string;
   /** Called after the event was sent (the list updates optimistically). */
   onCreated?(): void;
+  /** Input id; set it when two quick-adds for the same date can be on screen at once. */
+  inputId?: string;
 }
 
 /**
@@ -17,7 +19,8 @@ interface QuickAddProps {
  * The input carries `data-autofocus` so popovers and dialogs focus it immediately.
  * A failure is reported with a toast, since the host (a popover) usually closes right away.
  */
-export function QuickAdd({ date, onCreated }: QuickAddProps) {
+export function QuickAdd({ date, onCreated, inputId }: QuickAddProps) {
+  const id = inputId ?? `quick-add-${date}`;
   const [title, setTitle] = useState('');
   const create = useCreateEvent();
   const toast = useToast();
@@ -37,11 +40,11 @@ export function QuickAdd({ date, onCreated }: QuickAddProps) {
 
   return (
     <form onSubmit={submit}>
-      <label htmlFor={`quick-add-${date}`} className="sr-only">
+      <label htmlFor={id} className="sr-only">
         Add an event
       </label>
       <input
-        id={`quick-add-${date}`}
+        id={id}
         data-autofocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
