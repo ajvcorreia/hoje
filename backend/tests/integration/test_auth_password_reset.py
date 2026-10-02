@@ -117,9 +117,7 @@ async def test_a_new_request_invalidates_the_previous_token(registered, outbox_m
     assert (await registered.reset(second)).status_code == 204
 
 
-async def test_weak_new_password_is_rejected_and_keeps_the_token_usable(
-    registered, outbox_mailer
-):
+async def test_weak_new_password_is_rejected_and_keeps_the_token_usable(registered, outbox_mailer):
     token = await request_token(registered, outbox_mailer)
 
     weak = await registered.reset(token, "passwordpassword")
