@@ -1265,6 +1265,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1283,8 +1292,26 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1325,6 +1352,15 @@ export interface operations {
                     "application/json": components["schemas"]["RecoveryCodes"];
                 };
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1343,8 +1379,26 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1385,6 +1439,15 @@ export interface operations {
                     "application/json": components["schemas"]["RecoveryCodes"];
                 };
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1403,8 +1466,26 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1445,6 +1526,15 @@ export interface operations {
                     "application/json": components["schemas"]["TotpSetupResponse"];
                 };
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1463,8 +1553,26 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1505,7 +1613,7 @@ export interface operations {
                     "application/json": components["schemas"]["LoginResponse"];
                 };
             };
-            /** @description Not authenticated */
+            /** @description Not authenticated or invalid credentials */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1525,6 +1633,15 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1565,7 +1682,7 @@ export interface operations {
                     "application/json": components["schemas"]["LoginResponse"];
                 };
             };
-            /** @description Not authenticated */
+            /** @description Not authenticated or invalid credentials */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1585,6 +1702,15 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1677,6 +1803,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1697,6 +1832,15 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1764,6 +1908,15 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not implemented yet */
             501: {
                 headers: {
@@ -1795,6 +1948,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1815,6 +1977,15 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1864,8 +2035,17 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
-            /** @description CSRF or Origin check failed, or forbidden */
+            /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3555,8 +3735,35 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Not implemented yet */
             501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Upstream mail server rejected or failed the request */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Feature not available (for example SMTP not configured) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
