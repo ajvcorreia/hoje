@@ -205,3 +205,41 @@ test.describe('week numbers, text size and day-number column', () => {
       .toBeLessThanOrEqual(0);
   });
 });
+
+test.describe('fit columns to text', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  test('a long title widens its month column and is not truncated', async ({
+    page,
+    account,
+    api,
+  }) => {
+    void account;
+    const title = 'A very long event title that needs a lot more room than a column offers';
+    expect(title.length).toBeGreaterThan(60);
+    const date = dateInCurrentMonth(10);
+    await api.createEvent(title, date);
+
+    await page.goto('/settings');
+    await page.getByRole('checkbox', { name: 'Fit columns to text' }).check();
+    await page.goto('/');
+
+    const now = new Date();
+    const month = now.getMonth();
+    const other = (month + 6) % 12;
+    const width = (m: number) =>
+      page.locator(`[data-month="${m}"]`).evaluate((el) => el.getBoundingClientRect().width);
+    await expect(page.locator(`[data-date="${date}"] .cal-ev`)).toHaveText(title);
+    await expect.poll(() => width(month)).toBeGreaterThan((await width(other)) + 100);
+
+    const ev = page.locator(`[data-date="${date}"] .cal-ev`);
+    await expect
+      .poll(() => ev.evaluate((el) => el.scrollWidth - el.clientWidth))
+      .toBeLessThanOrEqual(0);
+
+    const scroll = page.locator('.cal-scroll');
+    await expect
+      .poll(() => scroll.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBeLessThanOrEqual(0);
+  });
+});
