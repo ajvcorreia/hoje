@@ -236,20 +236,15 @@ async def make_user(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def outbox_mailer(db_session: AsyncSession):
     """Provide a MemoryMailer instance for tests to inspect outgoing emails."""
+    from contextlib import asynccontextmanager
     from hoje.services.mailer import MemoryMailer
 
+    @asynccontextmanager
     async def _session_factory():
         """Session factory that yields the shared db_session."""
-        from contextlib import asynccontextmanager
+        yield db_session
 
-        @asynccontextmanager
-        async def _open():
-            yield db_session
-
-        return _open()
-
-    factory = _session_factory
-    mailer = MemoryMailer(session_factory=factory)
+    mailer = MemoryMailer(session_factory=_session_factory)
     return mailer
 
 
@@ -269,7 +264,9 @@ async def auth_client(db_session: AsyncSession, outbox_mailer):
 
     # Set insecure cookies for testing
     original_insecure = os.environ.get("HOJE_INSECURE_COOKIES")
+    original_public_url = os.environ.get("HOJE_PUBLIC_URL")
     os.environ["HOJE_INSECURE_COOKIES"] = "true"
+    os.environ["HOJE_PUBLIC_URL"] = "http://localhost:8080"
     get_settings.cache_clear()
 
     try:
@@ -304,9 +301,15 @@ async def auth_client(db_session: AsyncSession, outbox_mailer):
         # Clean up overrides
         app.dependency_overrides.clear()
     finally:
-        # Restore original setting
+        # Restore original settings
         if original_insecure is None:
             os.environ.pop("HOJE_INSECURE_COOKIES", None)
         else:
             os.environ["HOJE_INSECURE_COOKIES"] = original_insecure
+
+        if original_public_url is None:
+            os.environ.pop("HOJE_PUBLIC_URL", None)
+        else:
+            os.environ["HOJE_PUBLIC_URL"] = original_public_url
+
         get_settings.cache_clear()
