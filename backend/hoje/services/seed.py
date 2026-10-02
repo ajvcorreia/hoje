@@ -1,6 +1,7 @@
 """Per-user starter data: default categories and the bundled holiday calendars."""
 
 import json
+import uuid
 from datetime import date
 from functools import cache
 from importlib import resources
@@ -41,6 +42,29 @@ async def seed_user(db: AsyncSession, user: User) -> None:
     if default is not None:
         user.last_category_id = default.id
 
+    await seed_calendars(db, user)
+
+
+def bundled_holiday_rows(calendar_id: uuid.UUID, code: str) -> list[dict[str, Any]]:
+    """Insert-ready rows for the bundled holidays of ``code`` (empty for an unknown code)."""
+    if code not in CALENDAR_CODES:
+        return []
+    data = _load(f"{code.lower()}.json")
+    return [
+        {
+            "calendar_id": calendar_id,
+            "date": date.fromisoformat(h["date"]),
+            "name": h["name"],
+            "is_non_working": h["is_non_working"],
+            "source": "bundled",
+            "estimated": h["estimated"],
+        }
+        for h in data["holidays"]
+    ]
+
+
+async def seed_calendars(db: AsyncSession, user: User) -> None:
+    """Insert the (disabled) bundled PT/AE calendars for ``user``."""
     for code in CALENDAR_CODES:
         data = _load(f"{code.lower()}.json")
         calendar = HolidayCalendar(
@@ -52,17 +76,7 @@ async def seed_user(db: AsyncSession, user: User) -> None:
         )
         db.add(calendar)
         await db.flush()
-        rows = [
-            {
-                "calendar_id": calendar.id,
-                "date": date.fromisoformat(h["date"]),
-                "name": h["name"],
-                "is_non_working": h["is_non_working"],
-                "source": "bundled",
-                "estimated": h["estimated"],
-            }
-            for h in data["holidays"]
-        ]
+        rows = bundled_holiday_rows(calendar.id, code)
         if rows:
             await db.execute(insert(Holiday), rows)
     await db.flush()

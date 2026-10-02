@@ -20,6 +20,7 @@ from hoje.schemas import (
     SearchResult,
 )
 from hoje.services import events as service
+from hoje.services import leave
 from hoje.services.changes import VersionConflict
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -56,7 +57,7 @@ async def events_search(
 async def events_create(body: EventCreate, db: DbSession, user: CurrentUser) -> EventWithImpact:
     event = await service.create(db, user, body)
     await db.commit()
-    return EventWithImpact(event=event, leave_impact=[])
+    return EventWithImpact(event=event, leave_impact=await leave.event_impact(db, user, event))
 
 
 @router.get("/{event_id}", response_model=Event, summary="Get an event")
@@ -94,7 +95,7 @@ async def events_update(
             media_type=PROBLEM_MEDIA_TYPE,
         )
     await db.commit()
-    return EventWithImpact(event=event, leave_impact=[])
+    return EventWithImpact(event=event, leave_impact=await leave.event_impact(db, user, event))
 
 
 @router.delete("/{event_id}", status_code=204, summary="Soft-delete an event")

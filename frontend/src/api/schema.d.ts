@@ -373,7 +373,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * All holidays of a calendar in a year (enabled or not)
+         * @description ``year`` defaults to the current year in the user's time zone.
+         */
+        get: operations["holiday_calendar_holidays"];
         put?: never;
         /** Add a custom holiday */
         post: operations["holidays_create"];
@@ -392,7 +396,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset a calendar to the bundled holidays */
+        /** Reset a calendar to the bundled holidays (user-added holidays are removed) */
         post: operations["holiday_calendars_reset"];
         delete?: never;
         options?: never;
@@ -442,7 +446,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Leave balance for a year */
+        /**
+         * Leave balance for a year
+         * @description ``year`` defaults to the current year in the user's time zone.
+         */
         get: operations["leave_balance"];
         put?: never;
         post?: never;
@@ -459,7 +466,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get the yearly leave policy (zeros and version 0 when unset) */
+        get: operations["leave_policies_get"];
         /** Set the yearly leave policy */
         put: operations["leave_policies_upsert"];
         post?: never;
@@ -933,6 +941,11 @@ export interface components {
             /** Enabled */
             enabled: boolean;
             /**
+             * Holiday Count
+             * @default 0
+             */
+            holiday_count: number;
+            /**
              * Id
              * Format: uuid
              */
@@ -1033,6 +1046,28 @@ export interface components {
             version: number;
             /** Year */
             year: number;
+        };
+        /**
+         * LeavePolicyConflict
+         * @description 409 body for a stale ``version``: a problem document plus the current policy.
+         */
+        LeavePolicyConflict: {
+            current: components["schemas"]["LeavePolicy"];
+            /** Detail */
+            detail?: string | null;
+            /** Errors */
+            errors?: components["schemas"]["ProblemError"][] | null;
+            /** Instance */
+            instance?: string | null;
+            /** Status */
+            status: number;
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @default about:blank
+             */
+            type: string;
         };
         /** LeavePolicyUpdate */
         LeavePolicyUpdate: {
@@ -3037,6 +3072,66 @@ export interface operations {
             };
         };
     };
+    holiday_calendar_holidays: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path: {
+                calendar_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holiday"][];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     holidays_create: {
         parameters: {
             query?: never;
@@ -3336,8 +3431,8 @@ export interface operations {
     };
     leave_balance: {
         parameters: {
-            query: {
-                year: number;
+            query?: {
+                year?: number | null;
             };
             header?: never;
             path?: never;
@@ -3352,6 +3447,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeaveBalance"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    leave_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeavePolicy"];
                 };
             };
             /** @description Not authenticated */
@@ -3432,6 +3585,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Stale version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeavePolicyConflict"];
                 };
             };
             /** @description Validation error */

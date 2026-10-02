@@ -50,6 +50,7 @@ from hoje.schemas.leave import (
     LeaveBooking,
     LeaveImpact,
     LeavePolicy,
+    LeavePolicyConflict,
     LeavePolicyUpdate,
     LeavePreviewRequest,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "LeaveBooking",
     "LeaveImpact",
     "LeavePolicy",
+    "LeavePolicyConflict",
     "LeavePolicyUpdate",
     "LeavePreviewRequest",
     "LoginRequest",

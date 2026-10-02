@@ -7,6 +7,8 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from hoje.schemas.common import Problem
+
 Days = Annotated[Decimal, Field(ge=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
 Repeat = Literal["none", "monthly", "yearly"]
 
@@ -67,3 +69,9 @@ class LeavePolicy(BaseModel):
     allowance_days: float
     carried_over_days: float
     version: int
+
+
+class LeavePolicyConflict(Problem):
+    """409 body for a stale ``version``: a problem document plus the current policy."""
+
+    current: LeavePolicy
