@@ -39,23 +39,22 @@ async def register_user(auth_client, email: str, password: str):
 async def test_forgot_returns_202_for_existing_email(auth_client):
     """Forgot password for existing email: 202."""
     await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
+    auth_client.cookies.clear()
 
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 202
 
 
 async def test_forgot_returns_202_for_unknown_email(auth_client):
     """Forgot password for unknown email: also 202 (timing-safe)."""
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "unknown@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 202
 
@@ -63,13 +62,13 @@ async def test_forgot_returns_202_for_unknown_email(auth_client):
 async def test_forgot_only_sends_email_for_existing_email(auth_client, outbox_mailer):
     """Email is only sent for existing accounts, not for unknown emails."""
     await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
+    auth_client.cookies.clear()
 
     # Request reset for unknown email
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "unknown@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 202
 
@@ -77,11 +76,10 @@ async def test_forgot_only_sends_email_for_existing_email(auth_client, outbox_ma
     assert len(outbox_mailer.outbox) == 0
 
     # Request reset for existing email
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 202
 
@@ -93,12 +91,12 @@ async def test_forgot_only_sends_email_for_existing_email(auth_client, outbox_ma
 async def test_reset_email_contains_link_with_token(auth_client, outbox_mailer):
     """Reset email contains a link with /reset#token=..."""
     await register_user(auth_client, "alice@example.com", TEST_PASSWORD)
+    auth_client.cookies.clear()
 
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Extract token from email
@@ -119,11 +117,10 @@ async def test_reset_with_valid_token(auth_client, outbox_mailer):
     auth_client.cookies.clear()
 
     # Request reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Extract token from email
@@ -134,29 +131,26 @@ async def test_reset_with_valid_token(auth_client, outbox_mailer):
     reset_token = match.group(1)
 
     # Reset password
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": reset_token, "new_password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 204
 
     # Old password should not work
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/login",
         json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 401
 
     # New password should work
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/login",
         json={"email": "alice@example.com", "password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 200
 
@@ -170,11 +164,10 @@ async def test_reset_revokes_all_sessions(auth_client, outbox_mailer):
     assert resp.status_code == 200
 
     # Request reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Extract token
@@ -185,11 +178,10 @@ async def test_reset_revokes_all_sessions(auth_client, outbox_mailer):
     reset_token = match.group(1)
 
     # Reset password
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": reset_token, "new_password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 204
 
@@ -204,11 +196,10 @@ async def test_reset_token_cannot_be_reused(auth_client, outbox_mailer):
     auth_client.cookies.clear()
 
     # Request reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Extract token
@@ -219,20 +210,18 @@ async def test_reset_token_cannot_be_reused(auth_client, outbox_mailer):
     reset_token = match.group(1)
 
     # First reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": reset_token, "new_password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 204
 
     # Second reset with same token
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": reset_token, "new_password": "another password"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 400
 
@@ -246,11 +235,10 @@ async def test_reset_token_expires_30_minutes(auth_client, outbox_mailer, monkey
     auth_client.cookies.clear()
 
     # Request reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Extract token
@@ -264,11 +252,10 @@ async def test_reset_token_expires_30_minutes(auth_client, outbox_mailer, monkey
     state["now"] += timedelta(minutes=30, seconds=1)
 
     # Reset should fail
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": reset_token, "new_password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 400
 
@@ -279,11 +266,10 @@ async def test_second_reset_invalidates_first_token(auth_client, outbox_mailer):
     auth_client.cookies.clear()
 
     # First reset request
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     email_body_1 = outbox_mailer.outbox[0].html
@@ -293,19 +279,17 @@ async def test_second_reset_invalidates_first_token(auth_client, outbox_mailer):
     first_token = match.group(1)
 
     # Second reset request
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # First token should now be invalid
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/reset",
         json={"token": first_token, "new_password": NEW_PASSWORD},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 400
 
@@ -320,20 +304,18 @@ async def test_forgot_throttle_6_in_15_minutes(auth_client, monkeypatch):
 
     # 5 requests succeed
     for i in range(5):
-        token = await csrf(auth_client)
         resp = await auth_client.post(
             "/api/v1/auth/password/forgot",
             json={"email": "alice@example.com"},
-            headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+            headers={"Origin": "http://localhost:8080"},
         )
         assert resp.status_code == 202
 
     # 6th request is throttled
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
     assert resp.status_code == 429
 
@@ -346,11 +328,10 @@ async def test_notification_log_has_password_reset_entry(auth_client, db_session
     auth_client.cookies.clear()
 
     # Request reset
-    token = await csrf(auth_client)
     resp = await auth_client.post(
         "/api/v1/auth/password/forgot",
         json={"email": "alice@example.com"},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers={"Origin": "http://localhost:8080"},
     )
 
     # Check notification log
