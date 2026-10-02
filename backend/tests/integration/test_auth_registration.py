@@ -1,120 +1,99 @@
-"""Registration tests: first user succeeds, closure, password validation, Origins."""
+"""Registration: first user, closure, duplicates, password policy and Origin checks."""
 
 import pytest
+from sqlalchemy import func, select
+
+from hoje.models import Category, HolidayCalendar, User
+
+from ._auth import EMAIL, PASSWORD, TEST_ORIGIN
 
 pytestmark = pytest.mark.db
 
 
-TEST_PASSWORD = "correct horse battery staple 42"
+async def test_first_registration_logs_the_user_in(api):
+    resp = await api.register()
 
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["email"] == EMAIL
+    assert body["timezone"] == "UTC"
+    assert body["weekend_days"] == [6, 7]
+    assert body["totp_enabled"] is False
 
-async def csrf(auth_client) -> str | None:
-    """Extract CSRF token from /auth/state, or None if not authenticated."""
-    resp = await auth_client.get("/api/v1/auth/state")
-    assert resp.status_code == 200
-    data = resp.json()
-    return data.get("csrf_token")
-
-
-async def register(auth_client, email: str, password: str) -> tuple[int, dict]:
-    """Register and return (status_code, response_json)."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
-
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password},
-        headers=headers,
-    )
-    return resp.status_code, resp.json() if resp.text else {}
-
-
-async def test_first_registration_succeeds(auth_client):
-    """First registration: 201, logged in, auth/state.authenticated=true, seed data created."""
-    status, user = await register(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 201
-    assert user["email"] == "alice@example.com"
-    assert user["timezone"] == "UTC"
-    assert user["weekend_days"] == [6, 7]
-
-    # Should be logged in now
-    resp = await auth_client.get("/api/v1/auth/state")
-    assert resp.status_code == 200
-    state = resp.json()
+    state = await api.state()
     assert state["authenticated"] is True
     assert state["stage"] == "active"
-    assert state["user"]["email"] == "alice@example.com"
-
-    # Seed data should be created (7 categories, 2 holiday calendars disabled)
-    resp = await auth_client.get("/api/v1/categories")
-    assert resp.status_code == 200
-    categories = resp.json()
-    assert len(categories) == 7, "Should have 7 seed categories"
-
-    resp = await auth_client.get("/api/v1/holiday-calendars")
-    assert resp.status_code == 200
-    calendars = resp.json()
-    assert len(calendars) == 2, "Should have 2 holiday calendars"
-    assert all(not cal["enabled"] for cal in calendars), "Both calendars should be disabled"
+    assert state["user"]["email"] == EMAIL
+    assert state["csrf_token"]
 
 
-async def test_second_registration_fails_when_closed(auth_client):
-    """Second registration fails with 403 when registration is closed (default)."""
-    # Register first user
-    status, _ = await register(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 201
+async def test_registration_seeds_categories_and_disabled_holiday_calendars(api, db_session):
+    await api.register_ok()
 
-    # Try to register second user
-    status, body = await register(auth_client, "bob@example.com", TEST_PASSWORD)
-    assert status == 403
-    assert "closed" in body.get("detail", "").lower()
-
-
-async def test_duplicate_email_rejected(auth_client):
-    """Duplicate email: 409."""
-    status, _ = await register(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 201
-
-    status, body = await register(auth_client, "alice@example.com", TEST_PASSWORD)
-    assert status == 409
-    assert "already exists" in body.get("detail", "").lower()
-
-
-async def test_weak_password_rejected(auth_client):
-    """Weak password: 422 with feedback in detail."""
-    status, body = await register(auth_client, "alice@example.com", "weak")
-    assert status == 422
-    assert "detail" in body, "Should have password feedback"
-
-
-async def test_registration_without_origin_rejected(auth_client):
-    """POST without Origin header: 403."""
-    headers = {}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
-
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers=headers,  # no Origin
+    user_id = (await db_session.execute(select(User.id).where(User.email == EMAIL))).scalar_one()
+    category_count = await db_session.scalar(
+        select(func.count()).select_from(Category).where(Category.user_id == user_id)
     )
-    assert resp.status_code == 403
-    assert "origin" in resp.json().get("detail", "").lower()
-
-
-async def test_registration_with_wrong_origin_rejected(auth_client):
-    """POST with wrong Origin: 403."""
-    headers = {"Origin": "http://evil.com"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
-
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": "alice@example.com", "password": TEST_PASSWORD},
-        headers=headers,
+    result = await db_session.execute(
+        select(HolidayCalendar).where(HolidayCalendar.user_id == user_id)
     )
+    calendars = result.scalars().all()
+
+    assert category_count == 7
+    assert sorted(c.code for c in calendars) == ["AE", "PT"]
+    assert not any(c.enabled for c in calendars)
+
+
+async def test_registration_is_closed_after_the_first_user(api):
+    await api.register_ok()
+    api.client.cookies.clear()
+
+    resp = await api.register("bob@example.com")
+
     assert resp.status_code == 403
+    assert "closed" in resp.json()["detail"].lower()
+    assert (await api.state())["registration_open"] is False
+
+
+@pytest.mark.usefixtures("open_registration")
+async def test_duplicate_email_is_rejected_when_registration_is_open(api):
+    await api.register_ok()
+    api.client.cookies.clear()
+
+    resp = await api.register()
+
+    assert resp.status_code == 409
+    assert "already exists" in resp.json()["detail"].lower()
+
+
+@pytest.mark.parametrize("password", ["short", "passwordpassword"])
+async def test_weak_password_is_rejected(api, password):
+    resp = await api.register(password=password)
+
+    assert resp.status_code == 422
+    assert (await api.state())["authenticated"] is False
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"Origin": "http://evil.example.com"}, {"Origin": "null"}],
+    ids=["no-origin", "foreign-origin", "null-origin"],
+)
+async def test_registration_requires_the_public_origin(api, db_session, headers):
+    resp = await api.client.post(
+        "/api/v1/auth/register", json={"email": EMAIL, "password": PASSWORD}, headers=headers
+    )
+
+    assert resp.status_code == 403
+    assert "origin" in resp.json()["detail"].lower()
+    assert await db_session.scalar(select(func.count()).select_from(User)) == 0
+
+
+async def test_registration_accepts_a_same_origin_referer(api):
+    resp = await api.client.post(
+        "/api/v1/auth/register",
+        json={"email": EMAIL, "password": PASSWORD},
+        headers={"Referer": f"{TEST_ORIGIN}/register"},
+    )
+
+    assert resp.status_code == 201

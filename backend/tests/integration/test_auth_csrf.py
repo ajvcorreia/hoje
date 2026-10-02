@@ -1,138 +1,114 @@
-"""CSRF protection tests: token validation, Origin checks."""
+"""CSRF protection: Origin/Referer check on unsafe methods, token required with a session."""
 
 import pytest
 
+from ._auth import TEST_ORIGIN
+
 pytestmark = pytest.mark.db
 
-
-TEST_PASSWORD = "correct horse battery staple 42"
-
-
-async def csrf(auth_client) -> str | None:
-    """Extract CSRF token from /auth/state, or None if not authenticated."""
-    resp = await auth_client.get("/api/v1/auth/state")
-    data = resp.json()
-    return data.get("csrf_token")
+LOGOUT = "/api/v1/auth/logout"
 
 
-async def register_and_login(auth_client, email: str, password: str):
-    """Register and login a user."""
-    headers = {"Origin": "http://localhost:8080"}
-    token = await csrf(auth_client)
-    if token:
-        headers["X-CSRF-Token"] = token
+async def test_session_request_without_csrf_token_is_rejected(api):
+    await api.register_ok()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password},
-        headers=headers,
+    resp = await api.client.post(LOGOUT, headers={"Origin": TEST_ORIGIN})
+
+    assert resp.status_code == 403
+    assert (await api.state())["authenticated"] is True  # nothing was logged out
+
+
+async def test_session_request_with_wrong_csrf_token_is_rejected(api):
+    await api.register_ok()
+
+    resp = await api.client.post(
+        LOGOUT, headers={"Origin": TEST_ORIGIN, "X-CSRF-Token": "not-the-token"}
     )
-    assert resp.status_code == 201
+
+    assert resp.status_code == 403
+    assert (await api.state())["authenticated"] is True
 
 
-async def test_missing_csrf_token_on_authenticated_post(auth_client):
-    """POST to authenticated endpoint without CSRF token: 403."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_csrf_token_of_an_earlier_session_is_rejected(api):
+    await api.register_ok()
+    old_token = await api.csrf_token()
+    api.client.cookies.clear()
+    assert (await api.login()).status_code == 200  # new session, new CSRF secret
 
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080"},
-        # no X-CSRF-Token
+    resp = await api.client.post(
+        LOGOUT, headers={"Origin": TEST_ORIGIN, "X-CSRF-Token": old_token}
     )
+
     assert resp.status_code == 403
 
 
-async def test_wrong_csrf_token_on_authenticated_post(auth_client):
-    """POST with wrong CSRF token: 403."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+async def test_valid_origin_and_token_are_accepted(api):
+    await api.register_ok()
 
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={
-            "Origin": "http://localhost:8080",
-            "X-CSRF-Token": "wrong-token",
-        },
-    )
-    assert resp.status_code == 403
+    resp = await api.logout()
 
-
-async def test_csrf_token_from_different_session(auth_client):
-    """CSRF token from another session: 403."""
-    # Register and get token
-    token_1 = await csrf(auth_client)
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-
-    # Logout and login as a different user with a different token
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={
-            "Origin": "http://localhost:8080",
-            "X-CSRF-Token": token_1,  # old token
-        },
-    )
-    # This should fail because token_1 is from the pre-auth session
-    assert resp.status_code == 403
-
-
-async def test_missing_origin_on_authenticated_post(auth_client):
-    """POST without Origin header: 403."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={"X-CSRF-Token": token},
-        # no Origin
-    )
-    assert resp.status_code == 403
-
-
-async def test_wrong_origin_on_authenticated_post(auth_client):
-    """POST with wrong Origin: 403."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={
-            "Origin": "http://evil.com",
-            "X-CSRF-Token": token,
-        },
-    )
-    assert resp.status_code == 403
-
-
-async def test_valid_referer_allows_request_without_origin(auth_client):
-    """Missing Origin but valid same-origin Referer: allowed."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
-    token = await csrf(auth_client)
-
-    resp = await auth_client.post(
-        "/api/v1/auth/logout",
-        headers={
-            "Referer": "http://localhost:8080/login",
-            "X-CSRF-Token": token,
-        },
-    )
     assert resp.status_code == 204
 
 
-async def test_get_requests_no_csrf_required(auth_client):
-    """GET requests don't need CSRF token."""
-    await register_and_login(auth_client, "alice@example.com", TEST_PASSWORD)
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"Origin": "http://evil.example.com"}, {"Referer": "http://evil.example.com/x"}],
+    ids=["no-origin", "foreign-origin", "foreign-referer"],
+)
+async def test_valid_token_does_not_replace_the_origin_check(api, headers):
+    await api.register_ok()
+    token = await api.csrf_token()
 
-    # GET without any Origin or CSRF token should still work
-    resp = await auth_client.get("/api/v1/me")
+    resp = await api.client.post(LOGOUT, headers={**headers, "X-CSRF-Token": token})
+
+    assert resp.status_code == 403
+    assert "origin" in resp.json()["detail"].lower()
+
+
+async def test_same_origin_referer_is_accepted_when_origin_is_absent(api):
+    await api.register_ok()
+    token = await api.csrf_token()
+
+    resp = await api.client.post(
+        LOGOUT, headers={"Referer": f"{TEST_ORIGIN}/settings", "X-CSRF-Token": token}
+    )
+
+    assert resp.status_code == 204
+
+
+async def test_a_foreign_origin_wins_over_a_same_origin_referer(api):
+    await api.register_ok()
+    token = await api.csrf_token()
+
+    resp = await api.client.post(
+        LOGOUT,
+        headers={
+            "Origin": "http://evil.example.com",
+            "Referer": f"{TEST_ORIGIN}/settings",
+            "X-CSRF-Token": token,
+        },
+    )
+
+    assert resp.status_code == 403
+
+
+async def test_anonymous_post_needs_only_the_origin(api):
+    resp = await api.client.post(
+        "/api/v1/auth/login",
+        json={"email": "nobody@example.com", "password": "whatever"},
+        headers={"Origin": TEST_ORIGIN},
+    )
+
+    assert resp.status_code == 401  # reached the login handler, not stopped by CSRF
+
+
+async def test_get_needs_no_csrf_token_or_origin(api):
+    await api.register_ok()
+
+    resp = await api.client.get("/api/v1/me")
+
     assert resp.status_code == 200
 
 
-async def test_protected_endpoint_401_when_anonymous(auth_client):
-    """Protected endpoint (e.g. /me) requires authentication."""
-    resp = await auth_client.get("/api/v1/me")
-    assert resp.status_code == 401
-
-
-async def test_categories_endpoint_401_when_anonymous(auth_client):
-    """GET /categories also requires authentication."""
-    resp = await auth_client.get("/api/v1/categories")
-    assert resp.status_code == 401
+async def test_protected_endpoint_requires_authentication(api):
+    assert (await api.client.get("/api/v1/me")).status_code == 401
