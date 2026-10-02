@@ -12,7 +12,7 @@ from hoje.schemas.leave import LeaveImpact
 Title = Annotated[str, Field(min_length=1, max_length=200)]
 Notes = Annotated[str, Field(max_length=5000)]
 Repeat = Literal["none", "monthly", "yearly"]
-MAX_REMINDERS = 10
+MAX_REMINDERS = 5
 
 
 class ReminderIn(BaseModel):

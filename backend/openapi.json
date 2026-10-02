@@ -124,6 +124,70 @@
         "title": "Category",
         "type": "object"
       },
+      "CategoryConflict": {
+        "description": "409 body for a stale ``version``: a problem document plus the current category.",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProblemError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "current"
+        ],
+        "title": "CategoryConflict",
+        "type": "object"
+      },
       "CategoryCreate": {
         "properties": {
           "colour": {
@@ -570,7 +634,7 @@
             "items": {
               "$ref": "#/components/schemas/ReminderIn"
             },
-            "maxItems": 10,
+            "maxItems": 5,
             "title": "Reminders",
             "type": "array"
           },
@@ -708,7 +772,7 @@
                 "items": {
                   "$ref": "#/components/schemas/ReminderIn"
                 },
-                "maxItems": 10,
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -2931,6 +2995,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3089,6 +3163,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3170,6 +3254,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryConflict"
+                }
+              }
+            },
+            "description": "Version mismatch or name taken"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3191,7 +3285,7 @@
             "description": "Not implemented yet"
           }
         },
-        "summary": "Update a category",
+        "summary": "Update a category (version required)",
         "tags": [
           "categories"
         ]
@@ -3764,6 +3858,16 @@
               }
             },
             "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
           },
           "422": {
             "content": {
