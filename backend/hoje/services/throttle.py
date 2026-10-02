@@ -31,6 +31,7 @@ BASE_LOCK_SECONDS = 60
 MAX_LOCK_SECONDS = 3600
 MAX_REQUESTS_PER_WINDOW = 5
 STALE_ROW_AGE = timedelta(days=1)
+ESCALATION_MEMORY = timedelta(days=1)
 
 TOO_MANY = "Too many attempts. Try again later."
 
@@ -50,8 +51,15 @@ def too_many(retry_after: int) -> HTTPException:
 
 
 async def _bump(db: AsyncSession, key: str, now: datetime) -> tuple[int, datetime]:
-    """Count one event on ``key`` (resetting a stale window). Returns (count, window_start)."""
-    stale = AuthThrottle.window_start < now - WINDOW
+    """Count one event on ``key`` (resetting a stale window). Returns (count, window_start).
+
+    A key that was locked within ``ESCALATION_MEMORY`` never starts a fresh window, so repeated
+    lockouts keep doubling up to ``MAX_LOCK_SECONDS`` instead of resetting every 15 minutes.
+    """
+    recently_locked = AuthThrottle.locked_until.is_not(None) & (
+        AuthThrottle.locked_until > now - ESCALATION_MEMORY
+    )
+    stale = (AuthThrottle.window_start < now - WINDOW) & ~recently_locked
     stmt = (
         pg_insert(AuthThrottle)
         .values(key=key, failures=1, window_start=now, locked_until=None, updated_at=now)
