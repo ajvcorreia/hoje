@@ -18,7 +18,13 @@ from hoje.schemas.auth import (
     TotpSetupRequest,
     TotpSetupResponse,
 )
-from hoje.schemas.categories import Category, CategoryCreate, CategoryOrder, CategoryUpdate
+from hoje.schemas.categories import (
+    Category,
+    CategoryConflict,
+    CategoryCreate,
+    CategoryOrder,
+    CategoryUpdate,
+)
 from hoje.schemas.common import HealthStatus, Problem, ProblemError, RealtimeChange
 from hoje.schemas.events import (
     Event,
@@ -51,6 +57,7 @@ from hoje.schemas.leave import (
 __all__ = [
     "AuthState",
     "Category",
+    "CategoryConflict",
     "CategoryCreate",
     "CategoryOrder",
     "CategoryUpdate",
