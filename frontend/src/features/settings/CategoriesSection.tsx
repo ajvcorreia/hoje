@@ -156,8 +156,8 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
             onChange={(e) => update.mutate({ category, patch: { is_leave: e.target.checked } })}
             className="size-4"
           />
-          Counts as vacation
-          <span className="sr-only"> for {category.name}</span>
+          Counts as vacation{' '}
+          <span className="sr-only">for {category.name}</span>
         </label>
         <label className="flex min-h-9 items-center gap-2 text-sm">
           <input
@@ -166,8 +166,8 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
             onChange={(e) => update.mutate({ category, patch: { hidden: e.target.checked } })}
             className="size-4"
           />
-          Hidden
-          <span className="sr-only"> for {category.name}</span>
+          Hidden{' '}
+          <span className="sr-only">for {category.name}</span>
         </label>
         <button
           type="button"

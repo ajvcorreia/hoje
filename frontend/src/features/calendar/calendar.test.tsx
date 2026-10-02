@@ -303,13 +303,16 @@ describe('event editor', () => {
 
 describe('category chips', () => {
   it('toggle the hidden flag through PATCH /categories', async () => {
+    // Stateful like the real server: the refetch after the mutation must see the change.
+    let categories = [...CATEGORIES];
     const api = mockApi({
       ...baseRoutes(),
-      'PATCH /api/v1/categories/aaaaaaaa-0000-0000-0000-000000000002': (call) => ({
-        ...CATEGORIES[1],
-        ...(call.body as object),
-        version: 4,
-      }),
+      'GET /api/v1/categories': () => categories,
+      'PATCH /api/v1/categories/aaaaaaaa-0000-0000-0000-000000000002': (call) => {
+        const updated = { ...CATEGORIES[1]!, ...(call.body as object), version: 4 };
+        categories = categories.map((c) => (c.id === updated.id ? updated : c));
+        return updated;
+      },
     });
     renderApp();
     const chips = await screen.findByRole('group', { hidden: true, name: 'Show categories' });
@@ -324,7 +327,7 @@ describe('category chips', () => {
     expect(
       api.callsTo('PATCH', '/api/v1/categories/aaaaaaaa-0000-0000-0000-000000000002')[0]?.body,
     ).toEqual({ hidden: true, version: 3 });
-    expect(home).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(home).toHaveAttribute('aria-pressed', 'false'));
   });
 
   it('hides events of a hidden category', async () => {
