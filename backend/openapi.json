@@ -1839,6 +1839,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1859,6 +1869,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1868,6 +1888,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -1910,6 +1940,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1930,6 +1970,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1939,6 +1989,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -1981,6 +2041,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2001,6 +2071,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -2010,6 +2090,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2052,6 +2142,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2072,6 +2172,16 @@
             },
             "description": "CSRF or Origin check failed, or forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -2081,6 +2191,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2131,7 +2251,7 @@
                 }
               }
             },
-            "description": "Not authenticated"
+            "description": "Not authenticated or invalid credentials"
           },
           "403": {
             "content": {
@@ -2152,6 +2272,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2202,7 +2332,7 @@
                 }
               }
             },
-            "description": "Not authenticated"
+            "description": "Not authenticated or invalid credentials"
           },
           "403": {
             "content": {
@@ -2223,6 +2353,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2312,6 +2452,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2341,6 +2491,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2411,6 +2571,16 @@
             },
             "description": "Validation error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
           "501": {
             "content": {
               "application/json": {
@@ -2445,6 +2615,16 @@
           "204": {
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2474,6 +2654,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {
@@ -2534,7 +2724,17 @@
                 }
               }
             },
-            "description": "CSRF or Origin check failed, or forbidden"
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict with the current state"
           },
           "422": {
             "content": {
@@ -4703,6 +4903,16 @@
             },
             "description": "Validation error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
           "501": {
             "content": {
               "application/json": {
@@ -4712,6 +4922,26 @@
               }
             },
             "description": "Not implemented yet"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Upstream mail server rejected or failed the request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Feature not available (for example SMTP not configured)"
           }
         },
         "summary": "Send a test email",
