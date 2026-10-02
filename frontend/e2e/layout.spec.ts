@@ -71,6 +71,34 @@ test.describe('desktop month grid', () => {
     });
     await expect.poll(() => scroll.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
   });
+
+  test('unused rows are plain grey and each month has its own outline', async ({ page }) => {
+    const year = new Date().getFullYear();
+    // February always has unused rows before and after it.
+    const feb = page.locator('[data-month="1"]');
+    const empty = feb.locator('.cal-empty').first();
+    const emptyStyle = await empty.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { bottom: s.borderBottomWidth, right: s.borderRightWidth };
+    });
+    expect(emptyStyle).toEqual({ bottom: '0px', right: '0px' });
+    expect(await feb.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('0px');
+
+    const outline = feb.locator('.cal-month-outline');
+    const box = await outline.boundingBox();
+    const first = await page.locator(`[data-date="${year}-02-01"]`).boundingBox();
+    const lastDay = new Date(year, 2, 0).getDate();
+    const last = await page.locator(`[data-date="${year}-02-${lastDay}"]`).boundingBox();
+    const week = await feb.locator('.cal-wk').first().boundingBox();
+    expect(box && first && last && week).toBeTruthy();
+    if (!box || !first || !last || !week) return;
+    // Spans exactly the month's days, and includes the week-number column on the left.
+    expect(Math.abs(box.y - first.y)).toBeLessThan(1.5);
+    expect(Math.abs(box.y + box.height - (last.y + last.height))).toBeLessThan(1.5);
+    expect(box.x).toBeLessThanOrEqual(week.x + 0.5);
+    expect(Math.abs(box.x + box.width - (first.x + first.width))).toBeLessThan(1.5);
+    expect(await outline.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('2px');
+  });
 });
 
 /** ISO 8601 week number of a local date. */

@@ -214,10 +214,12 @@ const MonthColumn = memo(function MonthColumn({
       className="cal-col"
       data-month={month}
       data-weeks={weeks || undefined}
+      style={{ '--m-start': offset, '--m-len': dim } as CSSProperties}
     >
       <div className="cal-head" data-current={isCurrentMonth || undefined}>
         {monthName(month)}
       </div>
+      <span className="cal-month-outline" aria-hidden="true" />
       {weekCells}
       {cells}
       {segments.map((seg) => (

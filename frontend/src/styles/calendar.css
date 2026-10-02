@@ -85,13 +85,28 @@
   --num-w: 1.75rem;
   --wk-w: 0px;
   --lead: calc(var(--wk-w) + var(--num-w));
+  --gap: 3px;
   position: relative;
   display: grid;
   grid-template-columns: var(--wk-w) var(--num-w) minmax(0, 1fr);
   grid-template-rows: var(--head-h) repeat(37, var(--row-h));
   min-width: 0;
-  background: var(--bg);
-  border-left: 1px solid var(--border-strong);
+  /* Unused parts of the month are plain light grey: no row or column dividers. */
+  padding-inline: var(--gap);
+  background: var(--surface-muted);
+}
+
+/* Outline around the month's days, including the week and day-number columns. */
+.cal-month-outline {
+  position: absolute;
+  top: calc(var(--head-h) + var(--m-start) * var(--row-h));
+  right: var(--gap);
+  left: var(--gap);
+  z-index: 3;
+  box-sizing: border-box;
+  height: calc(var(--m-len) * var(--row-h));
+  pointer-events: none;
+  border: 2px solid var(--month-outline);
 }
 
 .cal-col[data-weeks] {
@@ -161,30 +176,14 @@
   border-bottom: 1px solid var(--border-strong);
 }
 
-.cal-empty,
 .cal-cell {
   grid-column: 2 / 4;
 }
 
+/* Rows outside the month span all three tracks and show only the column's grey. */
 .cal-empty {
-  position: relative;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-}
-
-/* Softer day-number outline on rows outside the month. */
-.cal-empty::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: var(--num-w);
-  content: '';
-  border-right: 1px solid var(--border);
-}
-
-.cal-empty[data-weekend] {
-  background: color-mix(in srgb, var(--weekend) 55%, var(--bg));
+  grid-column: 1 / -1;
+  background: transparent;
 }
 
 .cal-cell {
@@ -299,19 +298,21 @@
   pointer-events: none;
 }
 
+/* Offsets are from the column's padding box, so add the side gap; the event area is
+   100% - 2 * gap - lead wide. */
 .cal-vlabel[data-lane='full'] {
-  left: var(--lead);
-  right: 0;
+  left: calc(var(--gap) + var(--lead));
+  right: var(--gap);
 }
 
 .cal-vlabel[data-lane='0'] {
-  left: var(--lead);
-  right: calc((100% - var(--lead)) / 2);
+  left: calc(var(--gap) + var(--lead));
+  right: calc(var(--gap) + (100% - 2 * var(--gap) - var(--lead)) / 2);
 }
 
 .cal-vlabel[data-lane='1'] {
-  left: calc(var(--lead) + (100% - var(--lead)) / 2);
-  right: 0;
+  left: calc(var(--gap) + var(--lead) + (100% - 2 * var(--gap) - var(--lead)) / 2);
+  right: var(--gap);
 }
 
 .cal-vlabel-text {
