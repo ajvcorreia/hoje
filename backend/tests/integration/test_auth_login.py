@@ -206,5 +206,3 @@ async def test_absolute_timeout_30_days(auth_client, monkeypatch):
     # Now advance past absolute timeout (30 days)
     resp = await auth_client.get("/api/v1/me")
     assert resp.status_code == 401
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM

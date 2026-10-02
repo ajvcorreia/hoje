@@ -105,5 +105,3 @@ async def test_registration_with_wrong_origin_rejected(auth_client):
         headers={"Origin": "http://evil.com", "X-CSRF-Token": token},
     )
     assert resp.status_code == 403
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM

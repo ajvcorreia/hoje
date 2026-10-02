@@ -131,5 +131,3 @@ async def test_categories_endpoint_401_when_anonymous(auth_client):
     """GET /categories also requires authentication."""
     resp = await auth_client.get("/api/v1/categories")
     assert resp.status_code == 401
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM

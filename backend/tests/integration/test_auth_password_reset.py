@@ -360,5 +360,3 @@ async def test_notification_log_has_password_reset_entry(auth_client, db_session
     assert log.status == "sent"
     # Token should NOT be in any field
     assert "token" not in (log.message_id or "").lower()
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM

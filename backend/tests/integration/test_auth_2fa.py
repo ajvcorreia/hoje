@@ -706,5 +706,3 @@ async def test_mfa_pending_expires_10_minutes(auth_client, monkeypatch):
         headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
     )
     assert resp.status_code == 401
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM

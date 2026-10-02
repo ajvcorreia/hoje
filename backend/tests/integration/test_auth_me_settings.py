@@ -136,5 +136,3 @@ async def test_settings_email_test_503_when_unconfigured(auth_client):
     # Since SMTP is not configured, should get 503
     # (or 202 if the MemoryMailer is used, which is always configured)
     assert resp.status_code in (202, 503)
-
-Claude-Session: https://claude.ai/code/session_012WZvq7SMCwZNJCoPQS7mAM
