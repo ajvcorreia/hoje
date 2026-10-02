@@ -13,19 +13,24 @@ pytestmark = pytest.mark.db
 TEST_PASSWORD = "correct horse battery staple 42"
 
 
-async def csrf(auth_client) -> str:
-    """Extract CSRF token from /auth/state."""
+async def csrf(auth_client) -> str | None:
+    """Extract CSRF token from /auth/state, or None if not authenticated."""
     resp = await auth_client.get("/api/v1/auth/state")
-    return resp.json()["csrf_token"]
+    data = resp.json()
+    return data.get("csrf_token")
 
 
 async def register_user(auth_client, email: str, password: str):
     """Register a user and return the client (which now has the session cookie)."""
+    headers = {"Origin": "http://localhost:8080"}
     token = await csrf(auth_client)
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/register",
         json={"email": email, "password": password},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers=headers,
     )
     assert resp.status_code == 201
     return auth_client
@@ -34,20 +39,28 @@ async def register_user(auth_client, email: str, password: str):
 async def logout(auth_client):
     """Logout and return the response."""
     token = await csrf(auth_client)
+    headers = {"Origin": "http://localhost:8080"}
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/logout",
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers=headers,
     )
     return resp
 
 
 async def login(auth_client, email: str, password: str) -> tuple[int, dict]:
     """Login and return (status_code, response_json)."""
+    headers = {"Origin": "http://localhost:8080"}
     token = await csrf(auth_client)
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers=headers,
     )
     return resp.status_code, resp.json() if resp.text else {}
 

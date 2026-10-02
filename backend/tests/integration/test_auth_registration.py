@@ -8,20 +8,25 @@ pytestmark = pytest.mark.db
 TEST_PASSWORD = "correct horse battery staple 42"
 
 
-async def csrf(auth_client) -> str:
-    """Extract CSRF token from /auth/state."""
+async def csrf(auth_client) -> str | None:
+    """Extract CSRF token from /auth/state, or None if not authenticated."""
     resp = await auth_client.get("/api/v1/auth/state")
     assert resp.status_code == 200
-    return resp.json()["csrf_token"]
+    data = resp.json()
+    return data.get("csrf_token")
 
 
 async def register(auth_client, email: str, password: str) -> tuple[int, dict]:
     """Register and return (status_code, response_json)."""
+    headers = {"Origin": "http://localhost:8080"}
     token = await csrf(auth_client)
+    if token:
+        headers["X-CSRF-Token"] = token
+
     resp = await auth_client.post(
         "/api/v1/auth/register",
         json={"email": email, "password": password},
-        headers={"Origin": "http://localhost:8080", "X-CSRF-Token": token},
+        headers=headers,
     )
     return resp.status_code, resp.json() if resp.text else {}
 
