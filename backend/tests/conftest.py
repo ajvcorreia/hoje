@@ -231,3 +231,82 @@ async def make_user(db_session: AsyncSession):
         return user
 
     return _make_user
+
+
+@pytest_asyncio.fixture
+async def outbox_mailer(db_session: AsyncSession):
+    """Provide a MemoryMailer instance for tests to inspect outgoing emails."""
+    from hoje.services.mailer import MemoryMailer
+
+    async def _session_factory():
+        """Session factory that yields the shared db_session."""
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _open():
+            yield db_session
+
+        return _open()
+
+    factory = _session_factory
+    mailer = MemoryMailer(session_factory=factory)
+    return mailer
+
+
+@pytest_asyncio.fixture
+async def auth_client(db_session: AsyncSession, outbox_mailer):
+    """Provide an httpx AsyncClient configured for auth tests.
+
+    - Uses HOJE_INSECURE_COOKIES=true for HTTP testing
+    - Public URL is http://localhost:8080
+    - Overrides get_mailer to return MemoryMailer
+    - Overrides get_session_factory to use the shared db_session
+    """
+    import httpx
+    from contextlib import asynccontextmanager
+    from hoje.api.deps import get_mailer, get_session_factory
+    from hoje.config import get_settings
+
+    # Set insecure cookies for testing
+    original_insecure = os.environ.get("HOJE_INSECURE_COOKIES")
+    os.environ["HOJE_INSECURE_COOKIES"] = "true"
+    get_settings.cache_clear()
+
+    try:
+        app = create_app(docs_enabled=True)
+
+        # Override the get_db dependency
+        async def override_get_db() -> AsyncIterator[AsyncSession]:
+            yield db_session
+
+        # Override get_session_factory
+        @asynccontextmanager
+        async def override_get_session_factory() -> AsyncIterator[AsyncSession]:
+            yield db_session
+
+        def _get_session_factory():
+            return override_get_session_factory
+
+        # Override get_mailer
+        def _get_mailer(*args, **kwargs):
+            return outbox_mailer
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_session_factory] = _get_session_factory
+        app.dependency_overrides[get_mailer] = _get_mailer
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://localhost:8080"
+        ) as c:
+            yield c
+
+        # Clean up overrides
+        app.dependency_overrides.clear()
+    finally:
+        # Restore original setting
+        if original_insecure is None:
+            os.environ.pop("HOJE_INSECURE_COOKIES", None)
+        else:
+            os.environ["HOJE_INSECURE_COOKIES"] = original_insecure
+        get_settings.cache_clear()
