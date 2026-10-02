@@ -1,9 +1,10 @@
-import { differenceInCalendarDays, format } from 'date-fns';
+import { format } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { parseIso } from '../../../lib/dates';
 import { categoryMap, useCategories } from '../../categories/api';
 import { QuickAdd } from '../../events/QuickAdd';
 import { formatTimeRange, occurrenceKey } from '../../events/occurrences';
+import { dayOfLabel } from './mobileLib';
 
 interface DayViewProps {
   date: string;
@@ -11,14 +12,6 @@ interface DayViewProps {
   occurrences: Occurrence[];
   loading: boolean;
   onSelectEvent(eventId: string): void;
-}
-
-/** "Day 2 of 5" for an event spanning several days, else null. */
-export function dayOfLabel(o: Occurrence, date: string): string | null {
-  const start = parseIso(o.occurrence_start);
-  const total = differenceInCalendarDays(parseIso(o.occurrence_end), start) + 1;
-  if (total < 2) return null;
-  return `Day ${differenceInCalendarDays(parseIso(date), start) + 1} of ${total}`;
 }
 
 /** The selected day's heading and its events as stacked cards. */

@@ -1,5 +1,14 @@
+import { differenceInCalendarDays } from 'date-fns';
 import { useRef, type TouchEvent } from 'react';
-import { addDaysIso, isoWeekday, monthEndIso, monthStartIso, splitIso } from '../../../lib/dates';
+import type { Occurrence } from '../../../api/types';
+import {
+  addDaysIso,
+  isoWeekday,
+  monthEndIso,
+  monthStartIso,
+  parseIso,
+  splitIso,
+} from '../../../lib/dates';
 
 export type MobileView = 'day' | 'month';
 
@@ -63,3 +72,12 @@ export function useSwipe(onSwipe: (direction: -1 | 1) => void) {
     },
   };
 }
+
+/** "Day 2 of 5" for an event spanning several days, else null. */
+export function dayOfLabel(o: Occurrence, date: string): string | null {
+  const start = parseIso(o.occurrence_start);
+  const total = differenceInCalendarDays(parseIso(o.occurrence_end), start) + 1;
+  if (total < 2) return null;
+  return `Day ${differenceInCalendarDays(parseIso(date), start) + 1} of ${total}`;
+}
+
