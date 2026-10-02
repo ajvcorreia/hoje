@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './tokens.css';
 @import './palette.css';
+@import './calendar.css';
 
 /* Map CSS variables into Tailwind utilities (bg-surface, text-muted, border-border, bg-cat-red-fill, ...). */
 @theme inline {

@@ -9,11 +9,19 @@ interface DialogProps {
   onClose: () => void;
   /** When false, Esc and the backdrop do not close the dialog (e.g. recovery codes shown once). */
   dismissible?: boolean;
+  /** `sheet` fills the whole screen (mobile editor); `dialog` is a centred modal. */
+  variant?: 'dialog' | 'sheet';
   children: ReactNode;
 }
 
 /** Small accessible modal: labelled, focus-trapped, Esc to close, focus returns to the opener. */
-export function Dialog({ title, onClose, dismissible = true, children }: DialogProps) {
+export function Dialog({
+  title,
+  onClose,
+  dismissible = true,
+  variant = 'dialog',
+  children,
+}: DialogProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -61,7 +69,11 @@ export function Dialog({ title, onClose, dismissible = true, children }: DialogP
   }, []);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+    <div
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${
+        variant === 'sheet' ? '' : 'sm:items-center sm:p-4'
+      }`}
+    >
       <div
         aria-hidden="true"
         className="absolute inset-0"
@@ -75,7 +87,11 @@ export function Dialog({ title, onClose, dismissible = true, children }: DialogP
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative max-h-dvh w-full overflow-y-auto rounded-t-lg border border-border bg-surface p-4 outline-none sm:max-w-md sm:rounded-lg"
+        className={`relative w-full overflow-y-auto border border-border bg-surface p-4 outline-none ${
+          variant === 'sheet'
+            ? 'h-dvh max-h-dvh'
+            : 'max-h-dvh rounded-t-lg sm:max-w-md sm:rounded-lg'
+        }`}
       >
         <h2 id={titleId} className="text-base font-semibold">
           {title}
