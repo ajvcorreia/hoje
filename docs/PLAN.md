@@ -163,3 +163,13 @@ Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`). Postgres: `POSTGRES_PA
 | 8 | security hardening + threat model · test gaps · final docs | Opus · Haiku · Haiku |
 
 Test VM ports: web `8190`, Mailpit UI `8191`. Postgres never published.
+
+## 9. Desktop calendar layout (Phase 3 — user requirements, 2026-10-02)
+
+These supersede the original "3 months visible" layout.
+
+1. **Staggered months, weekday-aligned rows.** The grid has a fixed number of weekday rows: 37 (a 31-day month starting on the last weekday slot needs 6 + 31 rows). Row *r* always represents the same weekday in every month. Rows start on the user's first weekday (Monday by default). Each month column places day 1 in the row of its weekday and leaves the cells before and after the month empty (no day number, muted background). Weekend rows (from `weekend_days`) are shaded across the whole row, so weekends read as continuous horizontal bands. A sticky left gutter shows the weekday letter for each row (M T W T F S S, repeating).
+2. **Fill the vertical space; all days visible.** The grid height equals the viewport height minus the header (and the filter row if shown). Row height = available height / 37, so every day of every month is visible with no vertical scrolling. Below a minimum row height of 16 px (very short windows) the grid falls back to vertical scrolling with the month headers and weekday gutter sticky. Cells show the day number and the event title truncated with an ellipsis; the full list is in the day popover.
+3. **Expand to fit; scroll horizontally through all months.** All 12 months of the selected year are laid out side by side in one horizontally scrolling strip (sticky month headers at the top). Columns have a minimum width (~150 px) and grow to share any extra width, so wide screens show more months and very wide screens show the whole year without scrolling. Prev/next buttons move one year; a "Today" button scrolls the current month into view and is the initial scroll position. Shift+wheel and trackpad horizontal scroll work natively; the vertical mouse wheel over the grid scrolls horizontally when there is no vertical overflow.
+4. Unchanged from the spec: today highlighted; events are colour-filled cells; multi-day events form continuous blocks down a column (and continue at the top of the next month's column); two events on a day split the cell into two halves; three or more show two halves plus a "+N" chip; clicking a day opens the list popover with a type-to-add field.
+5. Year and Agenda views stay as secondary views. Mobile keeps the day view with week strip and the compact month view; this section is desktop/tablet (≥ 768 px) only.
