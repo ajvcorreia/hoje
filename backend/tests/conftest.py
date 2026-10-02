@@ -5,6 +5,7 @@ import base64
 import os
 import secrets
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse, urlunparse
 
 import asyncpg
@@ -233,83 +234,90 @@ async def make_user(db_session: AsyncSession):
     return _make_user
 
 
-@pytest_asyncio.fixture
-async def outbox_mailer(db_session: AsyncSession):
-    """Provide a MemoryMailer instance for tests to inspect outgoing emails."""
-    from contextlib import asynccontextmanager
+@pytest.fixture
+def outbox_mailer(db_session: AsyncSession):
+    """A ``MemoryMailer`` that records messages and writes the delivery log via ``db_session``."""
     from hoje.services.mailer import MemoryMailer
 
     @asynccontextmanager
-    async def _session_factory():
-        """Session factory that yields the shared db_session."""
+    async def _session_factory() -> AsyncIterator[AsyncSession]:
         yield db_session
 
-    mailer = MemoryMailer(session_factory=_session_factory)
-    return mailer
+    return MemoryMailer(session_factory=_session_factory)
 
 
 @pytest_asyncio.fixture
-async def auth_client(db_session: AsyncSession, outbox_mailer):
-    """Provide an httpx AsyncClient configured for auth tests.
+async def auth_client(
+    db_session: AsyncSession, outbox_mailer, monkeypatch: pytest.MonkeyPatch
+):
+    """An httpx client for auth tests.
 
-    - Uses HOJE_INSECURE_COOKIES=true for HTTP testing
-    - Public URL is http://localhost:8080
-    - Overrides get_mailer to return MemoryMailer
-    - Overrides get_session_factory to use the shared db_session
+    Cookies are insecure (``hoje_session``) so they travel over http, the public URL is
+    ``http://localhost:8080``, and the DB session, background-task session factory and mailer
+    are all replaced by the test transaction's ``db_session`` and ``outbox_mailer``.
     """
     import httpx
-    from contextlib import asynccontextmanager
+
     from hoje.api.deps import get_mailer, get_session_factory
+    from integration._auth import TEST_ORIGIN
     from hoje.config import get_settings
 
-    # Set insecure cookies for testing
-    original_insecure = os.environ.get("HOJE_INSECURE_COOKIES")
-    original_public_url = os.environ.get("HOJE_PUBLIC_URL")
-    os.environ["HOJE_INSECURE_COOKIES"] = "true"
-    os.environ["HOJE_PUBLIC_URL"] = "http://localhost:8080"
+    from argon2 import PasswordHasher
+
+    from hoje.security import passwords
+
+    # Cheap argon2 parameters: the tests hash many passwords, and none depends on the cost.
+    cheap = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+    monkeypatch.setattr(passwords, "_hasher", cheap)
+    monkeypatch.setenv("HOJE_INSECURE_COOKIES", "true")
+    monkeypatch.setenv("HOJE_PUBLIC_URL", TEST_ORIGIN)
     get_settings.cache_clear()
 
+    app = create_app(docs_enabled=True)
+
+    async def override_get_db() -> AsyncIterator[AsyncSession]:
+        yield db_session
+
+    @asynccontextmanager
+    async def shared_session() -> AsyncIterator[AsyncSession]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: shared_session
+    app.dependency_overrides[get_mailer] = lambda: outbox_mailer
+
+    transport = httpx.ASGITransport(app=app)
     try:
-        app = create_app(docs_enabled=True)
-
-        # Override the get_db dependency
-        async def override_get_db() -> AsyncIterator[AsyncSession]:
-            yield db_session
-
-        # Override get_session_factory
-        @asynccontextmanager
-        async def override_get_session_factory() -> AsyncIterator[AsyncSession]:
-            yield db_session
-
-        def _get_session_factory():
-            return override_get_session_factory
-
-        # Override get_mailer
-        def _get_mailer(*args, **kwargs):
-            return outbox_mailer
-
-        app.dependency_overrides[get_db] = override_get_db
-        app.dependency_overrides[get_session_factory] = _get_session_factory
-        app.dependency_overrides[get_mailer] = _get_mailer
-
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://localhost:8080"
-        ) as c:
+        async with httpx.AsyncClient(transport=transport, base_url=TEST_ORIGIN) as c:
             yield c
-
-        # Clean up overrides
-        app.dependency_overrides.clear()
     finally:
-        # Restore original settings
-        if original_insecure is None:
-            os.environ.pop("HOJE_INSECURE_COOKIES", None)
-        else:
-            os.environ["HOJE_INSECURE_COOKIES"] = original_insecure
-
-        if original_public_url is None:
-            os.environ.pop("HOJE_PUBLIC_URL", None)
-        else:
-            os.environ["HOJE_PUBLIC_URL"] = original_public_url
-
+        app.dependency_overrides.clear()
         get_settings.cache_clear()
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch: pytest.MonkeyPatch):
+    """Freeze ``hoje.clock.now`` at a fixed instant; tests move time with ``advance``."""
+    from hoje import clock
+    from integration._auth import FrozenClock
+
+    frozen = FrozenClock()
+    monkeypatch.setattr(clock, "now", lambda: frozen.now)
+    return frozen
+
+
+@pytest.fixture
+def open_registration(auth_client, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Allow registering more than the first user (``HOJE_ALLOW_REGISTRATION=true``)."""
+    from hoje.config import get_settings
+
+    monkeypatch.setenv("HOJE_ALLOW_REGISTRATION", "true")
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def api(auth_client, frozen_clock):
+    """An ``AuthApi`` driver on the auth client, with time frozen."""
+    from integration._auth import AuthApi
+
+    return AuthApi(auth_client, frozen_clock)
