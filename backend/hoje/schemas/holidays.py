@@ -19,6 +19,7 @@ class HolidayCalendar(BaseModel):
     name: str
     enabled: bool
     colour: Colour
+    holiday_count: int = 0
 
 
 class HolidayCalendarUpdate(BaseModel):
