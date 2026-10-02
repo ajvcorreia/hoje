@@ -282,3 +282,18 @@
   background: var(--ev-text);
   border-radius: 9999px;
 }
+
+/* ---- Mobile calendar ------------------------------------------------------ */
+.m-card {
+  background: color-mix(in srgb, var(--ev-fill) 35%, var(--surface));
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--ev-text);
+}
+
+.m-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ev-text);
+}

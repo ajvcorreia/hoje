@@ -16,7 +16,15 @@ describe('dates', () => {
 
   it('builds a Monday-first month matrix', () => {
     const weeks = monthMatrix(2026, 0);
-    expect(weeks[0]).toEqual([null, null, null, '2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04']);
+    expect(weeks[0]).toEqual([
+      null,
+      null,
+      null,
+      '2026-01-01',
+      '2026-01-02',
+      '2026-01-03',
+      '2026-01-04',
+    ]);
     expect(weeks.every((w) => w.length === 7)).toBe(true);
     expect(weeks.flat().filter(Boolean)).toHaveLength(31);
     expect(toIso(new Date(2026, 0, 1))).toBe('2026-01-01');

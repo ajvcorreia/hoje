@@ -1,16 +1,9 @@
 import { useIsDesktop } from '../../lib/useIsDesktop';
 import { DesktopCalendar } from './DesktopCalendar';
+import { MobileCalendar } from './mobile/MobileCalendar';
 
-/** Calendar route: the desktop calendar at >= 768 px, a placeholder on phones for now. */
+/** Calendar route: the desktop calendar at >= 768 px, the mobile day/month views on phones. */
 export function CalendarPage() {
   const desktop = useIsDesktop();
-  if (desktop) return <DesktopCalendar />;
-  return (
-    <section aria-labelledby="calendar-heading">
-      <h1 id="calendar-heading" className="text-lg font-semibold">
-        Calendar
-      </h1>
-      <p className="mt-2 text-sm text-text-muted">Mobile view coming soon</p>
-    </section>
-  );
+  return desktop ? <DesktopCalendar /> : <MobileCalendar />;
 }
