@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { storeStrikePast } from '../../lib/strikePast';
 import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
 
@@ -555,5 +556,28 @@ describe('week numbers and day-number column', () => {
       expect(cells.length).toBeGreaterThanOrEqual(28);
       expect(nums).toHaveLength(cells.length);
     }
+  });
+});
+
+describe('strike through past days', () => {
+  afterEach(() => storeStrikePast(false));
+
+  it('marks only days before today when the preference is on', async () => {
+    storeStrikePast(true);
+    mockApi(baseRoutes([makeEvent('p', 'Past thing', '2026-06-10')]));
+    renderApp();
+    await gridReady();
+    expect(cell('2026-06-14')).toHaveAttribute('data-past');
+    expect(cell('2026-01-01')).toHaveAttribute('data-past');
+    expect(cell('2026-06-15')).not.toHaveAttribute('data-past');
+    expect(cell('2026-12-31')).not.toHaveAttribute('data-past');
+  });
+
+  it('marks nothing when the preference is off', async () => {
+    storeStrikePast(false);
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    expect(document.querySelector('.cal-cell[data-past]')).toBeNull();
   });
 });

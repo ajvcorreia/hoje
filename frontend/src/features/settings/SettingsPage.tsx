@@ -1,6 +1,7 @@
 import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
+import { useStrikePast } from '../../lib/strikePast';
 import { useTheme } from '../../app/useTheme';
 import { useTextSize } from '../../app/useTextSize';
 import { inputClass } from '../../components/ui/classes';
@@ -23,6 +24,7 @@ export function SettingsPage() {
   const [theme, setTheme] = useTheme();
   const [textSize, setTextSize] = useTextSize();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
+  const [strikePast, setStrikePast] = useStrikePast();
   return (
     <section aria-labelledby="settings-heading" className="max-w-xl">
       <h1 id="settings-heading" className="text-lg font-semibold">
@@ -72,6 +74,15 @@ export function SettingsPage() {
               className="size-4"
             />
             Show week numbers
+          </label>
+          <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={strikePast}
+              onChange={(e) => setStrikePast(e.target.checked)}
+              className="size-4"
+            />
+            Strike through past days
           </label>
         </SettingsSection>
         <CategoriesSection />

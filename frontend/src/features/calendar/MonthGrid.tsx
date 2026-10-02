@@ -21,6 +21,7 @@ import {
   monthName,
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
+import { useStrikePast } from '../../lib/strikePast';
 import { toLayoutInput } from '../events/occurrences';
 import {
   GRID_ROWS,
@@ -69,6 +70,8 @@ interface MonthColumnProps {
   tabDay: number;
   /** Show the ISO week-number sub-column. */
   weeks: boolean;
+  /** Strike through days before `today`. */
+  strikePast: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -81,6 +84,7 @@ const MonthColumn = memo(function MonthColumn({
   today,
   tabDay,
   weeks,
+  strikePast,
 }: MonthColumnProps) {
   const layout = useMemo(() => layoutMonth(inputs, year, month), [inputs, year, month]);
   const offset = firstDayRow(year, month, WEEK_START);
@@ -98,6 +102,7 @@ const MonthColumn = memo(function MonthColumn({
     len: number;
     lane: number;
     split: boolean;
+    past: boolean;
   }[] = [];
   const verticalStarts = new Set<string>();
   for (let day = 1; day <= dim; day += 1) {
@@ -122,6 +127,7 @@ const MonthColumn = memo(function MonthColumn({
         len,
         lane: p.lane,
         split,
+        past: strikePast && `${prefix}${pad(day + len - 1)}` < today,
       });
     }
   }
@@ -182,6 +188,7 @@ const MonthColumn = memo(function MonthColumn({
         data-row={row}
         data-weekend={weekend}
         data-today={isToday || undefined}
+        data-past={(strikePast && iso < today) || undefined}
         data-cat={lead?.input.colour}
         tabIndex={day === tabDay ? 0 : -1}
         aria-label={label}
@@ -229,6 +236,7 @@ const MonthColumn = memo(function MonthColumn({
           aria-hidden="true"
           data-cat={seg.colour}
           data-lane={seg.split ? String(seg.lane) : 'full'}
+          data-past={seg.past || undefined}
           style={{ '--seg-row': seg.row, '--seg-len': seg.len } as CSSProperties}
         >
           <span className="cal-vlabel-text">{seg.title}</span>
@@ -264,6 +272,7 @@ export function MonthGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
+  const [strikePast] = useStrikePast();
   const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
 
   useEffect(() => {
@@ -398,6 +407,7 @@ export function MonthGrid({
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}
             weeks={weeks}
+            strikePast={strikePast}
           />
         ))}
       </div>

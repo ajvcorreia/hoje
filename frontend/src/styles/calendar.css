@@ -116,6 +116,7 @@
 .cal-col > .cal-head {
   grid-row: 1;
   grid-column: 1 / -1;
+  justify-content: center;
 }
 
 .cal-gutter {
@@ -402,4 +403,12 @@
   height: 6px;
   border-radius: 9999px;
   background: var(--ev-text);
+}
+
+/* "Strike through past days" preference: day number, titles and fully past vertical labels. */
+.cal-cell[data-past] .cal-num,
+.cal-cell[data-past] .cal-ev,
+.cal-vlabel[data-past] .cal-vlabel-text {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }

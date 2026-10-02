@@ -200,3 +200,17 @@ describe('appearance settings', () => {
     expect(window.localStorage.getItem('hoje.weekNumbers')).toBe('off');
   });
 });
+
+describe('strike through past days setting', () => {
+  it('is off by default and persists when switched on', async () => {
+    window.localStorage.removeItem('hoje.strikePast');
+    mockApi({ ...base, 'GET /api/v1/me': ME });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('Strike through past days');
+    expect(box).not.toBeChecked();
+    await userEvent.click(box);
+    expect(box).toBeChecked();
+    expect(window.localStorage.getItem('hoje.strikePast')).toBe('on');
+    await userEvent.click(box);
+  });
+});
