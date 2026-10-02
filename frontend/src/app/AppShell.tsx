@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
 import { CalendarIcon, SettingsIcon } from './icons';
+import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
 
 const NAV_ITEMS = [
@@ -83,7 +84,9 @@ export function AppShell() {
           <span className="text-base font-semibold tracking-tight">Hoje</span>
           <HeaderNav />
           {/* Slot for the future "Vacation: N left" pill and filter/search. */}
-          <div data-slot="header-actions" className="ml-auto flex items-center gap-2" />
+          <div data-slot="header-actions" className="ml-auto flex items-center gap-2">
+            <UserMenu />
+          </div>
         </div>
       </header>
       <ApiNotice />
