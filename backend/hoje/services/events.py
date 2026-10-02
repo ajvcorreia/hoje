@@ -195,6 +195,7 @@ async def create(db: AsyncSession, user: User, body: EventCreate) -> EventSchema
         timezone=body.timezone or user.timezone,
         repeat=body.repeat,
         repeat_until=body.repeat_until,
+        label_vertical=body.label_vertical,
         counts_as_leave=category.is_leave,
         version=1,
         created_at=now,
@@ -220,7 +221,15 @@ async def update(
         raise VersionConflict(current)
 
     sent = body.model_fields_set
-    for field in ("title", "start_date", "end_date", "all_day", "timezone", "repeat"):
+    for field in (
+        "title",
+        "start_date",
+        "end_date",
+        "all_day",
+        "timezone",
+        "repeat",
+        "label_vertical",
+    ):
         if field in sent and getattr(body, field) is None:
             raise _unprocessable(f"{field} cannot be null")
     if "category_id" in sent and body.category_id is None:
@@ -246,6 +255,7 @@ async def update(
             "timezone",
             "repeat",
             "repeat_until",
+            "label_vertical",
         )
     }
     if values["all_day"] and "all_day" in sent:

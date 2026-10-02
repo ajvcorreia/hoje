@@ -74,6 +74,7 @@ class Event(BaseModel):
     repeat: Repeat
     repeat_until: dt.date | None = None
     counts_as_leave: bool
+    label_vertical: bool = False
     reminders: list[ReminderOut] = []
     version: int
     created_at: dt.datetime
@@ -94,6 +95,7 @@ class EventCreate(BaseModel):
     timezone: Timezone | None = None  # defaults to the user's time zone
     repeat: Repeat = "none"
     repeat_until: dt.date | None = None
+    label_vertical: bool = False
     reminders: list[ReminderIn] = Field(default=[], max_length=MAX_REMINDERS)
 
     @field_validator("reminders")
@@ -133,6 +135,7 @@ class EventUpdate(BaseModel):
     timezone: Timezone | None = None
     repeat: Repeat | None = None
     repeat_until: dt.date | None = None
+    label_vertical: bool | None = None
     reminders: list[ReminderIn] | None = Field(default=None, max_length=MAX_REMINDERS)
 
     @field_validator("reminders")

@@ -78,6 +78,7 @@ class Event(Base):
     repeat_until: Mapped[date | None]
     rrule: Mapped[str | None]  # reserved, unused in v1
     counts_as_leave: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    label_vertical: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     version: Mapped[int] = mapped_column(default=1, server_default=text("1"))
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]
