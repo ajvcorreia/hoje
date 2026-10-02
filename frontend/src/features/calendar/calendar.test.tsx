@@ -1,6 +1,7 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { storeMultidayLabelMode } from '../../lib/multidayLabels';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
 
 const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -365,5 +366,73 @@ describe('views', () => {
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.getAllByText('Work', { exact: false }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { hidden: true, name: 'Load more' })).toBeInTheDocument();
+  });
+});
+
+describe('vertical multi-day labels', () => {
+  afterEach(() => {
+    storeMultidayLabelMode('horizontal');
+  });
+
+  const labels = () => Array.from(document.querySelectorAll<HTMLElement>('.cal-vlabel'));
+
+  it('renders one rotated label per block with the block height and no horizontal title', async () => {
+    storeMultidayLabelMode('vertical');
+    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-10', '2026-03-13')]));
+    renderApp();
+    await waitFor(() => expect(labels()).toHaveLength(1));
+    const label = labels()[0] as HTMLElement;
+    expect(label).toHaveTextContent('Trip');
+    expect(label).toHaveAttribute('aria-hidden', 'true');
+    expect(label).toHaveAttribute('data-lane', 'full');
+    expect(label.style.getPropertyValue('--seg-len')).toBe('4');
+    expect(label.style.getPropertyValue('--seg-row')).toBe(
+      cell('2026-03-10').getAttribute('data-row'),
+    );
+    expect(label.closest('[data-month]')).toHaveAttribute('data-month', '2');
+    // The cells keep their blocks but no longer carry the truncated horizontal title.
+    expect(cell('2026-03-10').querySelector('.cal-ev')).toHaveTextContent('');
+    expect(cell('2026-03-10').querySelector('.cal-ev')).toHaveAttribute('data-join-next', 'true');
+  });
+
+  it('starts a new segment in the next month column', async () => {
+    storeMultidayLabelMode('vertical');
+    mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-30', '2026-04-02')]));
+    renderApp();
+    await waitFor(() => expect(labels()).toHaveLength(2));
+    expect(labels().map((l) => l.style.getPropertyValue('--seg-len'))).toEqual(['2', '2']);
+    expect(labels().map((l) => l.closest('[data-month]')?.getAttribute('data-month'))).toEqual([
+      '2',
+      '3',
+    ]);
+  });
+
+  it('puts the label in the lane of a split block', async () => {
+    storeMultidayLabelMode('vertical');
+    mockApi(
+      baseRoutes([
+        makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12'),
+        makeEvent('other', 'Other', '2026-03-10', '2026-03-12'),
+      ]),
+    );
+    renderApp();
+    await waitFor(() => expect(labels()).toHaveLength(2));
+    expect(labels().map((l) => l.getAttribute('data-lane'))).toEqual(['0', '1']);
+  });
+
+  it('leaves single-day events and horizontal mode unchanged', async () => {
+    storeMultidayLabelMode('vertical');
+    mockApi(
+      baseRoutes([
+        makeEvent('solo', 'Solo', '2026-03-05'),
+        makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12'),
+      ]),
+    );
+    renderApp();
+    await waitFor(() => expect(within(cell('2026-03-05')).getByText('Solo')).toBeInTheDocument());
+    expect(labels()).toHaveLength(1);
+    act(() => storeMultidayLabelMode('horizontal'));
+    await waitFor(() => expect(labels()).toHaveLength(0));
+    expect(within(cell('2026-03-10')).getByText('Trip')).toBeInTheDocument();
   });
 });

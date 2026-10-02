@@ -86,7 +86,7 @@ export function YearView({ year, occurrences, categories, today, onOpenDay }: Ye
           <section
             key={month}
             aria-label={`${monthName(month)} ${year}`}
-            className="rounded-lg border border-border bg-surface p-2"
+            className="rounded-lg border border-border-strong bg-surface p-2"
           >
             <h3 className="mb-1 px-1 text-sm font-semibold">{monthName(month)}</h3>
             <div

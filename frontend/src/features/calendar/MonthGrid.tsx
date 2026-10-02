@@ -19,6 +19,7 @@ import {
   formatDayHeading,
   monthName,
 } from '../../lib/dates';
+import { useMultidayLabelMode } from '../../lib/multidayLabels';
 import { toLayoutInput } from '../events/occurrences';
 import {
   GRID_ROWS,
@@ -65,6 +66,8 @@ interface MonthColumnProps {
   today: string;
   /** Day (1-based) holding the roving tabindex in this column, or 0. */
   tabDay: number;
+  /** Draw multi-day titles rotated along the whole block. */
+  vertical: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -76,6 +79,7 @@ const MonthColumn = memo(function MonthColumn({
   weekendDays,
   today,
   tabDay,
+  vertical,
 }: MonthColumnProps) {
   const layout = useMemo(() => layoutMonth(inputs, year, month), [inputs, year, month]);
   const offset = firstDayRow(year, month, WEEK_START);
@@ -83,6 +87,45 @@ const MonthColumn = memo(function MonthColumn({
   const prefix = `${String(year).padStart(4, '0')}-${pad(month + 1)}-`;
   const isCurrentMonth = today.startsWith(prefix);
   const title = `${monthName(month)} ${year}`;
+
+  // Vertical mode: one label per block segment of 2+ days in this column.
+  const segments: {
+    key: string;
+    title: string;
+    colour?: string;
+    row: number;
+    len: number;
+    lane: number;
+    split: boolean;
+  }[] = [];
+  const verticalStarts = new Set<string>();
+  if (vertical) {
+    for (let day = 1; day <= dim; day += 1) {
+      const d = layout[day - 1] as DayLayout;
+      for (const p of d.lanes) {
+        if (!p || !p.showTitle || !p.joinNext) continue;
+        let len = 1;
+        let split = d.total > 1;
+        for (;;) {
+          const next = layout[day - 1 + len];
+          const q = next?.lanes[p.lane];
+          if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
+          if (next.total > 1) split = true;
+          len += 1;
+        }
+        verticalStarts.add(`${day}:${p.lane}`);
+        segments.push({
+          key: `${p.input.key}:${day}`,
+          title: p.input.title,
+          colour: p.input.colour,
+          row: day - 1 + offset,
+          len,
+          lane: p.lane,
+          split,
+        });
+      }
+    }
+  }
 
   const cells = [];
   for (let row = 0; row < GRID_ROWS; row += 1) {
@@ -126,7 +169,7 @@ const MonthColumn = memo(function MonthColumn({
             data-cat={p.input.colour}
             data-join-next={p.joinNext || undefined}
           >
-            {p.showTitle ? p.input.title : ''}
+            {p.showTitle && !verticalStarts.has(`${day}:${p.lane}`) ? p.input.title : ''}
           </span>
         ))}
         {d.overflow > 0 ? <span className="cal-more">+{d.overflow}</span> : null}
@@ -140,6 +183,18 @@ const MonthColumn = memo(function MonthColumn({
         {monthName(month)}
       </div>
       {cells}
+      {segments.map((seg) => (
+        <span
+          key={seg.key}
+          className="cal-vlabel"
+          aria-hidden="true"
+          data-cat={seg.colour}
+          data-lane={seg.split ? String(seg.lane) : 'full'}
+          style={{ '--seg-row': seg.row, '--seg-len': seg.len } as CSSProperties}
+        >
+          <span className="cal-vlabel-text">{seg.title}</span>
+        </span>
+      ))}
     </div>
   );
 });
@@ -169,6 +224,7 @@ export function MonthGrid({
 }: MonthGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [labelMode] = useMultidayLabelMode();
   const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
 
   useEffect(() => {
@@ -302,6 +358,7 @@ export function MonthGrid({
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}
+            vertical={labelMode === 'vertical'}
           />
         ))}
       </div>

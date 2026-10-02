@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { dateInCurrentMonth, expect, test } from './fixtures';
 
 test.skip(({ isMobile }) => isMobile, 'desktop grid only');
 
@@ -70,5 +70,36 @@ test.describe('desktop month grid', () => {
       el.scrollLeft = el.scrollWidth;
     });
     await expect.poll(() => scroll.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  });
+});
+
+test.describe('vertical multi-day labels', () => {
+  test('rotated label spans the whole block and clicks pass through', async ({
+    page,
+    account,
+    api,
+  }) => {
+    void account;
+    const start = dateInCurrentMonth(10);
+    const middle = dateInCurrentMonth(11);
+    await api.createEvent('Conference', start, { end_date: dateInCurrentMonth(12) });
+
+    await page.goto('/settings');
+    await page.getByLabel('Multi-day event names').selectOption('vertical');
+
+    await page.goto('/');
+    const label = page.locator('.cal-vlabel');
+    await expect(label).toHaveCount(1);
+    await expect(label).toHaveText('Conference');
+    await expect(label).toHaveCSS('writing-mode', 'vertical-rl');
+
+    const cellBox = await page.locator(`[data-date="${start}"]`).boundingBox();
+    const labelBox = await label.boundingBox();
+    expect(cellBox && labelBox).toBeTruthy();
+    expect(labelBox?.height).toBeGreaterThan((cellBox?.height ?? 0) * 3 - 2);
+    expect(labelBox?.height).toBeLessThan((cellBox?.height ?? 0) * 3 + 2);
+
+    await page.locator(`[data-date="${middle}"]`).click();
+    await expect(page.getByRole('dialog', { name: /^Events on / })).toBeVisible();
   });
 });
