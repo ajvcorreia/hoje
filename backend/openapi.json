@@ -4807,6 +4807,17 @@
                 "schema": {
                   "description": "Payload of an SSE ``event: change`` message.",
                   "properties": {
+                    "client_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Client Id"
+                    },
                     "entity": {
                       "enum": [
                         "event",
@@ -4855,7 +4866,7 @@
                 }
               }
             },
-            "description": "`event: change` with a RealtimeChange JSON payload, and `event: ping` every 25 seconds."
+            "description": "`event: change` with a RealtimeChange JSON payload, `event: ping` every 25 seconds, and `event: resync` when the server lost and recovered its change feed (refetch everything). At most 10 concurrent streams per user (429 beyond that)."
           },
           "401": {
             "content": {
