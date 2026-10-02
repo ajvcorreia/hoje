@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useLocation } from 'react-router';
+import { ToastProvider } from '../components/ui/Toast';
 import { CalendarIcon, SettingsIcon } from './icons';
 import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
@@ -71,8 +72,20 @@ function BottomNav() {
 }
 
 export function AppShell() {
+  // The calendar fills the viewport on desktop (no page scroll, no width cap).
+  const isCalendar = useLocation().pathname === '/';
   return (
-    <div className="flex min-h-dvh flex-col">
+    <ToastProvider>
+      <Shell isCalendar={isCalendar} />
+    </ToastProvider>
+  );
+}
+
+function Shell({ isCalendar }: { isCalendar: boolean }) {
+  return (
+    <div
+      className={`flex min-h-dvh flex-col ${isCalendar ? 'md:h-dvh md:min-h-0 md:overflow-hidden' : ''}`}
+    >
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-accent-contrast"
@@ -93,7 +106,11 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] outline-none md:pb-4"
+        className={`w-full flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] outline-none ${
+          isCalendar
+            ? 'flex min-h-0 flex-col px-3 py-2 md:pb-2'
+            : 'mx-auto max-w-6xl px-4 py-4 md:pb-4'
+        }`}
       >
         <Outlet />
       </main>

@@ -257,7 +257,7 @@ export interface paths {
         delete: operations["categories_delete"];
         options?: never;
         head?: never;
-        /** Update a category */
+        /** Update a category (version required) */
         patch: operations["categories_update"];
         trace?: never;
     };
@@ -629,6 +629,28 @@ export interface components {
             sort_order: number;
             /** Version */
             version: number;
+        };
+        /**
+         * CategoryConflict
+         * @description 409 body for a stale ``version``: a problem document plus the current category.
+         */
+        CategoryConflict: {
+            current: components["schemas"]["Category"];
+            /** Detail */
+            detail?: string | null;
+            /** Errors */
+            errors?: components["schemas"]["ProblemError"][] | null;
+            /** Instance */
+            instance?: string | null;
+            /** Status */
+            status: number;
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @default about:blank
+             */
+            type: string;
         };
         /** CategoryCreate */
         CategoryCreate: {
@@ -2225,6 +2247,15 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
                 headers: {
@@ -2343,6 +2374,15 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
                 headers: {
@@ -2403,6 +2443,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Version mismatch or name taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryConflict"];
                 };
             };
             /** @description Validation error */
@@ -2822,6 +2871,15 @@ export interface operations {
             };
             /** @description CSRF or Origin check failed, or forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

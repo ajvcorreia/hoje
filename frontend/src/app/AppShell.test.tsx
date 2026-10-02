@@ -20,7 +20,7 @@ describe('AppShell', () => {
       expect(within(nav).getByRole('link', { name: 'Calendar' })).toBeInTheDocument();
       expect(within(nav).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
     }
-    expect(screen.getByRole('main')).toHaveTextContent('Calendar coming in phase 3');
+    expect(screen.getByRole('heading', { name: 'Calendar' })).toBeInTheDocument();
   });
 
   it('has no API notice when the auth state loads fine', async () => {
