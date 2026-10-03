@@ -135,8 +135,9 @@ Core schemas:
 | HOJE_LOG_LEVEL | INFO | |
 | SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_STARTTLS, SMTP_TLS, SMTP_FROM | | |
 | HOJE_WORKER_INTERVAL_SECONDS | 60 | |
+| HOJE_TRUST_REAL_IP_HEADER | true | API trusts `X-Real-IP`, which hoje-web (Caddy) sets from its trusted-proxy view; the API must only be reachable through hoje-web |
 
-Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`). Postgres: `POSTGRES_PASSWORD`. Backup: `BACKUP_KEEP_DAYS`, `BACKUP_SCHEDULE_HOUR`.
+Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`), `TRUSTED_PROXIES` (IPs/CIDRs of the reverse proxy in front, e.g. Nginx Proxy Manager). Postgres: `POSTGRES_PASSWORD`. Backup: `BACKUP_KEEP_DAYS`, `BACKUP_SCHEDULE_HOUR`.
 
 ## 7. Working conventions (all agents)
 
