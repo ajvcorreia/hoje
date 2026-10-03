@@ -44,7 +44,8 @@ async def run_daily(db: AsyncSession, now: datetime) -> dict[str, int]:
             ),
         )
     )
-    removed["reset_tokens"] = result.rowcount or 0
+    # Not "reset_tokens": the log redactor hides any key ending in _tokens.
+    removed["reset_links"] = result.rowcount or 0
 
     await throttle.purge_stale(db)
 

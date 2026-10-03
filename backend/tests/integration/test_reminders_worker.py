@@ -538,7 +538,7 @@ async def test_daily_housekeeping_purges_only_old_rows(live: Live):
         removed = await housekeeping.run_daily(db, now)
         await db.commit()
     assert removed["events"] >= 1 and removed["reminder_deliveries"] == 1
-    assert removed["reset_tokens"] >= 1 and removed["sessions"] >= 1
+    assert removed["reset_links"] >= 1 and removed["sessions"] >= 1
     async with live.sm() as db:
         titles = set((await db.scalars(select(Event.title).where(Event.user_id == user.id))).all())
         assert titles == {"Fresh", "Live"}
