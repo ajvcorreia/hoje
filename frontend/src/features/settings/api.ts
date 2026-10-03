@@ -32,12 +32,24 @@ export function useEmailSettings() {
   });
 }
 
+export const EMAIL_LOG_KEY = ['settings', 'email', 'log'] as const;
+
+export function useEmailLog() {
+  return useQuery({
+    queryKey: EMAIL_LOG_KEY,
+    queryFn: async () =>
+      unwrap(await api.GET('/api/v1/settings/email/log', { params: { query: { limit: 20 } } })),
+  });
+}
+
 export function useSendTestEmail() {
+  const qc = useQueryClient();
   return useMutation({
     meta: { protected: true },
     mutationFn: async () => {
       unwrap(await api.POST('/api/v1/settings/email/test'));
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: EMAIL_LOG_KEY }),
   });
 }
 

@@ -6,6 +6,7 @@ import { ME, authState, mockApi, problem, renderApp } from '../../test/utils';
 const base = {
   'GET /api/v1/auth/state': authState(),
   'GET /api/v1/settings/email': { configured: true, from_address: 'hoje@example.com' },
+  'GET /api/v1/settings/email/log': [],
 };
 
 describe('account settings', () => {
@@ -139,6 +140,39 @@ describe('email settings', () => {
     expect(await screen.findByText(/hoje@example\.com/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Send test email' }));
     expect(await screen.findByText(/Test email sent/)).toBeInTheDocument();
+  });
+
+  it('lists recent emails with the error of failed ones and can refresh', async () => {
+    let rows = [
+      {
+        created_at: '2026-10-02T12:30:00Z',
+        kind: 'reminder',
+        subject: 'Reminder: Dentist · Fri 9 Oct',
+        status: 'sent',
+        error: null,
+      },
+      {
+        created_at: '2026-10-02T12:00:00Z',
+        kind: 'test',
+        subject: 'Hoje test email',
+        status: 'failed',
+        error: 'SMTPConnectError: refused',
+      },
+    ];
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/me': ME,
+      'GET /api/v1/settings/email/log': () => rows,
+    });
+    renderApp('/settings');
+    const list = await screen.findByRole('list', { name: 'Recent emails' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(list).getByText('Reminder: Dentist · Fri 9 Oct')).toBeVisible();
+    expect(within(list).getByText('SMTPConnectError: refused')).toBeVisible();
+    expect(api.callsTo('GET', '/api/v1/settings/email/log')[0]?.search).toBe('?limit=20');
+    rows = rows.slice(0, 1);
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(1));
   });
 
   it('reports when SMTP is not configured (503)', async () => {

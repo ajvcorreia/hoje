@@ -99,3 +99,15 @@ class RecoveryCodes(BaseModel):
 class EmailSettings(BaseModel):
     configured: bool
     from_address: str | None = None
+
+
+class EmailLogEntry(BaseModel):
+    """One row of the current user's outgoing email log (never the body)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    created_at: datetime
+    kind: Literal["reminder", "password_reset", "test"]
+    subject: str
+    status: Literal["sent", "failed"]
+    error: str | None = None

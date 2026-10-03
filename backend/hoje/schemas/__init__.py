@@ -2,6 +2,7 @@
 
 from hoje.schemas.auth import (
     AuthState,
+    EmailLogEntry,
     EmailSettings,
     LoginRequest,
     LoginResponse,
@@ -62,6 +63,7 @@ __all__ = [
     "CategoryCreate",
     "CategoryOrder",
     "CategoryUpdate",
+    "EmailLogEntry",
     "EmailSettings",
     "Event",
     "EventConflict",

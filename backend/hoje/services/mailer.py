@@ -5,6 +5,7 @@ message id). Bodies and tokens are never stored or logged. ``send`` never raises
 logged and reported through the return value.
 """
 
+import socket
 import uuid
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
@@ -73,9 +74,46 @@ def test_message_email() -> RenderedEmail:
     return render("test_email", "Hoje test email")
 
 
+@dataclass(frozen=True, slots=True)
+class SendOutcome:
+    """Result of one send attempt.
+
+    ``retryable`` is true only when the failure clearly means "not delivered" (connection
+    refused or failed, or the server answered with an error code), so sending again cannot
+    produce a duplicate. Timeouts and disconnects mid-conversation are not retryable.
+    """
+
+    ok: bool
+    error: str | None = None
+    retryable: bool = False
+
+
+def is_clearly_undelivered(exc: BaseException) -> bool:
+    """Whether ``exc`` proves the message was not accepted by the server."""
+    if isinstance(exc, aiosmtplib.SMTPConnectError):
+        return True
+    if isinstance(exc, aiosmtplib.SMTPServerDisconnected | aiosmtplib.SMTPTimeoutError):
+        return False
+    if isinstance(exc, aiosmtplib.SMTPResponseException | aiosmtplib.SMTPRecipientsRefused):
+        return True
+    return isinstance(exc, ConnectionRefusedError | socket.gaierror)
+
+
 class Mailer(Protocol):
     configured: bool
     from_address: str | None
+
+    async def deliver(
+        self,
+        to: str,
+        subject: str,
+        text: str,
+        html: str,
+        *,
+        kind: Kind,
+        user_id: uuid.UUID | None,
+        message_id: str | None = None,
+    ) -> SendOutcome: ...
 
     async def send(
         self,
@@ -145,7 +183,24 @@ class SmtpMailer:
         user_id: uuid.UUID | None,
         message_id: str | None = None,
     ) -> bool:
+        outcome = await self.deliver(
+            to, subject, text, html, kind=kind, user_id=user_id, message_id=message_id
+        )
+        return outcome.ok
+
+    async def deliver(
+        self,
+        to: str,
+        subject: str,
+        text: str,
+        html: str,
+        *,
+        kind: Kind,
+        user_id: uuid.UUID | None,
+        message_id: str | None = None,
+    ) -> SendOutcome:
         error: str | None = None
+        retryable = False
         sent_id: str | None = None
         if not self.configured:
             error = NOT_CONFIGURED
@@ -174,6 +229,7 @@ class SmtpMailer:
                 )
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"[:_ERROR_MAX]
+                retryable = is_clearly_undelivered(exc)
         ok = error is None
         if not ok:
             log.warning("email_send_failed", kind=kind, error=error)
@@ -187,7 +243,7 @@ class SmtpMailer:
             error=error,
             message_id=sent_id,
         )
-        return ok
+        return SendOutcome(ok=ok, error=error, retryable=retryable)
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,6 +277,22 @@ class MemoryMailer:
         user_id: uuid.UUID | None,
         message_id: str | None = None,
     ) -> bool:
+        outcome = await self.deliver(
+            to, subject, text, html, kind=kind, user_id=user_id, message_id=message_id
+        )
+        return outcome.ok
+
+    async def deliver(
+        self,
+        to: str,
+        subject: str,
+        text: str,
+        html: str,
+        *,
+        kind: Kind,
+        user_id: uuid.UUID | None,
+        message_id: str | None = None,
+    ) -> SendOutcome:
         mid = message_id or make_msgid(domain="example.com")
         self.outbox.append(SentMessage(to, subject, text, html, kind, user_id, mid))
         await _write_log(
@@ -233,4 +305,4 @@ class MemoryMailer:
             error=None,
             message_id=mid,
         )
-        return True
+        return SendOutcome(ok=True)

@@ -2,6 +2,7 @@ import type { Occurrence } from '../../api/types';
 import { categoryMap, useCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { formatTimeRange } from './occurrences';
+import { ReminderBell } from './ReminderBell';
 
 interface DayEventListProps {
   /** ISO date the list is for (used for the accessible name). */
@@ -42,6 +43,7 @@ export function DayEventList({ date, occurrences, onSelect }: DayEventListProps)
                   {[category?.name, time].filter(Boolean).join(' · ')}
                 </span>
               </span>
+              <ReminderBell event={o.event} />
             </button>
           </li>
         );

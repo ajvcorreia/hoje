@@ -11,6 +11,7 @@ import { overdrawMessage, useLeavePreview, type PreviewParams } from '../leave/a
 import { LeavePreviewNote } from '../leave/LeavePreviewNote';
 import { formatDayHeading, todayIso } from '../../lib/dates';
 import { useCategories, useDefaultCategoryId } from '../categories/api';
+import { useEmailSettings } from '../settings/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { getClientId } from '../../api/clientId';
 import { subscribeChanges } from '../realtime/store';
@@ -94,6 +95,8 @@ function EditorForm(props: FormProps) {
   const { onClose } = props;
   const editing = props.mode === 'edit' ? props.event : null;
   const { data: categories } = useCategories();
+  const emailSettings = useEmailSettings();
+  const emailMissing = emailSettings.data?.configured === false;
   const defaultCategoryId = useDefaultCategoryId();
   const create = useCreateEvent();
   const update = useUpdateEvent();
@@ -336,6 +339,7 @@ function EditorForm(props: FormProps) {
               </label>
               <select
                 id="event-reminder"
+                aria-describedby={emailMissing ? 'event-reminder-hint' : undefined}
                 value={form.reminder}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -351,6 +355,11 @@ function EditorForm(props: FormProps) {
                 <option value="10080">1 week before</option>
                 <option value="custom">Custom…</option>
               </select>
+              {emailMissing ? (
+                <p id="event-reminder-hint" className="text-xs text-text-muted">
+                  Email isn&apos;t set up on the server, so reminders won&apos;t be sent.
+                </p>
+              ) : null}
               {form.reminder === 'custom' ? (
                 <div className="flex items-end gap-2">
                   <Field

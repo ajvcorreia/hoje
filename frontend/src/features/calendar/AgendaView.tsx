@@ -8,6 +8,7 @@ import { categoryMap, useCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { useOccurrences } from '../events/api';
 import { compareWithinDay, filterVisible, formatTimeRange } from '../events/occurrences';
+import { ReminderBell } from '../events/ReminderBell';
 
 interface AgendaViewProps {
   today: string;
@@ -101,6 +102,7 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {o.event.title}
                           </span>
+                          <ReminderBell event={o.event} />
                           <span className="shrink-0 text-xs text-text-muted">
                             {[category?.name, time, until].filter(Boolean).join(' · ')}
                           </span>
