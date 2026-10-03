@@ -1,0 +1,176 @@
+# Hoje production stack, meant to sit behind an existing Nginx Proxy Manager (NPM) that
+# terminates TLS. Plain HTTP only between NPM and hoje-web; hoje-web never talks to the internet.
+#
+#   cp deploy/prod.env.example deploy/.env      # then edit every value
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env pull
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d
+#
+# Networks
+#   backend  internal (no egress): db, api, worker, backup.
+#   edge     web <-> api only. The API must stay reachable ONLY through hoje-web, because it
+#            trusts the X-Real-IP header that hoje-web sets (HOJE_TRUST_REAL_IP_HEADER).
+#   egress   the worker alone: outbound SMTP for reminder mail.
+#            (The api is on edge, which also has outbound access, for password-reset mail.)
+#
+# How NPM reaches hoje-web (pick ONE, see README "Deployment: production"):
+#   A. NPM is a container on this host (recommended): also pass
+#      `-f deploy/compose.prod.proxy-network.yml` so hoje-web joins NPM's Docker network,
+#      then forward to `hoje-web` port 8080. Set HOJE_PROXY_NETWORK and TRUSTED_PROXIES.
+#   B. NPM runs natively / with host networking on this host: keep HOJE_BIND=127.0.0.1 and
+#      forward to 127.0.0.1:${HOJE_HTTP_PORT}.
+#   C. NPM is on another machine: set HOJE_BIND to this host's LAN address (or 0.0.0.0), firewall
+#      the port so only NPM can connect, and forward to that address.
+name: hoje
+
+x-hardening: &hardening
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  tmpfs:
+    - /tmp
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-app-env: &app-env
+  HOJE_ENV: production
+  HOJE_LOG_LEVEL: ${HOJE_LOG_LEVEL:-INFO}
+  HOJE_DATABASE_URL: postgresql+asyncpg://hoje:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@db:5432/hoje
+  HOJE_SECRET_KEY: ${HOJE_SECRET_KEY:?set HOJE_SECRET_KEY in deploy/.env}
+  HOJE_PUBLIC_URL: ${HOJE_PUBLIC_URL:?set HOJE_PUBLIC_URL (https://...) in deploy/.env}
+  HOJE_ALLOW_REGISTRATION: ${HOJE_ALLOW_REGISTRATION:-false}
+  HOJE_TRUST_REAL_IP_HEADER: "true"
+  HOJE_WORKER_INTERVAL_SECONDS: ${HOJE_WORKER_INTERVAL_SECONDS:-60}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+  SMTP_TLS: ${SMTP_TLS:-false}
+  SMTP_FROM: ${SMTP_FROM:-}
+  TZ: ${TZ:-UTC}
+
+services:
+  db:
+    image: postgres:17-alpine
+    <<: *hardening
+    # The postgres entrypoint needs these to initialise the data dir and drop to its user.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    environment:
+      POSTGRES_USER: hoje
+      POSTGRES_DB: hoje
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoje -d hoje"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  api:
+    image: ${DOCKERHUB_NAMESPACE:?set DOCKERHUB_NAMESPACE in deploy/.env}/hoje-api:${HOJE_TAG:-latest}
+    <<: *hardening
+    environment:
+      <<: *app-env
+    networks: [backend, edge]
+    mem_limit: 384m
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    image: ${DOCKERHUB_NAMESPACE:?set DOCKERHUB_NAMESPACE in deploy/.env}/hoje-api:${HOJE_TAG:-latest}
+    <<: *hardening
+    command: ["python", "-m", "hoje.worker"]
+    environment:
+      <<: *app-env
+    networks: [backend, egress]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    image: ${DOCKERHUB_NAMESPACE:?set DOCKERHUB_NAMESPACE in deploy/.env}/hoje-web:${HOJE_TAG:-latest}
+    container_name: hoje-web
+    <<: *hardening
+    # The caddy binary carries a file capability (cap_net_bind_service), which must be in the
+    # bounding set even though it listens on 8080.
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp
+      - /data
+      - /config
+    environment:
+      SITE_ADDRESS: ":8080"
+      API_UPSTREAM: api:8000
+      # IPs/CIDRs of Nginx Proxy Manager as seen by this container. Only their
+      # X-Forwarded-For is believed; everyone else is identified by the connecting address.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-private_ranges}
+    ports:
+      - "${HOJE_BIND:-127.0.0.1}:${HOJE_HTTP_PORT:-8080}:8080"
+    networks: [edge]
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+
+  backup:
+    image: postgres:17-alpine
+    <<: *hardening
+    # Root inside the container (no capabilities except DAC_OVERRIDE) so it can write to a
+    # bind-mounted HOJE_BACKUP_DIR owned by any user. Dumps are created 0600.
+    user: "0:0"
+    cap_add: [DAC_OVERRIDE]
+    init: true
+    command: ["sh", "/backup/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: hoje
+      PGDATABASE: hoje
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_SCHEDULE_HOUR: ${BACKUP_SCHEDULE_HOUR:-2}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./backup/backup.sh:/backup/backup.sh:ro
+      # A named volume by default; set HOJE_BACKUP_DIR=/abs/host/path to keep dumps on the host.
+      - ${HOJE_BACKUP_DIR:-backups}:/backups
+    networks: [backend]
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "sh", "/backup/backup.sh", "health"]
+      interval: 5m
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  backend:
+    internal: true
+  edge:
+  egress:
+
+volumes:
+  pgdata:
+  backups:

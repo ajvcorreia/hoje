@@ -1,0 +1,16 @@
+# Optional overlay (option A): attach hoje-web to the Docker network your Nginx Proxy Manager
+# container is on, so NPM can forward to `hoje-web:8080` without any published port.
+#   docker compose -f deploy/compose.prod.yml -f deploy/compose.prod.proxy-network.yml \
+#     --env-file deploy/.env up -d
+# HOJE_PROXY_NETWORK is the NPM network name (`docker network ls`). Then set TRUSTED_PROXIES to
+# NPM's address or that network's subnet (`docker network inspect <name>`).
+services:
+  web:
+    networks:
+      - edge
+      - proxy
+
+networks:
+  proxy:
+    name: ${HOJE_PROXY_NETWORK:?set HOJE_PROXY_NETWORK in deploy/.env}
+    external: true
