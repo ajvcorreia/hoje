@@ -1,8 +1,17 @@
 # Hoje web tier: static SPA + reverse proxy to the API.
-# SITE_ADDRESS: a domain (automatic HTTPS) or ":8080" (plain HTTP, test VM).
+# SITE_ADDRESS: ":8080" (plain HTTP; production runs behind Nginx Proxy Manager which terminates
+# TLS) or a domain (Caddy then obtains certificates itself).
 # API_UPSTREAM: defaults to api:8000.
+# TRUSTED_PROXIES: space-separated IPs/CIDRs of reverse proxies in front of this container
+# (e.g. Nginx Proxy Manager). Only their X-Forwarded-For is believed; for any other peer the
+# connecting address is the client. Defaults to the private ranges.
 {
 	admin off
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:private_ranges}
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+	}
 	log {
 		output stdout
 		format json
@@ -51,17 +60,23 @@ http://127.0.0.1:2020 {
 	# API and probes. flush_interval -1 keeps the SSE stream unbuffered.
 	handle /api/* {
 		reverse_proxy {$API_UPSTREAM:api:8000} {
+			# Overwrites any client-supplied value; the API trusts this header (see client_ip).
+			header_up X-Real-IP {client_ip}
 			flush_interval -1
 			header_down -Server
 		}
 	}
 	handle /healthz {
 		reverse_proxy {$API_UPSTREAM:api:8000} {
+			# Overwrites any client-supplied value; the API trusts this header (see client_ip).
+			header_up X-Real-IP {client_ip}
 			header_down -Server
 		}
 	}
 	handle /readyz {
 		reverse_proxy {$API_UPSTREAM:api:8000} {
+			# Overwrites any client-supplied value; the API trusts this header (see client_ip).
+			header_up X-Real-IP {client_ip}
 			header_down -Server
 		}
 	}

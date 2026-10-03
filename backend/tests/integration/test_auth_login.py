@@ -161,3 +161,42 @@ async def test_session_expires_after_thirty_days_even_when_active(registered, fr
     frozen_clock.advance(days=5, minutes=1)  # day 30 + 1 min
 
     assert (await registered.client.get("/api/v1/me")).status_code == 401
+
+
+def _login_headers(**extra: str) -> dict[str, str]:
+    return {"Origin": "http://localhost:8080", **extra}
+
+
+async def test_throttle_keys_on_x_real_ip(registered, db_session):
+    from sqlalchemy import select
+
+    from hoje.models import AuthThrottle
+
+    for i in range(5):
+        resp = await registered.client.post(
+            "/api/v1/auth/login",
+            json={"email": f"ghost{i}@example.com", "password": "wrong"},
+            headers=_login_headers(**{"X-Real-IP": "203.0.113.7"}),
+        )
+        assert resp.status_code == 401
+
+    keys = set(await db_session.scalars(select(AuthThrottle.key)))
+    assert "login:ip:203.0.113.7" in keys
+    other = await registered.client.post(
+        "/api/v1/auth/login",
+        json={"email": "alice@example.com", "password": "correct horse battery staple 42"},
+        headers=_login_headers(**{"X-Real-IP": "203.0.113.8"}),
+    )
+    assert other.status_code == 200
+
+
+async def test_forged_forwarded_for_does_not_dodge_the_ip_lock(registered):
+    codes = []
+    for i in range(6):
+        resp = await registered.client.post(
+            "/api/v1/auth/login",
+            json={"email": f"ghost{i}@example.com", "password": "wrong"},
+            headers=_login_headers(**{"X-Forwarded-For": f"198.51.100.{i}"}),
+        )
+        codes.append(resp.status_code)
+    assert codes == [401] * 5 + [429]

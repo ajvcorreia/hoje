@@ -38,7 +38,7 @@ services:
     command:
       - sh
       - -c
-      - python -m hoje.migrate && exec uvicorn hoje.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/hoje --proxy-headers --forwarded-allow-ips='*'
+      - python -m hoje.migrate && exec uvicorn hoje.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/hoje --no-proxy-headers
     environment:
       <<: *api-env
     volumes:
