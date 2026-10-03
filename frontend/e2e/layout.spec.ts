@@ -113,7 +113,7 @@ function isoWeek(date: Date): number {
 test.describe('per-event vertical labels', () => {
   test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
 
-  test('large bold rotated label spans the whole block and clicks pass through', async ({
+  test('large bold rotated label spans the whole (8-day) block and clicks pass through', async ({
     page,
     account,
     api,
@@ -122,7 +122,7 @@ test.describe('per-event vertical labels', () => {
     const start = dateInCurrentMonth(10);
     const middle = dateInCurrentMonth(11);
     await api.createEvent('Conference', start, {
-      end_date: dateInCurrentMonth(12),
+      end_date: dateInCurrentMonth(17),
       label_vertical: true,
     });
 
@@ -142,11 +142,48 @@ test.describe('per-event vertical labels', () => {
     const cellBox = await page.locator(`[data-date="${start}"]`).boundingBox();
     const labelBox = await label.boundingBox();
     expect(cellBox && labelBox).toBeTruthy();
-    expect(labelBox?.height).toBeGreaterThan((cellBox?.height ?? 0) * 3 - 2);
-    expect(labelBox?.height).toBeLessThan((cellBox?.height ?? 0) * 3 + 2);
+    expect(labelBox?.height).toBeGreaterThan((cellBox?.height ?? 0) * 8 - 2);
+    expect(labelBox?.height).toBeLessThan((cellBox?.height ?? 0) * 8 + 2);
 
     await page.locator(`[data-date="${middle}"]`).click();
     await expect(page.getByRole('dialog', { name: /^Events on / })).toBeVisible();
+  });
+
+  test('a long vertical name shrinks to fit a short block instead of being cut off', async ({
+    page,
+    account,
+    api,
+  }) => {
+    void account;
+    // A short name in a 2-day block, and a longer one that only fits a 5-day block when shrunk.
+    await api.createEvent('Erbil', dateInCurrentMonth(3), {
+      end_date: dateInCurrentMonth(4),
+      label_vertical: true,
+    });
+    await api.createEvent('Lisbon conference', dateInCurrentMonth(20), {
+      end_date: dateInCurrentMonth(24),
+      label_vertical: true,
+    });
+
+    await page.goto('/');
+    const short = page.locator('.cal-vlabel', { hasText: 'Erbil' }).locator('.cal-vlabel-text');
+    const long = page
+      .locator('.cal-vlabel', { hasText: 'Lisbon conference' })
+      .locator('.cal-vlabel-text');
+    await expect(long).toBeVisible();
+    const fit = (el: Element) => ({
+      size: parseFloat(getComputedStyle(el).fontSize),
+      // Vertical text: the name runs along the element's height.
+      overflow: el.scrollHeight - el.clientHeight,
+    });
+    // Both names fit their block without being cut off, never below the 9px floor, and both
+    // are well under the ~28px a full-width name gets when the block is long enough.
+    for (const label of [short, long]) {
+      const { size, overflow } = await label.evaluate(fit);
+      expect(overflow).toBeLessThanOrEqual(1);
+      expect(size).toBeGreaterThanOrEqual(9);
+      expect(size).toBeLessThan(20);
+    }
   });
 
   test('a multi-day event without the flag keeps a horizontal title', async ({

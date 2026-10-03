@@ -26,7 +26,13 @@ import { useStrikePast } from '../../lib/strikePast';
 import { useFitColumns } from '../../lib/fitColumns';
 import { toLayoutInput } from '../events/occurrences';
 import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
-import { measurerFor, monthFitWidth, readFitFonts, type FitFonts } from './fitWidth';
+import {
+  measurerFor,
+  monthFitWidth,
+  readFitFonts,
+  verticalLabelEm,
+  type FitFonts,
+} from './fitWidth';
 import {
   GRID_ROWS,
   layoutMonth,
@@ -270,7 +276,13 @@ const MonthColumn = memo(function MonthColumn({
           data-cat={seg.colour}
           data-lane={seg.split ? String(seg.lane) : 'full'}
           data-past={seg.past || undefined}
-          style={{ '--seg-row': seg.row, '--seg-len': seg.len } as CSSProperties}
+          style={
+            {
+              '--seg-row': seg.row,
+              '--seg-len': seg.len,
+              '--vl-em': verticalLabelEm(seg.title),
+            } as CSSProperties
+          }
         >
           <span className="cal-vlabel-text">{seg.title}</span>
         </span>

@@ -284,7 +284,7 @@
 
 /*
  * Per-event vertical name along a whole multi-day block. The outer box is a horizontal size
- * container so cqi tracks the block width; the inner text is rotated.
+ * container; the rotated inner text sizes itself from it (see .cal-vlabel-text).
  */
 .cal-vlabel {
   position: absolute;
@@ -296,7 +296,8 @@
   box-sizing: border-box;
   height: calc(var(--seg-len) * var(--row-h));
   padding: 2px 0;
-  container-type: inline-size;
+  /* Size container on both axes; the vertical text inside uses cqb (width) and cqi (height). */
+  container-type: size;
   color: var(--ev-text);
   pointer-events: none;
 }
@@ -325,7 +326,13 @@
   /* Reads bottom-to-top (90° counter-clockwise), like the user's spreadsheet. */
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: clamp(0.75rem, 26cqi, 2rem);
+  /* On this vertical element cqi is the block HEIGHT and cqb its WIDTH. Size to the width,
+     shrunk so the whole name fits the height (--vl-em = name
+     length in em); below 9px it falls back to the ellipsis. */
+  font-size: max(
+    0.5625rem,
+    min(clamp(0.75rem, 26cqb, 2rem), calc((100cqi - 6px) / var(--vl-em, 1)))
+  );
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.02em;

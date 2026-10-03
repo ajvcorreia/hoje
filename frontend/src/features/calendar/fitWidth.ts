@@ -52,6 +52,24 @@ export function measureText(value: string, font: string): number {
   return width;
 }
 
+/** Letter spacing of vertical labels, in em (keep in sync with `.cal-vlabel-text`). */
+const VLABEL_TRACKING = 0.02;
+let vlabelFamily: string | null = null;
+
+/**
+ * Length of a vertical label's bold `title` in em, i.e. its length in px at a 1px font size.
+ * CSS divides the block height by this to shrink long names until they fit.
+ */
+export function verticalLabelEm(title: string): number {
+  if (vlabelFamily === null) {
+    vlabelFamily =
+      (typeof document !== 'undefined' && getComputedStyle(document.documentElement).fontFamily) ||
+      'sans-serif';
+  }
+  const em = measureText(title, `700 100px ${vlabelFamily}`) / 100;
+  return Math.max(0.5, em + VLABEL_TRACKING * title.length);
+}
+
 export function measurerFor(fonts: FitFonts): TextMeasurer {
   return {
     text: (value) => measureText(value, fonts.normal),
