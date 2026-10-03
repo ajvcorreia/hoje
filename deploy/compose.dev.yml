@@ -38,7 +38,7 @@ services:
     command:
       - sh
       - -c
-      - python -m hoje.migrate && exec uvicorn hoje.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/hoje --proxy-headers --forwarded-allow-ips='*'
+      - python -m hoje.migrate && exec uvicorn hoje.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/hoje --no-proxy-headers
     environment:
       <<: *api-env
     volumes:
@@ -70,7 +70,7 @@ services:
         condition: service_healthy
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31.4
     ports:
       - "127.0.0.1:8025:8025"
     healthcheck:

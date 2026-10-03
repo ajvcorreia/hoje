@@ -1,0 +1,131 @@
+name: Release
+
+# Publishes the hoje-api and hoje-web images to Docker Hub.
+#   push to main      -> :latest and :sha-<short>
+#   push of vX.Y.Z    -> :X.Y.Z, :X.Y and :sha-<short>
+# Nothing runs for pull requests. Without the repository variable DOCKERHUB_NAMESPACE the whole
+# job is skipped; if the variable is set but the secrets are missing, it warns and skips.
+# Setup: README, "CI/CD and GitHub secrets".
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Repository variables (unlike secrets) are available to job-level conditions.
+    if: vars.DOCKERHUB_NAMESPACE != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: hoje-api
+            context: backend
+            file: backend/Dockerfile
+          - image: hoje-web
+            context: .
+            file: deploy/web.Dockerfile
+    env:
+      REPOSITORY: ${{ vars.DOCKERHUB_NAMESPACE }}/${{ matrix.image }}
+    steps:
+      - name: Check Docker Hub credentials
+        id: creds
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Docker Hub::DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets are not set; skipping the image push."
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.creds.outputs.ok == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.creds.outputs.ok == 'true'
+
+      - name: Image tags and OCI labels
+        id: meta
+        if: steps.creds.outputs.ok == 'true'
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REPOSITORY }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # Build once locally and scan before anything is pushed; the push below reuses the cache.
+      - name: Build image for scanning
+        if: steps.creds.outputs.ok == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: hoje/${{ matrix.image }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      - name: Scan image
+        if: steps.creds.outputs.ok == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: hoje/${{ matrix.image }}:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Log in to Docker Hub
+        if: steps.creds.outputs.ok == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.creds.outputs.ok == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      - name: Published tags
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "### Published ${REPOSITORY}"
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -42,8 +42,20 @@ def get_mailer(
 
 
 def client_ip(request: Request) -> str | None:
-    """Peer address (uvicorn --proxy-headers already resolved the real client behind Caddy)."""
-    return sessions.normalize_ip(request.client.host if request.client else None)
+    """The client address the throttle and audit trail key on.
+
+    hoje-web (Caddy) overwrites ``X-Real-IP`` with the address it resolved behind the trusted
+    proxy, so it is honoured when ``HOJE_TRUST_REAL_IP_HEADER`` is on (the default).
+    ``X-Forwarded-For`` is never read: its left-most entry is client-controlled. A missing or
+    invalid value falls back to the peer address. The API must therefore only be reachable
+    through hoje-web.
+    """
+    peer = sessions.normalize_ip(request.client.host if request.client else None)
+    if get_settings().trust_real_ip_header:
+        real = sessions.normalize_ip((request.headers.get("x-real-ip") or "").strip())
+        if real is not None:
+            return real
+    return peer
 
 
 def throttle_ip(request: Request) -> str:

@@ -98,6 +98,8 @@ services:
     environment:
       SITE_ADDRESS: ":8080"
       API_UPSTREAM: api:8000
+      # No proxy in front of this stack: believe no X-Forwarded-For (TEST-NET address, never matches).
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-192.0.2.1/32}
     ports:
       - "${HOJE_TEST_PORT:-8190}:8080"
     networks: [edge]
@@ -108,7 +110,7 @@ services:
     restart: unless-stopped
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31.4
     <<: *hardening
     user: "10001:10001"
     environment:

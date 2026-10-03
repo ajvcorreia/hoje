@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     allow_registration: bool = Field(default=False, validation_alias="HOJE_ALLOW_REGISTRATION")
     insecure_cookies: bool = Field(default=False, validation_alias="HOJE_INSECURE_COOKIES")
     log_level: str = Field(default="INFO", validation_alias="HOJE_LOG_LEVEL")
+    # Trust the X-Real-IP header set by hoje-web (Caddy). Only safe while the API is reachable
+    # exclusively through hoje-web; set false when anything else can reach the API port.
+    trust_real_ip_header: bool = Field(default=True, validation_alias="HOJE_TRUST_REAL_IP_HEADER")
     worker_interval_seconds: int = Field(
         default=60, ge=1, validation_alias="HOJE_WORKER_INTERVAL_SECONDS"
     )
