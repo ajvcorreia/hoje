@@ -351,6 +351,56 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
+      "EmailLogEntry": {
+        "description": "One row of the current user's outgoing email log (never the body).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "enum": [
+              "reminder",
+              "password_reset",
+              "test"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "sent",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "created_at",
+          "kind",
+          "subject",
+          "status"
+        ],
+        "title": "EmailLogEntry",
+        "type": "object"
+      },
       "EmailSettings": {
         "properties": {
           "configured": {
@@ -5245,6 +5295,85 @@
           }
         },
         "summary": "Email delivery configuration status",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/email/log": {
+      "get": {
+        "operationId": "settings_email_log",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EmailLogEntry"
+                  },
+                  "title": "Response Settings Email Log",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Recent emails sent to the current user",
         "tags": [
           "settings"
         ]

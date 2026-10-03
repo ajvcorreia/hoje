@@ -2,11 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 
 from hoje.api._common import problems
 from hoje.api.deps import CurrentUser, DbSession, get_mailer
-from hoje.schemas import EmailSettings
+from hoje.models import NotificationLog
+from hoje.schemas import EmailLogEntry, EmailSettings
 from hoje.services import mailer as mailer_service
 from hoje.services import throttle
 
@@ -41,3 +43,22 @@ async def settings_email_test(mailer: Mail, user: CurrentUser, db: DbSession) ->
     )
     if not sent:
         raise HTTPException(status_code=502, detail="The mail server could not deliver the email")
+
+
+@router.get(
+    "/email/log",
+    response_model=list[EmailLogEntry],
+    summary="Recent emails sent to the current user",
+)
+async def settings_email_log(
+    user: CurrentUser,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[NotificationLog]:
+    rows = await db.scalars(
+        select(NotificationLog)
+        .where(NotificationLog.user_id == user.id)
+        .order_by(NotificationLog.created_at.desc(), NotificationLog.id)
+        .limit(limit)
+    )
+    return list(rows)
