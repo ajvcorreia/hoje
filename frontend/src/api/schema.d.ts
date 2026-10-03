@@ -546,6 +546,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/email/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent emails sent to the current user */
+        get: operations["settings_email_log"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/email/test": {
         parameters: {
             query?: never;
@@ -704,6 +721,31 @@ export interface components {
             name?: string | null;
             /** Version */
             version: number;
+        };
+        /**
+         * EmailLogEntry
+         * @description One row of the current user's outgoing email log (never the body).
+         */
+        EmailLogEntry: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error */
+            error?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reminder" | "password_reset" | "test";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "sent" | "failed";
+            /** Subject */
+            subject: string;
         };
         /** EmailSettings */
         EmailSettings: {
@@ -3884,6 +3926,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmailSettings"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    settings_email_log: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailLogEntry"][];
                 };
             };
             /** @description Not authenticated */

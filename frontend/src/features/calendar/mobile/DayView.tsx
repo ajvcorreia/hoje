@@ -3,6 +3,7 @@ import type { Occurrence } from '../../../api/types';
 import { parseIso } from '../../../lib/dates';
 import { categoryMap, useCategories } from '../../categories/api';
 import { QuickAdd } from '../../events/QuickAdd';
+import { ReminderBell } from '../../events/ReminderBell';
 import { formatTimeRange, occurrenceKey } from '../../events/occurrences';
 import type { HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
@@ -42,7 +43,12 @@ export function DayView({ date, occurrences, loading, holidays, onSelectEvent }:
                   onClick={() => onSelectEvent(o.event_id)}
                   className="m-card flex min-h-14 w-full flex-col items-start justify-center rounded-md px-3 py-2 text-left"
                 >
-                  <span className="w-full break-words text-sm font-medium">{o.event.title}</span>
+                  <span className="flex w-full items-start gap-1.5">
+                    <span className="min-w-0 flex-1 break-words text-sm font-medium">
+                      {o.event.title}
+                    </span>
+                    <ReminderBell event={o.event} />
+                  </span>
                   <span className="w-full break-words text-xs text-text-muted">
                     {[category?.name, time || (o.event.all_day ? 'All day' : ''), dayOf]
                       .filter(Boolean)
