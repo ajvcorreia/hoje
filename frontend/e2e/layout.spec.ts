@@ -132,6 +132,8 @@ test.describe('per-event vertical labels', () => {
     await expect(label).toHaveText('Conference');
     const text = label.locator('.cal-vlabel-text');
     await expect(text).toHaveCSS('writing-mode', 'vertical-rl');
+    // Rotated 180° so it reads bottom-to-top (counter-clockwise).
+    await expect(text).toHaveCSS('transform', 'matrix(-1, 0, 0, -1, 0, 0)');
     const weight = await text.evaluate((el) => Number(getComputedStyle(el).fontWeight));
     expect(weight).toBeGreaterThanOrEqual(700);
     const size = await text.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
