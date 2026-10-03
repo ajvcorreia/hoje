@@ -86,6 +86,7 @@ services:
     command: ["python", "-m", "hoje.worker"]
     environment:
       <<: *api-env
+      HOJE_WORKER_INTERVAL_SECONDS: "2"
     networks: [e2e_internal]
     mem_limit: 192m
     healthcheck:
@@ -135,11 +136,12 @@ services:
       npm_config_cache: /tmp/npm
       CI: ${CI:-}
       E2E_BASE_URL: http://e2e-web:8080
+      E2E_MAILPIT_URL: http://e2e-mailpit:8025
     volumes:
       - ../frontend:/work
     # The frontend directory is bind-mounted, usually without node_modules: install first.
     command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
-    networks: [e2e_edge]
+    networks: [e2e_edge, e2e_internal]
     depends_on:
       e2e-web:
         condition: service_started
