@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
-import { useFitColumns } from '../../lib/fitColumns';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
@@ -30,7 +29,6 @@ export function SettingsPage() {
   const [textSize, setTextSize] = useTextSize();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
-  const [fitColumns, setFitColumns] = useFitColumns();
   // Links like /settings#vacation: scroll to the section once the page is there.
   const { hash } = useLocation();
   useEffect(() => {
@@ -95,18 +93,6 @@ export function SettingsPage() {
             />
             Strike through past days
           </label>
-          <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={fitColumns}
-              onChange={(e) => setFitColumns(e.target.checked)}
-              className="size-4"
-            />
-            Fit columns to text
-          </label>
-          <p className="mt-1 text-xs text-text-muted">
-            Widens each month so no title is cut off; the calendar then scrolls sideways.
-          </p>
         </SettingsSection>
         <CategoriesSection />
         <VacationSection />

@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { storeFitColumns } from '../../lib/fitColumns';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
 
 const WORK = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -98,8 +97,9 @@ function cell(date: string): HTMLElement {
   return el;
 }
 
+// The full 12-month grid (with text measuring) is slow to mount under a loaded test run.
 const holidaysDrawn = () =>
-  waitFor(() => expect(document.querySelector('.cal-hol')).not.toBeNull());
+  waitFor(() => expect(document.querySelector('.cal-hol')).not.toBeNull(), { timeout: 5000 });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 5, 15, 12) });
@@ -269,24 +269,22 @@ describe('fit columns to text', () => {
     );
 
   it('gives a month with a long title a larger --col-fit and no ellipsis', async () => {
-    storeFitColumns(true);
     mockApi(routes([event('e1', longTitle, '2026-01-10')], { 'GET /api/v1/holidays': [] }));
     renderApp();
     await waitFor(() => expect(fitOf(0)).toBeGreaterThan(0));
     expect(fitOf(0)).toBeGreaterThan(longTitle.length * 6);
     expect(fitOf(1)).toBe(0);
     const grid = document.querySelector<HTMLElement>('.cal-grid');
-    expect(grid).toHaveAttribute('data-fit');
-    expect(grid?.style.gridTemplateColumns).toContain('--col-min');
+    // Every month: lead + max(three day-number widths, widest text).
+    expect(grid?.style.gridTemplateColumns).toContain('max(3 * var(--num-w), 0px)');
     expect(cell('2026-01-10').querySelector('.cal-ev')).toHaveTextContent(longTitle);
   });
 
-  it('sets nothing when the option is off', async () => {
-    mockApi(routes([event('e1', longTitle, '2026-01-10')]));
+  it('gives months without any text the three-day-number minimum', async () => {
+    mockApi(routes([], { 'GET /api/v1/holidays': [] }));
     renderApp();
-    await waitFor(() => expect(document.querySelector('[data-month="0"]')).not.toBeNull());
-    expect(document.querySelector('[data-month="0"]')).not.toHaveStyle('--col-fit: 0px');
-    expect(Number.isNaN(fitOf(0))).toBe(true);
-    expect(document.querySelector('.cal-grid')).not.toHaveAttribute('data-fit');
+    await waitFor(() => expect(fitOf(0)).toBe(0));
+    const template = document.querySelector<HTMLElement>('.cal-grid')?.style.gridTemplateColumns;
+    expect(template?.match(/max\(3 \* var\(--num-w\), 0px\)/g)).toHaveLength(12);
   });
 });

@@ -56,6 +56,7 @@
 /* ---- Desktop month grid -------------------------------------------------- */
 .cal-scroll {
   --gutter-w: 2rem;
+  /* Only a fallback before the grid measures text; MonthGrid sets per-month minimums. */
   --col-min: 180px;
   --num-w: 1.75rem;
   --wk-w-on: 1.5rem;
@@ -463,12 +464,6 @@
 .cal-cell[data-past] .cal-hol {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
-}
-
-/* "Fit columns to text": titles are never truncated, the column is wide enough. */
-.cal-grid[data-fit] .cal-ev,
-.cal-grid[data-fit] .cal-hol {
-  text-overflow: clip;
 }
 
 .yr-day[data-holiday-off] {

@@ -259,8 +259,7 @@ test.describe('fit columns to text', () => {
     const date = dateInCurrentMonth(10);
     await api.createEvent(title, date);
 
-    await page.goto('/settings');
-    await page.getByRole('checkbox', { name: 'Fit columns to text' }).check();
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
     const now = new Date();
@@ -270,6 +269,8 @@ test.describe('fit columns to text', () => {
       page.locator(`[data-month="${m}"]`).evaluate((el) => el.getBoundingClientRect().width);
     await expect(page.locator(`[data-date="${date}"] .cal-ev`)).toHaveText(title);
     await expect.poll(() => width(month)).toBeGreaterThan((await width(other)) + 100);
+    // A month without text sits at its minimum: week + day-number columns + 3 x day-number.
+    expect(await width(other)).toBeLessThan(160);
 
     const ev = page.locator(`[data-date="${date}"] .cal-ev`);
     await expect

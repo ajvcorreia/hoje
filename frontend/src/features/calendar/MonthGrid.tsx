@@ -23,7 +23,6 @@ import {
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
-import { useFitColumns } from '../../lib/fitColumns';
 import { toLayoutInput } from '../events/occurrences';
 import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
 import {
@@ -78,7 +77,7 @@ interface MonthColumnProps {
   inputs: LayoutInput[];
   /** This month's holidays by date. */
   holidays: ReadonlyMap<string, HolidayDay[]>;
-  /** Width (px) the event area needs to show every title; set only by "Fit columns to text". */
+  /** Width (px) the event area needs so no title is cut off (sets the column minimum). */
   fit?: number;
   weekendDays: number[];
   today: string;
@@ -319,12 +318,10 @@ export function MonthGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
-  const [fitColumns] = useFitColumns();
   const [fonts, setFonts] = useState<FitFonts | null>(null);
 
-  // Fit columns: re-read the cell font on mount, on text-size changes and once web fonts load.
+  // Column widths follow the text: re-read the cell font on mount, on text-size changes and once web fonts load.
   useLayoutEffect(() => {
-    if (!fitColumns) return;
     const root = gridRef.current;
     const measure = () => {
       const next = readFitFonts(root);
@@ -342,7 +339,7 @@ export function MonthGrid({
       observer.disconnect();
       fontSet?.removeEventListener?.('loadingdone', measure);
     };
-  }, [fitColumns]);
+  }, []);
 
   const holidaysByMonth = useMemo(() => {
     const buckets = Array.from({ length: 12 }, () => new Map<string, HolidayDay[]>());
@@ -386,7 +383,7 @@ export function MonthGrid({
 
   // Required event-area width per month; memoised on the month inputs, holidays and font.
   const fits = useMemo(() => {
-    if (!fitColumns || !fonts) return null;
+    if (!fonts) return null;
     const measure = measurerFor(fonts);
     return inputsByMonth.map((inputs, month) => {
       const names = new Map<number, string>();
@@ -395,7 +392,7 @@ export function MonthGrid({
       }
       return monthFitWidth(layoutMonth(inputs, year, month), names, measure);
     });
-  }, [fitColumns, fonts, inputsByMonth, holidaysByMonth, year]);
+  }, [fonts, inputsByMonth, holidaysByMonth, year]);
 
   // Roving tabindex.
   const defaultFocus = today.startsWith(`${year}-`) ? today : `${year}-01-01`;
@@ -451,18 +448,17 @@ export function MonthGrid({
     el.scrollLeft += event.deltaY;
   }, []);
 
-  // Per-column tracks: max(--col-min, lead + 2 * gap + fit); the strip is as wide as their sum.
+  // Per-column minimum: lead (week + day-number columns and gaps) plus the widest text in that
+  // month, or three day-number widths for a month without text. Columns still share spare
+  // width (1fr); the strip is as wide as the sum of the minimums and scrolls sideways.
   const lead = `var(--num-w) + ${weeks ? 'var(--wk-w-on)' : '0px'} + 2 * var(--gap)`;
-  const track = (fit: number) => `max(var(--col-min), calc(${lead} + ${fit}px))`;
+  const track = (fit: number) => `calc(${lead} + max(3 * var(--num-w), ${fit}px))`;
+  const minimums = fits ?? Array.from({ length: 12 }, () => 0);
   const style = {
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
-    ...(fits
-      ? {
-          gridTemplateColumns: `var(--gutter-w) ${fits.map((f) => `minmax(${track(f)}, 1fr)`).join(' ')}`,
-          width: `max(100%, calc(var(--gutter-w) + ${fits.map(track).join(' + ')}))`,
-        }
-      : null),
+    gridTemplateColumns: `var(--gutter-w) ${minimums.map((f) => `minmax(${track(f)}, 1fr)`).join(' ')}`,
+    width: `max(100%, calc(var(--gutter-w) + ${minimums.map(track).join(' + ')}))`,
   } as CSSProperties;
 
   const focusMonth = Number(activeFocus.slice(5, 7)) - 1;
@@ -484,7 +480,6 @@ export function MonthGrid({
         role="group"
         aria-label={`Calendar ${year}`}
         className="cal-grid"
-        data-fit={fits ? '' : undefined}
         style={style}
       >
         <div className="cal-gutter" aria-hidden="true">
