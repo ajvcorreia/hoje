@@ -51,7 +51,7 @@ services:
       retries: 30
 
   e2e-mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31.4
     <<: *hardening
     user: "10001:10001"
     environment:
@@ -113,6 +113,8 @@ services:
     environment:
       SITE_ADDRESS: ":8080"
       API_UPSTREAM: e2e-api:8000
+      # Nothing on this network is a trusted proxy, so forged X-Forwarded-For is ignored.
+      TRUSTED_PROXIES: 192.0.2.1/32
     ports:
       - "${HOJE_E2E_PORT:-8192}:8080"
     networks: [e2e_edge]
