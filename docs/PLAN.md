@@ -101,6 +101,8 @@ POST /api/v1/settings/email/test       → 202
 GET  /api/v1/backups                   owner only (earliest-created user, others get 404): {enabled, directory, schedule_hour, keep_days, timezone, next_run_at, last_success, stale, runs[last 10]}
 POST /api/v1/backups                   owner only → 202 run {status:"requested"}; 409 if one is queued/running or backups are disabled; 429 after 3 per hour
                                        (no download and no restore endpoint, on purpose: restores are a CLI operation and a download would let a stolen session exfiltrate the database)
+GET  /api/v1/export                   JSON file download of the user's own data (docs/export-format.md); audit `data_exported`
+POST /api/v1/import                   {mode: "merge"|"replace", dry_run, password?, data} → counts + warnings; 10 MiB body, 10/hour per user; replace needs the password; 422 names the offending item
 GET  /api/v1/realtime/stream           text/event-stream
 ```
 
@@ -112,7 +114,7 @@ Core schemas:
 - `LeaveImpact {year, days, remaining_before, remaining_after, exceeds: bool}` — list, one per affected year.
 - `LeaveBalance {year, allowance_days, carried_over_days, used, planned, remaining, bookings: [{event_id, title, start_date, end_date, days}]}`
 - `Holiday {id, calendar_id, date, name, is_non_working, source, estimated}`
-- SSE: `event: change` / `data: {entity: "event"|"category"|"leave_policy"|"holiday"|"holiday_calendar"|"user", op: "create"|"update"|"delete", id, version}`; `event: ping` every 25 s.
+- SSE: `event: change` / `data: {entity: "event"|"category"|"leave_policy"|"holiday"|"holiday_calendar"|"user"|"backup_run"|"data", op: "create"|"update"|"delete", id, version}`; `event: ping` every 25 s.
 
 ## 5. Security design
 - Session cookie `__Host-hoje_session` (httpOnly, Secure, SameSite=Lax, Path=/). Raw token 32 random bytes; DB stores sha256. Idle timeout 7 d, absolute 30 d. Rotate on login completion, password change/reset (revokes all others), 2FA changes.

@@ -57,9 +57,12 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
 | T | Open redirect | `lib/safeNext.ts` (relative paths only, no `//`, `\`, control chars) |
 | R | Untraceable abuse | Caddy JSON access log with resolved `client_ip`; `notification_log` of every email (no bodies or tokens) |
 | I | Cross-user data access | Every service query filters on `user_id` (holidays via calendar ownership, reminders via event owner); SSE fan-out keyed by user id; SSE payloads carry ids only |
+| T | Hostile import file (attacker-controlled input from an authenticated user) | The whole document is parsed by strict Pydantic models with the same bounds as the normal API (dates, lengths, palette, IANA zones, reminders), NUL and unencodable text rejected, global caps and a 10 MB body cap; unknown fields are ignored and no id from the file is ever used (all ids are generated server-side and every row is written with the caller's `user_id`, so a file cannot reference or modify another user's rows); validation finishes before the first write and the writes run in one savepoint-wrapped transaction, so any failure leaves nothing behind; errors name the item path but never echo content; imports are throttled (`import:user:{id}`, 10/hour, dry runs included) |
+| E | Data destruction through a stolen session | `replace` re-checks the password (the `reauth:acct:{id}` lockout applies) and only soft-deletes: events and categories stay restorable for 30 days; `data_imported` / `data_exported` audit events carry the mode and counts only |
+| I | Data exfiltration through a stolen session | Export contains only the caller's own live data and never credentials, TOTP secrets, recovery codes, sessions or ids; every export is logged (`data_exported`). A session thief can still download the account's calendar content, as they could read it in the UI |
 | I | Secrets in logs / errors | structlog redaction of password/token/secret/cookie/code keys; validation errors never echo input; generic 500 body; docs UI off in production |
 | I | Framing, sniffing, referrer leaks | `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Referrer-Policy: same-origin`, COOP |
-| D | Resource exhaustion | argon2 limited to 2 concurrent hashes, 400-day range cap on listings, 10 SSE streams per user, bounded subscriber queues, container `mem_limit`, read-only root FS, 1 MB request body cap (NPM, Caddy, API), bounded dates and event spans |
+| D | Resource exhaustion | argon2 limited to 2 concurrent hashes, 400-day range cap on listings, 10 SSE streams per user, bounded subscriber queues, container `mem_limit`, read-only root FS, 1 MB request body cap (NPM, Caddy, API), 10 MB only on the import route (same three layers), import limited to 10 requests/hour per user with global caps (20 000 events, 100 categories, 2 000 custom holidays), bounded dates and event spans |
 | E | Container escape / lateral movement | Non-root images (uid 10001), `cap_drop: ALL`, `no-new-privileges`, read-only FS, internal DB network, API not published, `--no-proxy-headers` |
 | E | Supply chain | Lockfiles committed (`uv.lock`, `package-lock.json`), Actions pinned by SHA, base images pinned by digest and OS-patched at build, Dependabot, `permissions: contents: read`, no `pull_request_target`, release never runs on PRs, the scanned digest is the published image (Trivy gate before any tag moves, provenance + SBOM), pip-audit and npm audit in CI |
 
@@ -77,6 +80,9 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
   edge helps (the API logs `auth_failed` / `auth_locked` for exactly that).
 * **Request bodies are capped at 1 MB** by NPM (`client_max_body_size 1m`, operator setting),
   Caddy (`request_body max_size`) and the API itself (413 before reading, byte count for chunked).
+  `/api/v1/import` alone takes 10 MB (Caddy `handle /api/v1/import`, `PATH_LIMITS` in
+  `middleware.py`); the operator must raise NPM's limit to import files over 1 MB. A 10 MB JSON
+  document is parsed in memory (tens of MB of Python objects) at most 10 times an hour per user.
 * **Revocation latency for live sync.** An open SSE stream notices a revoked session at the next
   25 s check, so a logged-out tab can still receive change ids (never content) for up to ~50 s.
 * **The API trusts `X-Real-IP`.** Anything that can reach `api:8000` directly (host processes,
