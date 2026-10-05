@@ -23,18 +23,33 @@ LABEL org.opencontainers.image.title="hoje-api" \
       org.opencontainers.image.vendor="Hoje"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:/usr/lib/postgresql/17/bin:$PATH"
 # The base image is pinned by digest, which also freezes its OS packages: apply the pending
 # security updates at build time (the scan fails on fixed HIGH/CRITICAL CVEs).
+# The worker runs the nightly backup with pg_dump, which must be at least as new as the server
+# (PostgreSQL 17); bookworm ships only 15, so the client comes from the official PGDG apt
+# repository. Its signing key is fetched over TLS and checked against the published fingerprint
+# before it is trusted; the helper packages used for that are purged again.
+ARG PGDG_KEY_FPR=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 RUN apt-get update \
  && apt-get -y upgrade \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends curl gnupg \
+ && install -d -m 0755 /usr/share/keyrings \
+ && curl -fsSL --retry 3 -o /tmp/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+ && test "$(gpg --show-keys --with-colons /tmp/pgdg.asc | awk -F: '/^fpr:/ {print $10; exit}')" = "$PGDG_KEY_FPR" \
+ && gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg /tmp/pgdg.asc \
+ && echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-17 \
+ && apt-get purge -y --auto-remove curl gnupg \
+ && rm -rf /var/lib/apt/lists/* /tmp/pgdg.asc /root/.gnupg
 # The app runs from its own venv; pip (and its vendored msgpack/setuptools, flagged by
 # scanners) is not needed at runtime.
 RUN python -m pip uninstall -y -q pip \
  && rm -rf /usr/local/lib/python3.13/ensurepip \
  && groupadd --system --gid 10001 hoje \
- && useradd --system --uid 10001 --gid hoje --home-dir /nonexistent --shell /usr/sbin/nologin hoje
+ && useradd --system --uid 10001 --gid hoje --home-dir /nonexistent --shell /usr/sbin/nologin hoje \
+ && install -d -o 10001 -g 10001 -m 0700 /backups
 WORKDIR /app
 COPY --from=builder --chown=root:root /app /app
 COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
