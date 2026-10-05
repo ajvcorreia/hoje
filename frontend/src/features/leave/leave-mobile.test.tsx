@@ -171,7 +171,7 @@ describe('vacation pill: mobile (sheet)', () => {
     );
     await userEvent.click(pill);
 
-    let dialog = await screen.findByRole('dialog', { hidden: true, name: 'Vacation balance' });
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'Vacation balance' });
     expect(dialog).toBeInTheDocument();
 
     // Click the pill again to close the sheet
