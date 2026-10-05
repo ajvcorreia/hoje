@@ -9,11 +9,12 @@ from fastapi.routing import APIRoute
 from hoje import __version__
 from hoje.api import api_router
 from hoje.api.health import router as health_router
-from hoje.config import get_settings
-from hoje.db import dispose_engine
+from hoje.config import Settings, get_settings
+from hoje.db import dispose_engine, get_sessionmaker
 from hoje.errors import install_exception_handlers
 from hoje.logging import configure_logging, get_logger
 from hoje.request_context import ClientIdMiddleware
+from hoje.services import users
 from hoje.services.realtime import RealtimeHub, dsn_from_url
 
 OPENAPI_URL = "/api/v1/openapi.json"
@@ -24,11 +25,29 @@ def _operation_id(route: APIRoute) -> str:
     return route.name
 
 
+async def _warn_if_open_registration(settings: Settings) -> None:
+    if not settings.is_production or settings.setup_token is not None:
+        return
+    log = get_logger(__name__)
+    try:
+        async with get_sessionmaker()() as db:
+            no_users = await users.count_users(db) == 0
+    except Exception:  # advisory only; the database may still be starting
+        log.debug("setup_token_check_skipped", exc_info=True)
+        return
+    if no_users:
+        log.warning(
+            "Registration is open to anyone who can reach this server until the first account "
+            "exists; set HOJE_SETUP_TOKEN."
+        )
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()  # fail fast on invalid configuration
     configure_logging(settings.log_level)
     get_logger(__name__).info("startup", env=settings.env, version=__version__)
+    await _warn_if_open_registration(settings)
     hub = RealtimeHub(dsn_from_url(settings.database_url))
     _app.state.hub = hub
     await hub.start()

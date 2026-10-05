@@ -22,6 +22,10 @@
             "title": "Registration Open",
             "type": "boolean"
           },
+          "setup_token_required": {
+            "title": "Setup Token Required",
+            "type": "boolean"
+          },
           "stage": {
             "anyOf": [
               {
@@ -50,6 +54,7 @@
         },
         "required": [
           "registration_open",
+          "setup_token_required",
           "authenticated"
         ],
         "title": "AuthState",
@@ -1876,6 +1881,18 @@
             "minLength": 10,
             "title": "Password",
             "type": "string"
+          },
+          "setup_token": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Token"
           }
         },
         "required": [
@@ -2949,6 +2966,16 @@
               }
             },
             "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
           },
           "501": {
             "content": {

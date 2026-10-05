@@ -1,5 +1,6 @@
 """Authentication endpoints: registration, login (with 2FA), password reset and 2FA management."""
 
+import hmac
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
@@ -50,6 +51,7 @@ INVALID_LOGIN = "Invalid email or password"
 INVALID_CODE = "Invalid code"
 INVALID_RESET = "This reset link is invalid or has expired"
 REAUTH_FAILED = "Incorrect password or code"
+SETUP_TOKEN_REQUIRED = "A valid setup token is required"  # noqa: S105
 
 
 async def _require_strong(password: str, email: str) -> None:
@@ -106,15 +108,36 @@ async def _finish_security_change(
     sessions.set_cookie(response, settings, raw, sessions.STAGE_ACTIVE)
 
 
+async def _check_setup_token(
+    db: AsyncSession, request: Request, settings: Settings, supplied: str | None
+) -> None:
+    """Gate the first registration on HOJE_SETUP_TOKEN; failures feed the IP lockout."""
+    if not await users.setup_token_required(db, settings) or settings.setup_token is None:
+        return
+    key = f"register:ip:{throttle_ip(request)}"
+    await throttle.ensure_not_locked(db, [key])
+    expected = settings.setup_token.get_secret_value().encode()
+    if supplied is None or not hmac.compare_digest(supplied.encode(), expected):
+        await throttle.record_failure(db, key)
+        await db.commit()
+        raise HTTPException(status_code=403, detail=SETUP_TOKEN_REQUIRED)
+
+
 @router.get("/state", response_model=AuthState, summary="Current authentication state")
 async def auth_state(db: DbSession, settings: AppSettings, ctx: OptionalAuth) -> AuthState:
     registration_open = await users.registration_open(db, settings)
+    token_required = await users.setup_token_required(db, settings)
     if ctx is None:
-        return AuthState(registration_open=registration_open, authenticated=False)
+        return AuthState(
+            registration_open=registration_open,
+            setup_token_required=token_required,
+            authenticated=False,
+        )
     token = csrf_token(settings.secret_key_bytes, ctx.session.csrf_secret)
     if ctx.session.stage == sessions.STAGE_ACTIVE:
         return AuthState(
             registration_open=registration_open,
+            setup_token_required=token_required,
             authenticated=True,
             stage="active",
             csrf_token=token,
@@ -122,6 +145,7 @@ async def auth_state(db: DbSession, settings: AppSettings, ctx: OptionalAuth) ->
         )
     return AuthState(
         registration_open=registration_open,
+        setup_token_required=token_required,
         authenticated=False,
         stage="mfa_pending",
         csrf_token=token,
@@ -132,7 +156,7 @@ async def auth_state(db: DbSession, settings: AppSettings, ctx: OptionalAuth) ->
     "/register",
     response_model=Me,
     status_code=201,
-    responses=problems(403, 409),
+    responses=problems(403, 409, 429),
     summary="Register the first user",
 )
 async def auth_register(
@@ -145,6 +169,7 @@ async def auth_register(
 ) -> Me:
     if not await users.registration_open(db, settings):
         raise HTTPException(status_code=403, detail="Registration is closed")
+    await _check_setup_token(db, request, settings, body.setup_token)
     await _require_strong(body.password, body.email)
     try:
         user = await users.register(db, settings, email=body.email, password=body.password)

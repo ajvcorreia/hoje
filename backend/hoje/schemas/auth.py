@@ -31,6 +31,7 @@ class MeUpdate(BaseModel):
 
 class AuthState(BaseModel):
     registration_open: bool
+    setup_token_required: bool
     authenticated: bool
     stage: Literal["mfa_pending", "active"] | None = None
     csrf_token: str | None = None
@@ -55,6 +56,7 @@ class MfaRequest(BaseModel):
 class Register(BaseModel):
     email: EmailStr
     password: str = NewPassword
+    setup_token: str | None = Field(default=None, max_length=256)
 
 
 class PasswordForgot(BaseModel):

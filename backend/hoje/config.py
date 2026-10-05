@@ -9,6 +9,7 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DEV_PUBLIC_URL = "http://localhost:8080"
+MIN_SETUP_TOKEN_LENGTH = 16
 
 
 class Settings(BaseSettings):
@@ -34,6 +35,8 @@ class Settings(BaseSettings):
     worker_interval_seconds: int = Field(
         default=60, ge=1, validation_alias="HOJE_WORKER_INTERVAL_SECONDS"
     )
+    # Required by POST /auth/register while no user exists (see PLAN section 5).
+    setup_token: SecretStr | None = Field(default=None, validation_alias="HOJE_SETUP_TOKEN")
 
     smtp_host: str | None = Field(default=None, validation_alias="SMTP_HOST")
     smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
@@ -52,6 +55,15 @@ class Settings(BaseSettings):
             raise ValueError("HOJE_SECRET_KEY must be valid base64") from exc
         if len(raw) != 32:
             raise ValueError("HOJE_SECRET_KEY must decode to exactly 32 bytes")
+        return value
+
+    @field_validator("setup_token")
+    @classmethod
+    def _check_setup_token(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and len(value.get_secret_value()) < MIN_SETUP_TOKEN_LENGTH:
+            raise ValueError(
+                f"HOJE_SETUP_TOKEN must be at least {MIN_SETUP_TOKEN_LENGTH} characters"
+            )
         return value
 
     @field_validator("log_level")

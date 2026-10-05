@@ -28,6 +28,11 @@ async def registration_open(db: AsyncSession, settings: Settings) -> bool:
     return settings.allow_registration or await count_users(db) == 0
 
 
+async def setup_token_required(db: AsyncSession, settings: Settings) -> bool:
+    """True while a setup token guards the first registration (set, and no user exists yet)."""
+    return settings.setup_token is not None and await count_users(db) == 0
+
+
 async def get_by_email(db: AsyncSession, email: str) -> User | None:
     return (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
