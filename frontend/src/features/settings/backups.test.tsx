@@ -48,7 +48,10 @@ function status(overrides: Record<string, unknown> = {}) {
   };
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('backups settings', () => {
   it('is hidden when the server answers 404 (not the owner)', async () => {
@@ -61,11 +64,16 @@ describe('backups settings', () => {
   });
 
   it('shows the last backup, the schedule, where it is stored and the restore guide', async () => {
-    mockApi({ ...base, 'GET /api/v1/backups': status() });
+    // Pin the clock mid-day: the fixture finished a few seconds "ago", which must not cross a
+    // minute boundary (or midnight) between building it and asserting on it.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 5, 12, 0, 30) });
+    const fixture = status();
+    mockApi({ ...base, 'GET /api/v1/backups': fixture });
     renderApp('/settings');
     const section = (await screen.findByRole('heading', { name: 'Backups' })).closest('section')!;
+    const finishedAt = format(new Date(fixture.last_success.finished_at), 'HH:mm');
     expect(
-      within(section).getByText(`Last backup: today ${format(new Date(), 'HH:mm')} · 1.2 MB`),
+      within(section).getByText(`Last backup: today ${finishedAt} · 1.2 MB`),
     ).toBeInTheDocument();
     expect(
       within(section).getByText(/Every day at 02:00 Asia\/Dubai, keeping 14 days\./),

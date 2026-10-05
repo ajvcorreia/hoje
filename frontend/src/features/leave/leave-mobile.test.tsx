@@ -196,7 +196,7 @@ describe('vacation pill: desktop (popover)', () => {
     }));
 
     mockApi(routes());
-    renderApp();
+    renderApp('/settings'); // only the header pill is needed; the desktop grid is slow to mount
 
     const pill = await screen.findByRole(
       'button',
