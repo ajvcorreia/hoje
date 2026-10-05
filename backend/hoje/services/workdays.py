@@ -20,13 +20,13 @@ def working_days(
         return []
     weekend = frozenset(weekend_days)
     skip = holidays if isinstance(holidays, (set, frozenset)) else frozenset(holidays)
-    one_day = timedelta(days=1)
     result: list[date] = []
-    current = start
-    while current <= end:
+    # Index arithmetic instead of "current += 1 day": never steps past ``end``, so a range ending
+    # at date.max cannot overflow.
+    for offset in range((end - start).days + 1):
+        current = start + timedelta(days=offset)
         if current.isoweekday() not in weekend and current not in skip:
             result.append(current)
-        current += one_day
     return result
 
 

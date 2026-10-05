@@ -7,7 +7,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hoje.schemas.common import Problem
+from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem
 
 Days = Annotated[Decimal, Field(ge=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
 Repeat = Literal["none", "monthly", "yearly"]
@@ -22,17 +22,19 @@ class LeaveImpact(BaseModel):
 
 
 class LeavePreviewRequest(BaseModel):
-    start_date: date
-    end_date: date
+    start_date: BoundedDate
+    end_date: BoundedDate
     category_id: uuid.UUID
     repeat: Repeat = "none"
-    repeat_until: date | None = None
+    repeat_until: BoundedDate | None = None
     exclude_event_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _check_dates(self) -> Self:
         if self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
+        if (self.end_date - self.start_date).days > MAX_EVENT_SPAN_DAYS:
+            raise ValueError(f"a booking may span at most {MAX_EVENT_SPAN_DAYS} days")
         if self.repeat_until is not None and self.repeat_until < self.start_date:
             raise ValueError("repeat_until must be on or after start_date")
         return self

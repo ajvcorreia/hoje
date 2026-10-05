@@ -14,6 +14,7 @@ from hoje.schemas import (
     HolidayCreate,
     HolidayUpdate,
 )
+from hoje.schemas.common import MAX_DATE, MIN_DATE
 from hoje.services import holidays as service
 from hoje.services.leave import today_for
 
@@ -89,8 +90,8 @@ async def holidays_create(
 async def holidays_list(
     db: DbSession,
     user: CurrentUser,
-    from_: Annotated[dt.date, Query(alias="from")],
-    to: dt.date,
+    from_: Annotated[dt.date, Query(alias="from", ge=MIN_DATE, le=MAX_DATE)],
+    to: Annotated[dt.date, Query(ge=MIN_DATE, le=MAX_DATE)],
 ) -> list[Holiday]:
     return await service.list_between(db, user, from_, to)  # type: ignore[return-value]
 

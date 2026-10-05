@@ -6,7 +6,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from hoje.schemas.common import Problem, Timezone
+from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem, Timezone
 from hoje.schemas.leave import LeaveImpact
 
 Title = Annotated[str, Field(min_length=1, max_length=200)]
@@ -43,6 +43,8 @@ def _check_span(
 ) -> None:
     if start_date and end_date and end_date < start_date:
         raise ValueError("end_date must be on or after start_date")
+    if start_date and end_date and (end_date - start_date).days > MAX_EVENT_SPAN_DAYS:
+        raise ValueError(f"an event may span at most {MAX_EVENT_SPAN_DAYS} days")
     if start_date and repeat_until and repeat_until < start_date:
         raise ValueError("repeat_until must be on or after start_date")
     if all_day and (start_time is not None or end_time is not None):
@@ -87,14 +89,14 @@ class EventCreate(BaseModel):
     category_id: uuid.UUID | None = None
     title: Title
     notes: Notes | None = None
-    start_date: dt.date
-    end_date: dt.date | None = None  # defaults to start_date
+    start_date: BoundedDate
+    end_date: BoundedDate | None = None  # defaults to start_date
     all_day: bool = True
     start_time: dt.time | None = None
     end_time: dt.time | None = None
     timezone: Timezone | None = None  # defaults to the user's time zone
     repeat: Repeat = "none"
-    repeat_until: dt.date | None = None
+    repeat_until: BoundedDate | None = None
     label_vertical: bool = False
     reminders: list[ReminderIn] = Field(default=[], max_length=MAX_REMINDERS)
 
@@ -127,14 +129,14 @@ class EventUpdate(BaseModel):
     category_id: uuid.UUID | None = None
     title: Title | None = None
     notes: Notes | None = None
-    start_date: dt.date | None = None
-    end_date: dt.date | None = None
+    start_date: BoundedDate | None = None
+    end_date: BoundedDate | None = None
     all_day: bool | None = None
     start_time: dt.time | None = None
     end_time: dt.time | None = None
     timezone: Timezone | None = None
     repeat: Repeat | None = None
-    repeat_until: dt.date | None = None
+    repeat_until: BoundedDate | None = None
     label_vertical: bool | None = None
     reminders: list[ReminderIn] | None = Field(default=None, max_length=MAX_REMINDERS)
 
