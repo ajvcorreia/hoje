@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-10-05
+
+### Added
+
+- Export and import of your data. Settings › Your data downloads categories, events with their
+  reminders, leave allowances, holiday calendar settings and your changes to the bundled holidays,
+  time zone and weekend days as one JSON file (`GET /api/v1/export`; format in
+  `docs/export-format.md`). Passwords, two-factor secrets, recovery codes and sessions are never
+  included.
+- Import (`POST /api/v1/import`): the whole file is validated with the API's own bounds, previewed with a
+  dry run, then applied in one transaction with a precise error path (for example
+  `events[57].end_date`) when something is wrong. **Merge** reuses categories by name and skips
+  duplicate events; **replace** asks for your password and moves the current events and categories
+  to the bin first. Limited to 10 imports per hour, 20 000 events and 10 MB per file; one realtime
+  change refreshes open browsers. Audit log events `data_exported` and `data_imported` (mode and
+  counts only).
+
+### Changed
+
+- The request body limit is now per route: 10 MiB for `/api/v1/import` (Caddy and API), 1 MiB
+  everywhere else as before. If you use Nginx Proxy Manager, set `client_max_body_size 10m` in its
+  Advanced block to import files over 1 MB.
+- Restoring a binned event whose category was binned too (after a replace import) brings the
+  category back when no live category has taken its name.
+
 ## [1.1.0] — 2026-10-05
 
 ### Added

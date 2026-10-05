@@ -23,6 +23,7 @@ Entity = Literal[
     "holiday_calendar",
     "user",
     "backup_run",
+    "data",
 ]
 Op = Literal["create", "update", "delete"]
 

@@ -64,6 +64,8 @@ from the network even when ufw denies it.**
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       client_max_body_size 1m;
       ```
+      (`1m` blocks imports of export files over 1 MB at the edge. To allow them, use `10m`: Caddy and
+      the API keep every route except `/api/v1/import` at 1 MB regardless.)
 - [ ] Access List allowing only your own IP attached to the proxy host **until you have
       registered** (section 9), then removed (or kept, if you only use Hoje from fixed places).
 

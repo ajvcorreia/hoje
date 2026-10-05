@@ -47,6 +47,11 @@ export class Api {
     return ((await res.json()) as { event: ApiEvent }).event;
   }
 
+  /** POST that returns the raw response, for tests that look at status codes. */
+  async post(path: string, data: unknown, headers: Record<string, string> = {}) {
+    return this.request.post(path, { headers: { ...this.headers(), ...headers }, data });
+  }
+
   async events(from: string, to: string): Promise<ApiEvent[]> {
     const res = await this.request.get('/api/v1/events', { params: { from, to } });
     expect(res.ok()).toBeTruthy();

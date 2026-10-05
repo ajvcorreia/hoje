@@ -18,10 +18,12 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Themes and accessibility**: light/dark mode, configurable text size, inclusive colour palette.
 - **Installable PWA**: works offline, installable on mobile and desktop.
 - **Search**: find events by title (case-insensitive, indexed), filter by category.
+- **Export and import**: download all your data as one JSON file and load it back (merge or replace).
 
 ## Documentation
 
 - **[PLAN.md](docs/PLAN.md)**: Architecture decisions, database schema, API contract, and implementation conventions.
+- **[Export format](docs/export-format.md)**: the JSON file of Settings › Your data and the import rules.
 - **[Threat Model](docs/threat-model.md)**: Security assumptions and attack surface for self-hosted deployments.
 - **[Hardening Checklist](docs/hardening-checklist.md)**: Pre-deployment security configuration steps.
 - **[Backup and Restore](deploy/backup/restore.md)**: Backup scheduling, verification, and recovery procedures.
@@ -256,6 +258,21 @@ production has no users and no token. The token is ignored once the first accoun
 remove it afterwards. Then enable 2FA under Settings and, if you
 used an Access List, remove it.
 
+## Export and import
+
+Settings › Your data downloads everything you entered (categories, events and reminders, leave
+allowances, holiday calendar settings and your changes to them, time zone and weekend days) as one
+JSON file. Passwords, two-factor secrets, recovery codes and sessions are never in it. The same page
+loads such a file back: it first shows a preview of what would change, then either **merges** it
+(categories with the same name are reused, duplicate events are skipped) or **replaces** your data
+(needs your password; the old events and categories go to the bin for 30 days). See
+[docs/export-format.md](docs/export-format.md) for the format and exact rules. Imports are limited
+to 10 per hour and 10 MB per file.
+
+Import files can be larger than the usual 1 MB request limit, so raise `client_max_body_size` in the
+NPM Advanced block to `10m` if you want to import files over 1 MB (Caddy and the API still cap every
+other route at 1 MB and the import route at 10 MB).
+
 ## Backup and restore
 
 The `worker` dumps the database nightly at `BACKUP_SCHEDULE_HOUR` (local `TZ`) with
@@ -328,7 +345,7 @@ Main controls:
   account. Structured `auth_failed` / `auth_locked` log lines feed CrowdSec or fail2ban.
 - **Notifications**: an email after every password change or reset, 2FA disable and recovery-code
   regeneration, so a takeover does not go unnoticed.
-- **Hard edges**: request bodies are capped at 1 MB (Caddy and the API), dates and ranges are
+- **Hard edges**: request bodies are capped at 1 MB (10 MB for the data import route only; Caddy and the API), dates and ranges are
   bounded, `Cache-Control: no-store` on API responses, strict CSP and security headers, no API
   docs in production, and secrets, tokens and the query string never reach the logs.
 - **Containers**: non-root, read-only filesystems, all capabilities dropped, the database and API

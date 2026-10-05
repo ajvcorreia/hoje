@@ -68,6 +68,23 @@ http://127.0.0.1:2020 {
 		respond "{err.status_code} {err.status_text}" {err.status_code}
 	}
 
+	# Data import: a whole export file is posted here, so this one route takes up to 10 MB (the API
+	# enforces the same per-route cap). It must come before the generic /api/* block.
+	handle /api/v1/import {
+		@import_too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 10000000`
+		respond @import_too_large "Request body too large" 413 {
+			close
+		}
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			# Overwrites any client-supplied value; the API trusts this header (see client_ip).
+			header_up X-Real-IP {client_ip}
+			header_down -Server
+		}
+	}
+
 	# API and probes. flush_interval -1 keeps the SSE stream unbuffered.
 	# Request bodies are tiny JSON documents: refuse anything over 1 MB with 413 before it reaches
 	# the API (which enforces its own 1 MiB cap as defence in depth).

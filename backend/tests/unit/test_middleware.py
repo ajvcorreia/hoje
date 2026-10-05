@@ -194,3 +194,46 @@ async def test_openapi_json_is_not_served_when_docs_are_disabled():
         assert (await client.get("/api/v1/openapi.json")).status_code == 404
         assert (await client.get("/api/docs")).status_code == 404
     assert "paths" in app.openapi()  # the exporter (python -m hoje.openapi) still works
+
+
+# ------------------------------------------------------------------ per-path limits (import)
+
+
+def test_import_path_has_a_ten_mebibyte_limit_and_everything_else_one():
+    from hoje.middleware import IMPORT_BODY_BYTES, PATH_LIMITS
+
+    limiter = BodyLimitMiddleware(build_app())
+    assert PATH_LIMITS == {"/api/v1/import": 10 * MB} and IMPORT_BODY_BYTES == 10 * MB
+    assert limiter.limit_for("/api/v1/import") == 10 * MB
+    assert limiter.limit_for("/api/v1/import/") == MAX_BODY_BYTES  # exact match only
+    assert limiter.limit_for("/api/v1/events") == MAX_BODY_BYTES
+    assert limiter.limit_for("/api/v1/export") == MAX_BODY_BYTES
+
+
+async def _post_through_real_app(path: str, size: int, *, chunked: bool = False) -> int:
+    app = create_app(docs_enabled=False)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        if chunked:
+
+            async def chunks():
+                for _ in range(size // 65536):
+                    yield b"x" * 65536
+
+            resp = await client.post(path, content=chunks(), headers=JSON)
+        else:
+            resp = await client.post(path, content=b"x" * size, headers=JSON)
+    return resp.status_code
+
+
+async def test_five_megabytes_pass_the_body_cap_on_the_import_route_but_not_elsewhere():
+    # No credentials: any status but 413 proves the body was not refused by the cap.
+    assert await _post_through_real_app("/api/v1/import", 5 * MB) != 413
+    assert await _post_through_real_app("/api/v1/auth/login", 5 * MB) == 413
+    assert await _post_through_real_app("/api/v1/events", 5 * MB) == 413
+
+
+async def test_import_route_refuses_more_than_ten_mebibytes():
+    assert await _post_through_real_app("/api/v1/import", 10 * MB + 1) == 413
+    assert await _post_through_real_app("/api/v1/import", 11 * MB, chunked=True) == 413
+    assert await _post_through_real_app("/api/v1/import", 9 * MB, chunked=True) != 413

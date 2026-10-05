@@ -72,6 +72,7 @@ class RealtimeChange(BaseModel):
         "holiday_calendar",
         "user",
         "backup_run",
+        "data",
     ]
     op: Literal["create", "update", "delete"]
     id: uuid.UUID
