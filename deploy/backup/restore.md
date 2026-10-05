@@ -85,7 +85,16 @@ $DC up -d
 ```
 
 Back up `deploy/.env` (at least `HOJE_SECRET_KEY` and `POSTGRES_PASSWORD`) separately from the
-database dumps; a dump alone cannot be used without the key.
+database dumps. Without the original `HOJE_SECRET_KEY` a restored database still works, but
+stored TOTP secrets cannot be decrypted (sign in with a recovery code, then disable and
+re-enrol 2FA).
+
+**Dumps are plaintext.** Only the TOTP seeds are encrypted inside the database; everything
+else (event titles and notes, your email address, password hashes, session metadata) is stored
+and dumped in the clear. Anyone who obtains a dump can read all of it, with or without the key.
+Encrypt every copy that leaves the host (for example `age` or `restic`, see
+[the hardening checklist, section 7](../../docs/hardening-checklist.md)) and keep the
+encryption key away from the backup storage.
 
 ## Copy backups off the host
 
