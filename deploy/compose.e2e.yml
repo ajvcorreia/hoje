@@ -28,6 +28,7 @@ x-api-env: &api-env
   SMTP_PORT: "1025"
   SMTP_STARTTLS: "false"
   SMTP_FROM: hoje@e2e.local
+  HOJE_BACKUP_DIR: /backups
 
 services:
   e2e-db:
@@ -87,6 +88,10 @@ services:
     environment:
       <<: *api-env
       HOJE_WORKER_INTERVAL_SECONDS: "2"
+    # Throwaway backups directory (RAM), owned by the app user like the real volume.
+    tmpfs:
+      - /tmp
+      - /backups:uid=10001,gid=10001,mode=0700
     networks: [e2e_internal]
     mem_limit: 192m
     healthcheck:

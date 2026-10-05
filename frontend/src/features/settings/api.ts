@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from '../../api/client';
+import type { components } from '../../api/schema';
 import { AUTH_STATE_KEY } from '../../app/useAuthState';
 
 export const ME_KEY = ['me'] as const;
@@ -108,3 +109,34 @@ export function useRegenerateRecoveryCodes() {
 
 /** Refresh `me` + auth state after the 2FA enable flow is finished. */
 export { useRefreshMe };
+
+export const BACKUPS_KEY = ['backups'] as const;
+const BACKUP_POLL_MS = 4000;
+
+type BackupStatus = components['schemas']['BackupStatus'];
+
+/** Whether a backup is queued or running (used to disable the button and keep polling). */
+export function backupInProgress(status: BackupStatus | undefined): boolean {
+  return !!status?.runs.some((r) => r.status === 'requested' || r.status === 'running');
+}
+
+/**
+ * Backup status. Owner only: everyone else gets 404 and the section stays hidden. Realtime
+ * `backup_run` changes refresh it; while a run is in progress it also polls as a fallback.
+ */
+export function useBackups() {
+  return useQuery({
+    queryKey: BACKUPS_KEY,
+    queryFn: async () => unwrap(await api.GET('/api/v1/backups')),
+    refetchInterval: (query) => (backupInProgress(query.state.data) ? BACKUP_POLL_MS : false),
+  });
+}
+
+export function useRequestBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { protected: true },
+    mutationFn: async () => unwrap(await api.POST('/api/v1/backups')),
+    onSettled: () => qc.invalidateQueries({ queryKey: BACKUPS_KEY }),
+  });
+}

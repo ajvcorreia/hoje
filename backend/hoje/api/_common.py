@@ -19,6 +19,7 @@ _PROBLEM_DESCRIPTIONS = {
     400: "Bad request or failed re-authentication",
     401: "Not authenticated or invalid credentials",
     403: "Forbidden",
+    404: "Not found",
     409: "Conflict with the current state",
     429: "Too many attempts; see the Retry-After header",
     502: "Upstream mail server rejected or failed the request",

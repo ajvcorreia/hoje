@@ -15,7 +15,15 @@ from hoje.request_context import current_client_id
 
 CHANNEL = "hoje_changes"
 
-Entity = Literal["event", "category", "leave_policy", "holiday", "holiday_calendar", "user"]
+Entity = Literal[
+    "event",
+    "category",
+    "leave_policy",
+    "holiday",
+    "holiday_calendar",
+    "user",
+    "backup_run",
+]
 Op = Literal["create", "update", "delete"]
 
 

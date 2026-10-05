@@ -64,7 +64,15 @@ class RealtimeChange(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    entity: Literal["event", "category", "leave_policy", "holiday", "holiday_calendar", "user"]
+    entity: Literal[
+        "event",
+        "category",
+        "leave_policy",
+        "holiday",
+        "holiday_calendar",
+        "user",
+        "backup_run",
+    ]
     op: Literal["create", "update", "delete"]
     id: uuid.UUID
     version: int | None = None

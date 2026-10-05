@@ -5,6 +5,7 @@ import binascii
 from functools import lru_cache
 from typing import Literal, Self
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,6 +37,15 @@ class Settings(BaseSettings):
     worker_interval_seconds: int = Field(
         default=60, ge=1, validation_alias="HOJE_WORKER_INTERVAL_SECONDS"
     )
+    # In-app database backups (run by the worker; only the worker mounts backup_dir).
+    backup_dir: str = Field(default="/backups", validation_alias="HOJE_BACKUP_DIR")
+    backup_enabled: bool = Field(default=True, validation_alias="HOJE_BACKUP_ENABLED")
+    # Local hour of the nightly dump, interpreted in ``tz`` (the TZ environment variable).
+    backup_schedule_hour: int = Field(
+        default=2, ge=0, le=23, validation_alias="BACKUP_SCHEDULE_HOUR"
+    )
+    backup_keep_days: int = Field(default=14, ge=1, le=3650, validation_alias="BACKUP_KEEP_DAYS")
+    tz: str = Field(default="UTC", validation_alias="TZ")
     # Required by POST /auth/register while no user exists (see PLAN section 5).
     setup_token: SecretStr | None = Field(default=None, validation_alias="HOJE_SETUP_TOKEN")
 
@@ -74,6 +84,15 @@ class Settings(BaseSettings):
         if level not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}:
             raise ValueError("HOJE_LOG_LEVEL must be one of CRITICAL, ERROR, WARNING, INFO, DEBUG")
         return level
+
+    @field_validator("tz")
+    @classmethod
+    def _check_tz(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError, OSError) as exc:
+            raise ValueError("TZ must be an IANA time zone name such as Europe/Lisbon") from exc
+        return value
 
     @model_validator(mode="after")
     def _check_environment(self) -> Self:

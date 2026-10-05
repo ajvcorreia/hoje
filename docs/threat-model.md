@@ -15,7 +15,7 @@ lives in [hardening-checklist.md](hardening-checklist.md).
 | Session cookie `__Host-hoje_session` | Browser; DB stores sha256 only (`services/sessions.py`) | Account takeover until logout/expiry (7 d idle, 30 d absolute) |
 | `HOJE_SECRET_KEY` | `deploy/.env`, API/worker env | Decrypts TOTP secrets, forges CSRF tokens (`security/tokens.py`) |
 | `POSTGRES_PASSWORD`, SMTP credentials | `deploy/.env`, container env | DB access; sending mail as the owner's domain |
-| Backups | `hoje_backups` volume / `HOJE_BACKUP_DIR` (0600, plaintext `pg_dump -Fc`) | Everything except TOTP seeds |
+| Backups | `/backups` volume of the worker (`hoje_backups` or `HOJE_BACKUP_DIR_HOST`; 0600, plaintext `pg_dump -Fc`) | Everything except TOTP seeds; a compromised worker can also delete them |
 | Docker Hub token | GitHub Actions secret | Malicious image pushed to the tag production pulls |
 
 ## Trust boundaries
@@ -23,7 +23,8 @@ lives in [hardening-checklist.md](hardening-checklist.md).
 ```
 Internet --TLS--> NPM (host / container) --HTTP--> hoje-web (Caddy, :8080)
   --edge net--> api (uvicorn :8000) --backend net (internal)--> db
-                worker --egress net--> SMTP relay        backup --backend--> db
+                worker --egress net--> SMTP relay
+                worker --backend--> db (pg_dump) --> /backups volume (worker only)
 Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the host
 ```
 
@@ -82,6 +83,13 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
   containers on the `edge` network) can choose its throttle identity.
 * **Backups and the database are plaintext** apart from TOTP seeds. Disk or backup theft exposes
   all events, notes and password hashes. Off-host copies must be encrypted by the operator.
+* **The worker holds the database password and can read, create and delete the local backups**
+  (it runs `pg_dump` and owns the `/backups` volume). Compromising the worker therefore gives
+  access to every dump and lets an attacker destroy them, so the encrypted off-host copy is the
+  one that counts. The API cannot see the volume. The backup endpoints are owner-only and offer
+  no download and no restore, so a stolen session can trigger (rate limited) backups but cannot
+  exfiltrate the database through the app; `pg_dump` receives the password only in its
+  environment, never on a command line or in logs.
 * **`HOJE_SECRET_KEY` has no rotation support.** Changing it makes stored TOTP secrets
   undecryptable (sign in with a recovery code, then disable and re-enrol 2FA) and invalidates
   CSRF tokens of live sessions and the trusted-device cookies.

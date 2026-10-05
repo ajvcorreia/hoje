@@ -7,7 +7,9 @@ BASE_URL     where the web tier answers (for example http://e2e-web:8080)
 MAILPIT_URL  Mailpit's HTTP API; the stack's SMTP must point at it (reminder mail is checked)
 ORIGIN       the stack's HOJE_PUBLIC_URL, sent as the Origin header (default: BASE_URL)
 
-It registers the first account, so run it only against a throwaway stack. The last check
+It registers the first account (and a second one, to check that backups are owner-only), so run
+it only against a throwaway stack. It also asks for a backup and waits for it, which needs the
+stack's worker. The last check
 deliberately trips the per-IP login lock, so nothing else should be done from this client IP
 for a minute afterwards. Prints PASS/FAIL per check; exits 1 if any check failed.
 """
@@ -34,6 +36,7 @@ EMAIL = "smoke@example.com"
 PASSWORD = "correct horse battery staple 42"  # noqa: S105 - throwaway stack only
 REMINDER_TIMEOUT = 180
 SSE_TIMEOUT = 5
+BACKUP_TIMEOUT = 120
 
 results: list[tuple[str, bool, str]] = []
 
@@ -301,6 +304,66 @@ def run(base: str, mailpit_url: str, origin: str) -> None:
         time.sleep(5)  # a duplicate would show up shortly after the first
         count = len(mail.reminders_for(title))
         check("exactly one reminder email for the event", count == 1, f"{count} emails")
+
+    # --- in-app backups (owner only) ----------------------------------------------------
+    second = Client(base, origin)
+    second.state()
+    st, _, _ = second.req(
+        "POST", "/api/v1/auth/register", {"email": "other@example.com", "password": PASSWORD}
+    )
+    second.state()
+    check("register a second (non-owner) user", st == 201, str(st))
+    st, _, _ = second.req("GET", "/api/v1/backups")
+    check("backups: GET is 404 for a non-owner", st == 404, str(st))
+    st, _, _ = second.req("POST", "/api/v1/backups")
+    check("backups: POST is 404 for a non-owner", st == 404, str(st))
+
+    st, _, status = b.req("GET", "/api/v1/backups")
+    check(
+        "backups: GET as the owner is 200 with the schedule",
+        st == 200 and status.get("enabled") is True and status.get("directory") == "/backups",
+        f"{st} {status}",
+    )
+
+    def backup_runs() -> list[dict[str, Any]]:
+        code, _, body = b.req("GET", "/api/v1/backups")
+        return body.get("runs", []) if code == 200 else []
+
+    # The worker may already be making its first (catch-up) backup; let it finish first.
+    deadline = time.monotonic() + BACKUP_TIMEOUT
+    while time.monotonic() < deadline and any(
+        r["status"] in ("requested", "running") for r in backup_runs()
+    ):
+        time.sleep(1)
+    st, _, queued = b.req("POST", "/api/v1/backups")
+    ok = st == 202 and queued.get("status") == "requested" and queued.get("trigger") == "manual"
+    check("backups: POST queues a manual backup (202)", ok, f"{st} {queued}")
+    st, _, _ = b.req("POST", "/api/v1/backups")
+    check("backups: a second request while one is pending is 409", st == 409, str(st))
+    finished: dict[str, Any] = {}
+    deadline = time.monotonic() + BACKUP_TIMEOUT
+    while ok and time.monotonic() < deadline:
+        finished = next((r for r in backup_runs() if r["id"] == queued["id"]), {})
+        if finished.get("status") in ("succeeded", "failed"):
+            break
+        time.sleep(1)
+    check(
+        f"backups: the manual backup succeeds within {BACKUP_TIMEOUT} s",
+        finished.get("status") == "succeeded",
+        str(finished.get("error") or finished),
+    )
+    check(
+        "backups: the run records a dump file name and size",
+        str(finished.get("file_name", "")).endswith(".dump") and (finished.get("size_bytes") or 0) > 0,
+        str(finished),
+    )
+    st, _, status = b.req("GET", "/api/v1/backups")
+    last = (status or {}).get("last_success") or {}
+    check(
+        "backups: status reports the last success and is not stale",
+        st == 200 and last.get("file_name") == finished.get("file_name") and status.get("stale") is False,
+        str(status),
+    )
 
     # --- client IP handling (last: it trips the per-IP login lock) ---------------------
     spoof = Client(base, origin)

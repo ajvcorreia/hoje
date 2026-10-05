@@ -158,7 +158,8 @@ first account, so never use it on a stack with real data).
 ## Deployment: production behind Nginx Proxy Manager
 
 Production runs the published images (`deploy/compose.prod.yml`): PostgreSQL 17, `api`, `worker`,
-`web` (Caddy serving the SPA and proxying `/api`) and a nightly `backup` service. TLS is terminated
+`web` (Caddy serving the SPA and proxying `/api`). The `worker` also runs the nightly database backup
+(`pg_dump` ships in the API image). TLS is terminated
 by your existing **Nginx Proxy Manager (NPM)**, which proxies to `hoje-web` over plain HTTP.
 
 ### Prerequisites
@@ -183,7 +184,8 @@ you run without you noticing; upgrade by editing the tag (see Upgrades). Also se
   `Secure` and the Origin check compares against it, so a wrong value breaks sign-in.
 - `TRUSTED_PROXIES`: **required** (compose refuses to start without it): the IP or CIDR NPM
   connects from, as seen by `hoje-web` (see below and the comments in `deploy/prod.env.example`).
-- `TZ` and `BACKUP_SCHEDULE_HOUR` for the backup time.
+- `TZ` and `BACKUP_SCHEDULE_HOUR` for the backup time; optionally `BACKUP_KEEP_DAYS` and
+  `HOJE_BACKUP_DIR_HOST` (see Backup and restore).
 
 Back up `deploy/.env`, in particular `HOJE_SECRET_KEY`: the database holds TOTP secrets encrypted
 with it.
@@ -256,22 +258,32 @@ used an Access List, remove it.
 
 ## Backup and restore
 
-The `backup` service dumps the database nightly at `BACKUP_SCHEDULE_HOUR` (local `TZ`) with
-`pg_dump -Fc`, verifies the dump, and keeps `BACKUP_KEEP_DAYS` days (default 14) in the
-`hoje_backups` volume, or in `HOJE_BACKUP_DIR` if set. It reports `unhealthy` in `docker compose ps`
-if no backup has succeeded for 26 hours.
+The `worker` dumps the database nightly at `BACKUP_SCHEDULE_HOUR` (local `TZ`) with
+`pg_dump -Fc`, verifies the dump, and keeps `BACKUP_KEEP_DAYS` days (default 14) in the `/backups`
+volume that only the worker mounts: the named volume `hoje_backups`, or the host directory in
+`HOJE_BACKUP_DIR_HOST` (which must be writable by uid 10001: `sudo chown 10001:10001 <dir>`).
+Set `HOJE_BACKUP_ENABLED=false` to turn backups off.
+
+The instance owner (the first account) sees the last backup, the schedule and recent runs in
+**Settings > Backups** (a warning appears when the last backup is older than 26 hours) and can
+start one with **Back up now**. A failed backup is shown there and logged; it does not make the
+worker container unhealthy. There is deliberately no download or restore button: restores are
+done from the server command line, and a download endpoint would let a stolen session copy the
+whole database.
 
 ```bash
-$DC exec backup sh /backup/backup.sh now     # an immediate backup
+$DC exec worker ls -l /backups                       # the dumps
+$DC cp worker:/backups/hoje-20260101-020000.dump .   # copy one off the host
 ```
 
+Dumps are **plaintext** and the worker can delete them: keep encrypted copies on another machine.
 Restore steps (stop `web`/`api`/`worker`, `pg_restore --clean --if-exists`, start) and how to copy
 dumps off the host are in [deploy/backup/restore.md](deploy/backup/restore.md). Keep copies on
 another machine: a dump on the same disk does not survive losing the host.
 
 ## Upgrades
 
-1. Take a backup: `$DC exec backup sh /backup/backup.sh now`.
+1. Take a backup (Settings > Backups > Back up now) and wait for it to succeed.
 2. Set `HOJE_TAG` in `deploy/.env` to the new version (for example `0.2.0`; `latest` follows
    `main`), then:
 
@@ -287,6 +299,13 @@ another machine: a dump on the same disk does not survive losing the host.
    a migration, the old code may not run against the new schema: stop `web api worker` and restore
    the backup from step 1 as described in [restore.md](deploy/backup/restore.md) before starting
    the old tag.
+
+**Upgrading to 1.1.0 from an earlier version:** the separate `backup` container is gone. Delete the
+`backup` service from your compose file (or take the new `deploy/compose.prod.yml`), rename
+`HOJE_BACKUP_DIR` to `HOJE_BACKUP_DIR_HOST` if you used a host path, and give the old dumps to the
+new owner once: `docker run --rm -v hoje_backups:/b alpine chown -R 10001:10001 /b` (see
+[restore.md](deploy/backup/restore.md)). The new worker takes a first backup when it starts (it has no
+record of an earlier one); check Settings > Backups to confirm it succeeded.
 
 ## Security
 

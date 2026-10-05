@@ -73,14 +73,16 @@ def too_many(retry_after: int) -> HTTPException:
     )
 
 
-async def _bump(db: AsyncSession, key: str, now: datetime) -> tuple[int, datetime]:
+async def _bump(
+    db: AsyncSession, key: str, now: datetime, window: timedelta = WINDOW
+) -> tuple[int, datetime]:
     """Count one event on ``key`` (resetting a stale window). Returns (count, window_start).
 
     A key with an escalating policy that was locked within ``ESCALATION_MEMORY`` never starts a
     fresh window, so repeated lockouts keep doubling up to the policy cap instead of resetting
     every 15 minutes.
     """
-    stale = AuthThrottle.window_start < now - WINDOW
+    stale = AuthThrottle.window_start < now - window
     if policy_for(key).escalates:
         recently_locked = AuthThrottle.locked_until.is_not(None) & (
             AuthThrottle.locked_until > now - ESCALATION_MEMORY
@@ -141,14 +143,19 @@ async def reset(db: AsyncSession, *keys: str) -> None:
         await db.execute(delete(AuthThrottle).where(AuthThrottle.key.in_(keys)))
 
 
-async def hit(db: AsyncSession, *keys: str) -> None:
-    """Count one request on each key; raise 429 once a key exceeds its budget for the window."""
+async def hit(
+    db: AsyncSession,
+    *keys: str,
+    limit: int = MAX_REQUESTS_PER_WINDOW,
+    window: timedelta = WINDOW,
+) -> None:
+    """Count one request on each key; raise 429 once a key exceeds ``limit`` in ``window``."""
     now = clock.now()
     worst: int | None = None
     for key in keys:
-        count, window_start = await _bump(db, key, now)
-        if count > MAX_REQUESTS_PER_WINDOW:
-            wait = math.ceil((window_start + WINDOW - now).total_seconds())
+        count, window_start = await _bump(db, key, now, window)
+        if count > limit:
+            wait = math.ceil((window_start + window - now).total_seconds())
             worst = wait if worst is None else max(worst, wait)
     await db.commit()  # persist the counters whether or not the request is rejected
     if worst is not None:
