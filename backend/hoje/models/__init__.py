@@ -2,11 +2,13 @@
 
 from hoje.db import Base
 from hoje.models.auth import AuthThrottle, PasswordResetToken, RecoveryCode, Session, User
+from hoje.models.backup import BackupRun
 from hoje.models.calendar import Category, Event, Reminder, ReminderDelivery
 from hoje.models.leave import Holiday, HolidayCalendar, LeavePolicy, NotificationLog
 
 __all__ = [
     "AuthThrottle",
+    "BackupRun",
     "Base",
     "Category",
     "Event",

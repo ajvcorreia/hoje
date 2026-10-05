@@ -16,6 +16,7 @@ from hoje.security import csrf
 from hoje.security.tokens import constant_time_equals, csrf_token
 from hoje.services import mailer as mailer_service
 from hoje.services import sessions
+from hoje.services import users as users_service
 from hoje.services.sessions import AuthContext
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -122,3 +123,13 @@ async def require_csrf(request: Request, ctx: OptionalAuth, settings: AppSetting
     expected = csrf_token(settings.secret_key_bytes, ctx.session.csrf_secret)
     if not supplied or not constant_time_equals(supplied, expected):
         raise HTTPException(status_code=403, detail="Missing or invalid CSRF token")
+
+
+async def require_owner(user: Annotated[User, Depends(require_user)], db: DbSession) -> User:
+    """The instance owner (earliest-created user); everyone else gets 404."""
+    if not await users_service.is_owner(db, user):
+        raise HTTPException(status_code=404, detail="Not found")
+    return user
+
+
+OwnerUser = Annotated[User, Depends(require_owner)]

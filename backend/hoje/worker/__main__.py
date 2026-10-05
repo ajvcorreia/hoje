@@ -21,6 +21,7 @@ from hoje.logging import configure_logging, get_logger
 from hoje.services import housekeeping, reminders
 from hoje.services.mailer import Mailer, SmtpMailer
 from hoje.worker import HEARTBEAT_PATH
+from hoje.worker.backup_job import BackupJob
 
 log = get_logger("hoje.worker")
 
@@ -66,11 +67,18 @@ async def run(
     stop: asyncio.Event,
     sm: async_sessionmaker[AsyncSession] | None = None,
     mailer: Mailer | None = None,
+    backup_job: BackupJob | None = None,
 ) -> None:
     sm = sm or get_sessionmaker()
     mailer = mailer or SmtpMailer(settings, sm)
+    backup_job = backup_job or BackupJob(sm, settings)
     interval = settings.worker_interval_seconds
-    log.info("worker_started", interval_seconds=interval, smtp_configured=mailer.configured)
+    log.info(
+        "worker_started",
+        interval_seconds=interval,
+        smtp_configured=mailer.configured,
+        backups_enabled=settings.backup_enabled,
+    )
     touch_heartbeat()
     if not await wait_for_database(sm, stop):
         return
@@ -78,6 +86,10 @@ async def run(
     while not stop.is_set():
         touch_heartbeat()
         now = clock.now()
+        try:
+            await backup_job.tick()  # starts a background task at most; never waits for the dump
+        except Exception as exc:
+            log.error("backup_tick_failed", error=type(exc).__name__, detail=str(exc)[:300])
         try:
             if last_housekeeping is None or now - last_housekeeping >= HOUSEKEEPING_EVERY:
                 await run_housekeeping(sm)
@@ -94,6 +106,7 @@ async def run(
         except Exception as exc:  # a bad cycle must not kill the worker
             log.error("worker_cycle_failed", error=type(exc).__name__, detail=str(exc)[:300])
         await _sleep(stop, interval)
+    await backup_job.shutdown()
     log.info("worker_stopped")
 
 

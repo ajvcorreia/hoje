@@ -62,3 +62,14 @@ async def register(db: AsyncSession, settings: Settings, *, email: str, password
 async def set_password(db: AsyncSession, user: User, password: str) -> None:
     user.password_hash = await passwords.hash_password(password)
     await db.flush()
+
+
+async def owner_id(db: AsyncSession) -> uuid.UUID | None:
+    """The instance owner: the earliest-created user (ties broken by id)."""
+    return (
+        await db.execute(select(User.id).order_by(User.created_at, User.id).limit(1))
+    ).scalar_one_or_none()
+
+
+async def is_owner(db: AsyncSession, user: User) -> bool:
+    return await owner_id(db) == user.id
