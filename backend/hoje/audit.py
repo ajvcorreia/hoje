@@ -5,7 +5,7 @@ Three structured events, all with the JSON ``event`` key set to the name below:
 * ``auth_failed``  (warning): ``kind`` login|mfa|reauth|reset|setup_token, ``ip``, ``acct``
 * ``auth_locked``  (warning): ``kind``, ``ip``, ``retry_after`` (seconds), logged before a 429
 * ``auth_event``   (info):    ``kind`` login_ok|password_changed|password_reset|2fa_enabled|
-  2fa_disabled|recovery_regenerated|registered, ``user_id``, ``ip``
+  X
 
 ``acct`` is the first 12 hex characters of the sha256 of the lower-cased email (the throttle key
 material): enough to correlate attempts, never the email, password, code or token itself.
@@ -40,8 +40,9 @@ def auth_locked(kind: str, ip: str | None, retry_after: int) -> None:
     get_logger(LOGGER_NAME).warning("auth_locked", kind=kind, ip=ip, retry_after=retry_after)
 
 
-def auth_event(kind: str, user_id: uuid.UUID, ip: str | None) -> None:
-    get_logger(LOGGER_NAME).info("auth_event", kind=kind, user_id=str(user_id), ip=ip)
+def auth_event(kind: str, user_id: uuid.UUID, ip: str | None, **extra: str | int) -> None:
+    """``extra`` carries short, non-content facts (counts, a mode); never user data."""
+    get_logger(LOGGER_NAME).info("auth_event", kind=kind, user_id=str(user_id), ip=ip, **extra)
 
 
 @contextmanager

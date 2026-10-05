@@ -2,7 +2,18 @@
 
 from fastapi import APIRouter, Depends
 
-from hoje.api import auth, backups, categories, events, holidays, leave, me, realtime, settings
+from hoje.api import (
+    auth,
+    backups,
+    categories,
+    data,
+    events,
+    holidays,
+    leave,
+    me,
+    realtime,
+    settings,
+)
 from hoje.api._common import PROBLEM_RESPONSES
 from hoje.api.deps import require_csrf, require_user
 
@@ -20,6 +31,7 @@ for _router in (
     backups.router,
     settings.router,
     categories.router,
+    data.router,
     events.router,
     leave.router,
     holidays.calendars_router,

@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from fastapi import HTTPException
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hoje import clock
@@ -23,6 +23,7 @@ from hoje.services.changes import VersionConflict
 NOT_FOUND = "Event not found"
 MAX_RANGE_DAYS = 400
 RESTORE_WINDOW = dt.timedelta(days=30)
+CATEGORY_DELETED = "The event's category has been deleted"
 
 
 def _unprocessable(detail: str) -> HTTPException:
@@ -304,6 +305,40 @@ async def delete(db: AsyncSession, user: User, event_id: uuid.UUID) -> None:
     )
 
 
+async def _undelete_category(
+    db: AsyncSession, user: User, category: Category, now: dt.datetime
+) -> None:
+    """Bring back the deleted category of a restored event (e.g. after a replace import).
+
+    Only within the same 30 day window and while no live category has taken its name.
+    """
+    if category.deleted_at is None or now - category.deleted_at > RESTORE_WINDOW:
+        raise HTTPException(status_code=409, detail=CATEGORY_DELETED)
+    taken = await db.scalar(
+        select(Category.id)
+        .where(
+            Category.user_id == user.id,
+            Category.deleted_at.is_(None),
+            func.lower(Category.name) == category.name.lower(),
+        )
+        .limit(1)
+    )
+    if taken is not None:
+        raise HTTPException(status_code=409, detail=CATEGORY_DELETED)
+    category.deleted_at = None
+    category.updated_at = now
+    category.version += 1
+    await db.flush()
+    await changes.publish(
+        db,
+        user_id=user.id,
+        entity="category",
+        op="update",
+        id=category.id,
+        version=category.version,
+    )
+
+
 async def restore(db: AsyncSession, user: User, event_id: uuid.UUID) -> EventSchema:
     event = await _load(db, user.id, event_id, include_deleted=True)
     now = clock.now()
@@ -312,8 +347,10 @@ async def restore(db: AsyncSession, user: User, event_id: uuid.UUID) -> EventSch
     if now - event.deleted_at > RESTORE_WINDOW:
         raise HTTPException(status_code=404, detail="Event was deleted more than 30 days ago")
     category = await db.scalar(select(Category).where(Category.id == event.category_id))
-    if category is None or category.deleted_at is not None:
-        raise HTTPException(status_code=409, detail="The event's category has been deleted")
+    if category is None:
+        raise HTTPException(status_code=409, detail=CATEGORY_DELETED)
+    if category.deleted_at is not None:
+        await _undelete_category(db, user, category, now)
     event.deleted_at = None
     event.counts_as_leave = category.is_leave
     event.updated_at = now

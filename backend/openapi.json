@@ -252,6 +252,19 @@
         "title": "BackupStatus",
         "type": "object"
       },
+      "CalendarCounts": {
+        "properties": {
+          "update": {
+            "title": "Update",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "update"
+        ],
+        "title": "CalendarCounts",
+        "type": "object"
+      },
       "Category": {
         "properties": {
           "colour": {
@@ -383,6 +396,24 @@
           "current"
         ],
         "title": "CategoryConflict",
+        "type": "object"
+      },
+      "CategoryCounts": {
+        "properties": {
+          "create": {
+            "title": "Create",
+            "type": "integer"
+          },
+          "reuse": {
+            "title": "Reuse",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "create",
+          "reuse"
+        ],
+        "title": "CategoryCounts",
         "type": "object"
       },
       "CategoryCreate": {
@@ -825,6 +856,24 @@
         "title": "EventConflict",
         "type": "object"
       },
+      "EventCounts": {
+        "properties": {
+          "create": {
+            "title": "Create",
+            "type": "integer"
+          },
+          "skip_duplicate": {
+            "title": "Skip Duplicate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "create",
+          "skip_duplicate"
+        ],
+        "title": "EventCounts",
+        "type": "object"
+      },
       "EventCreate": {
         "description": "Event minus server fields. ``category_id`` defaults to the user's last category.",
         "properties": {
@@ -1159,6 +1208,476 @@
         "title": "EventWithImpact",
         "type": "object"
       },
+      "ExportCalendar": {
+        "properties": {
+          "code": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "colour": {
+            "anyOf": [
+              {
+                "enum": [
+                  "slate",
+                  "red",
+                  "orange",
+                  "amber",
+                  "lime",
+                  "green",
+                  "teal",
+                  "cyan",
+                  "blue",
+                  "indigo",
+                  "violet",
+                  "pink"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colour"
+          },
+          "custom_holidays": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportHoliday"
+            },
+            "maxItems": 2000,
+            "title": "Custom Holidays",
+            "type": "array"
+          },
+          "edited_bundled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportHoliday"
+            },
+            "maxItems": 2000,
+            "title": "Edited Bundled",
+            "type": "array"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "removed_bundled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HolidayRef"
+            },
+            "maxItems": 2000,
+            "title": "Removed Bundled",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "ExportCalendar",
+        "type": "object"
+      },
+      "ExportCategory": {
+        "properties": {
+          "colour": {
+            "enum": [
+              "slate",
+              "red",
+              "orange",
+              "amber",
+              "lime",
+              "green",
+              "teal",
+              "cyan",
+              "blue",
+              "indigo",
+              "violet",
+              "pink"
+            ],
+            "title": "Colour",
+            "type": "string"
+          },
+          "hidden": {
+            "default": false,
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "is_leave": {
+            "default": false,
+            "title": "Is Leave",
+            "type": "boolean"
+          },
+          "key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "colour"
+        ],
+        "title": "ExportCategory",
+        "type": "object"
+      },
+      "ExportDocument": {
+        "description": "A complete export file. ``format`` and ``version`` are checked first by the importer.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "categories": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportCategory"
+            },
+            "maxItems": 100,
+            "title": "Categories",
+            "type": "array"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportEvent"
+            },
+            "maxItems": 20000,
+            "title": "Events",
+            "type": "array"
+          },
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "format": {
+            "const": "hoje-export",
+            "title": "Format",
+            "type": "string"
+          },
+          "holiday_calendars": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportCalendar"
+            },
+            "maxItems": 10,
+            "title": "Holiday Calendars",
+            "type": "array"
+          },
+          "leave_policies": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportLeavePolicy"
+            },
+            "maxItems": 200,
+            "title": "Leave Policies",
+            "type": "array"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "format",
+          "version"
+        ],
+        "title": "ExportDocument",
+        "type": "object"
+      },
+      "ExportEvent": {
+        "properties": {
+          "all_day": {
+            "default": true,
+            "title": "All Day",
+            "type": "boolean"
+          },
+          "category": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Category",
+            "type": "string"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "label_vertical": {
+            "default": false,
+            "title": "Label Vertical",
+            "type": "boolean"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "reminders": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportReminder"
+            },
+            "maxItems": 5,
+            "title": "Reminders",
+            "type": "array"
+          },
+          "repeat": {
+            "default": "none",
+            "enum": [
+              "none",
+              "monthly",
+              "yearly"
+            ],
+            "title": "Repeat",
+            "type": "string"
+          },
+          "repeat_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Until"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "title",
+          "start_date"
+        ],
+        "title": "ExportEvent",
+        "type": "object"
+      },
+      "ExportHoliday": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "is_non_working": {
+            "default": true,
+            "title": "Is Non Working",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "name"
+        ],
+        "title": "ExportHoliday",
+        "type": "object"
+      },
+      "ExportLeavePolicy": {
+        "properties": {
+          "allowance_days": {
+            "title": "Allowance Days",
+            "type": "number"
+          },
+          "carried_over_days": {
+            "title": "Carried Over Days",
+            "type": "number"
+          },
+          "year": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "allowance_days",
+          "carried_over_days"
+        ],
+        "title": "ExportLeavePolicy",
+        "type": "object"
+      },
+      "ExportReminder": {
+        "properties": {
+          "offset_minutes": {
+            "maximum": 525600.0,
+            "minimum": 0.0,
+            "title": "Offset Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset_minutes"
+        ],
+        "title": "ExportReminder",
+        "type": "object"
+      },
+      "ExportSettings": {
+        "properties": {
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "weekend_days": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 7,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekend Days"
+          }
+        },
+        "title": "ExportSettings",
+        "type": "object"
+      },
       "HealthStatus": {
         "properties": {
           "status": {
@@ -1342,6 +1861,27 @@
         "title": "HolidayCreate",
         "type": "object"
       },
+      "HolidayRef": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "name"
+        ],
+        "title": "HolidayRef",
+        "type": "object"
+      },
       "HolidayUpdate": {
         "properties": {
           "date": {
@@ -1382,6 +1922,97 @@
           }
         },
         "title": "HolidayUpdate",
+        "type": "object"
+      },
+      "ImportRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "description": "An export document (see docs/export-format.md)",
+            "title": "Data",
+            "type": "object"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": [
+              "merge",
+              "replace"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "required": [
+          "mode",
+          "data"
+        ],
+        "title": "ImportRequest",
+        "type": "object"
+      },
+      "ImportResult": {
+        "properties": {
+          "categories": {
+            "$ref": "#/components/schemas/CategoryCounts"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "events": {
+            "$ref": "#/components/schemas/EventCounts"
+          },
+          "holiday_calendars": {
+            "$ref": "#/components/schemas/CalendarCounts"
+          },
+          "leave_policies": {
+            "$ref": "#/components/schemas/LeavePolicyCounts"
+          },
+          "mode": {
+            "enum": [
+              "merge",
+              "replace"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SettingsCounts"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "dry_run",
+          "categories",
+          "events",
+          "leave_policies",
+          "holiday_calendars",
+          "settings",
+          "warnings"
+        ],
+        "title": "ImportResult",
         "type": "object"
       },
       "LeaveBalance": {
@@ -1589,6 +2220,24 @@
           "current"
         ],
         "title": "LeavePolicyConflict",
+        "type": "object"
+      },
+      "LeavePolicyCounts": {
+        "properties": {
+          "create": {
+            "title": "Create",
+            "type": "integer"
+          },
+          "update": {
+            "title": "Update",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "create",
+          "update"
+        ],
+        "title": "LeavePolicyCounts",
         "type": "object"
       },
       "LeavePolicyUpdate": {
@@ -2147,6 +2796,19 @@
           "items"
         ],
         "title": "SearchResult",
+        "type": "object"
+      },
+      "SettingsCounts": {
+        "properties": {
+          "update": {
+            "title": "Update",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "update"
+        ],
+        "title": "SettingsCounts",
         "type": "object"
       },
       "TotpConfirmRequest": {
@@ -4415,6 +5077,67 @@
         ]
       }
     },
+    "/api/v1/export": {
+      "get": {
+        "operationId": "data_export",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDocument"
+                }
+              }
+            },
+            "description": "The export document, served as a file download"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Download all of your data as a JSON file",
+        "tags": [
+          "data"
+        ]
+      }
+    },
     "/api/v1/holiday-calendars": {
       "get": {
         "operationId": "holiday_calendars_list",
@@ -5047,6 +5770,98 @@
         ]
       }
     },
+    "/api/v1/import": {
+      "post": {
+        "description": "Everything happens in one transaction. ``replace`` needs the account password (it is\nnot checked for a dry run, which writes nothing). Dry runs count towards the 10/hour limit.",
+        "operationId": "data_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad request or failed re-authentication"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Import an export file (merge or replace); dry_run previews without writing",
+        "tags": [
+          "data"
+        ]
+      }
+    },
     "/api/v1/leave/balance": {
       "get": {
         "description": "``year`` defaults to the current year in the user's time zone.",
@@ -5529,7 +6344,8 @@
                         "holiday",
                         "holiday_calendar",
                         "user",
-                        "backup_run"
+                        "backup_run",
+                        "data"
                       ],
                       "title": "Entity",
                       "type": "string"
