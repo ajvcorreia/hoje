@@ -1,5 +1,6 @@
 """Pure-ASGI middleware: request body cap (S-01) and ``Cache-Control: no-store`` on the API (S-11).
 
+The cap is 1 MiB, except 10 MiB for the data import route (``PATH_LIMITS``).
 Both are plain ASGI wrappers (no ``BaseHTTPMiddleware``) so they add no extra task, never buffer
 a response body and leave SSE streams untouched.
 """
@@ -11,6 +12,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from hoje.errors import problem_response
 
 MAX_BODY_BYTES = 1024 * 1024  # 1 MiB; Caddy enforces the same cap in front of the API
+IMPORT_BODY_BYTES = 10 * 1024 * 1024  # data import documents; Caddy mirrors it for this path only
+# Per-path overrides of MAX_BODY_BYTES (exact path match).
+PATH_LIMITS: dict[str, int] = {"/api/v1/import": IMPORT_BODY_BYTES}
 BODY_TOO_LARGE = "Request body too large"
 API_PREFIX = "/api/"
 
@@ -39,17 +43,27 @@ def _declared_length(scope: Scope) -> int | None:
 class BodyLimitMiddleware:
     """Answer 413 to bodies over ``max_bytes``: up front by Content-Length, else while streaming."""
 
-    def __init__(self, app: ASGIApp, max_bytes: int = MAX_BODY_BYTES) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_bytes: int = MAX_BODY_BYTES,
+        path_limits: dict[str, int] | None = None,
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.path_limits = PATH_LIMITS if path_limits is None else path_limits
+
+    def limit_for(self, path: str) -> int:
+        return self.path_limits.get(path, self.max_bytes)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        limit = self.limit_for(scope.get("path", ""))
         declared = _declared_length(scope)
-        if declared is not None and declared > self.max_bytes:
+        if declared is not None and declared > limit:
             await self._reject(scope, receive, send)
             return
 
@@ -61,7 +75,7 @@ class BodyLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > limit:
                     raise BodyTooLargeError
             return message
 
