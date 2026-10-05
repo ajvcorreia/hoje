@@ -2,7 +2,8 @@
 # Run deploy/smoke_test.py against a throwaway stack built from deploy/compose.e2e.yml
 # (services e2e-db, e2e-api, e2e-worker, e2e-web, e2e-mailpit; worker polls every 2 s).
 # The test client runs in a python:3.13-alpine container on the stack's own networks.
-# After a green run it also takes a dump of the stack's database with deploy/backup/backup.sh
+# smoke_test.py has the owner press "Back up now" (POST /api/v1/backups) and waits for the run to
+# succeed. After a green run this script copies the newest dump out of e2e-worker (/backups)
 # and restores it into a second throwaway PostgreSQL to compare row counts.
 #
 # Safety: the compose project name is shared with the LAN test stack, so teardown removes only
@@ -22,14 +23,14 @@ PG_IMAGE="postgres:17-alpine"
 ORIGIN="http://e2e-web:8080"
 NET_INTERNAL="hoje-test_e2e_internal"
 NET_EDGE="hoje-test_e2e_edge"
-BACKUP_VOLUME="hoje-test-smoke-backups"
+DUMP_DIR=$(mktemp -d)
 
 SERVICES=(e2e-db e2e-api e2e-worker e2e-web e2e-mailpit)
 dc() { docker compose -p hoje-test -f deploy/compose.e2e.yml "$@"; }
 
 teardown() {
   docker rm -f hoje-test-smoke-client hoje-test-smoke-restore >/dev/null 2>&1
-  docker volume rm "$BACKUP_VOLUME" >/dev/null 2>&1
+  [ -n "${DUMP_DIR:-}" ] && rm -rf -- "$DUMP_DIR"
   dc rm -sfv "${SERVICES[@]}" >/dev/null 2>&1 || true
   docker network rm "$NET_INTERNAL" "$NET_EDGE" >/dev/null 2>&1 || true
 }
@@ -67,17 +68,23 @@ if [ "$code" -ne 0 ]; then
 fi
 
 # --- backup and restore round trip on the (now populated) throwaway database -----------------
+# smoke_test.py already asked the owner's "Back up now" and waited for the run to succeed, so
+# the worker's /backups holds a verified dump. Take the newest one out of e2e-worker and
+# restore it into a fresh PostgreSQL.
 count() { # container table
   docker exec "$1" psql -U hoje -d hoje -Atc "select count(*) from $2" 2>/dev/null
 }
 
-echo "--- backup: dumping e2e-db with deploy/backup/backup.sh"
-docker run --rm --network "$NET_INTERNAL" \
-  -e PGHOST=e2e-db -e PGUSER=hoje -e PGDATABASE=hoje -e PGPASSWORD=e2e-password \
-  --user 0:0 --cap-drop ALL --cap-add DAC_OVERRIDE --read-only --tmpfs /tmp \
-  --security-opt no-new-privileges:true \
-  -v "$PWD/deploy/backup/backup.sh:/backup/backup.sh:ro" -v "$BACKUP_VOLUME:/backups" \
-  "$PG_IMAGE" sh /backup/backup.sh now || { echo "FAIL backup" >&2; exit 1; }
+echo "--- backup: newest dump in the e2e-worker /backups volume"
+dump_name=$(dc exec -T e2e-worker sh -c 'ls -t /backups/hoje-*.dump 2>/dev/null | head -1') \
+  || { echo "FAIL could not list /backups in e2e-worker" >&2; exit 1; }
+dump_name=$(printf '%s' "$dump_name" | tr -d '\r')
+[ -n "$dump_name" ] || { echo "FAIL no dump in e2e-worker:/backups" >&2; exit 1; }
+dc exec -T e2e-worker cat "$dump_name" >"$DUMP_DIR/smoke.dump" \
+  || { echo "FAIL could not read $dump_name" >&2; exit 1; }
+dump_bytes=$(wc -c <"$DUMP_DIR/smoke.dump")
+[ "$dump_bytes" -gt 0 ] || { echo "FAIL empty dump $dump_name" >&2; exit 1; }
+echo "PASS backup: $dump_name ($dump_bytes bytes) copied out of e2e-worker"
 
 echo "--- restore: pg_restore into a fresh throwaway PostgreSQL"
 docker run -d --name hoje-test-smoke-restore --network "$NET_INTERNAL" \
@@ -87,10 +94,9 @@ for _ in $(seq 1 60); do
   [ "$(docker exec hoje-test-smoke-restore psql -U hoje -d hoje -Atc 'select 1' 2>/dev/null)" = 1 ] && break
   sleep 1
 done
-docker run --rm --network "$NET_INTERNAL" -e PGPASSWORD=restore-password \
-  -v "$BACKUP_VOLUME:/backups:ro" "$PG_IMAGE" \
-  sh -c 'pg_restore -h hoje-test-smoke-restore -U hoje -d hoje --clean --if-exists --no-owner --single-transaction "$(ls -t /backups/hoje-*.dump | head -1)"' \
-  || { echo "FAIL restore" >&2; exit 1; }
+docker exec -i hoje-test-smoke-restore \
+  pg_restore -U hoje -d hoje --clean --if-exists --no-owner --single-transaction \
+  <"$DUMP_DIR/smoke.dump" || { echo "FAIL restore" >&2; exit 1; }
 
 status=0
 for table in users categories events reminders sessions; do
@@ -104,4 +110,11 @@ for table in users categories events reminders sessions; do
   fi
 done
 [ "$(count hoje-test-smoke-restore users)" -ge 1 ] 2>/dev/null || { echo "FAIL restored users table is empty" >&2; status=1; }
+rows=$(docker exec hoje-test-smoke-restore psql -U hoje -d hoje -Atc "select count(*) from backup_runs where status = 'succeeded'" 2>/dev/null)
+if [ "${rows:-0}" -ge 1 ] 2>/dev/null; then
+  echo "PASS backup/restore: backup_runs holds $rows succeeded run(s)"
+else
+  echo "FAIL backup/restore: no succeeded backup_runs row in the restored database" >&2
+  status=1
+fi
 exit "$status"
