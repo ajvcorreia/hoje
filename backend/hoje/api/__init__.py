@@ -9,6 +9,7 @@ from hoje.api import (
     data,
     events,
     holidays,
+    integrations,
     leave,
     me,
     realtime,
@@ -36,6 +37,8 @@ for _router in (
     leave.router,
     holidays.calendars_router,
     holidays.holidays_router,
+    integrations.router,
+    integrations.birthdays_router,
     realtime.router,
 ):
     # Every other endpoint needs an authenticated, fully logged-in (active) session.

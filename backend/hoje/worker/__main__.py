@@ -2,8 +2,9 @@
 
 Every ``HOJE_WORKER_INTERVAL_SECONDS``: heartbeat, then the reminder cycle (stale ``sending``
 rows -> ``failed``, schedule upcoming deliveries, claim and send), and once a day the
-housekeeping purge. Safe to run several workers: claims use ``FOR UPDATE SKIP LOCKED`` and
-scheduling uses ``ON CONFLICT DO NOTHING``. SIGTERM finishes the send in progress, then exits.
+housekeeping purge. Backups and due FelizAnniv birthday syncs run as background tasks.
+Safe to run several workers: claims use ``FOR UPDATE SKIP LOCKED`` and scheduling uses
+``ON CONFLICT DO NOTHING``. SIGTERM finishes the send in progress, then exits.
 """
 
 import asyncio
@@ -22,6 +23,7 @@ from hoje.services import housekeeping, reminders
 from hoje.services.mailer import Mailer, SmtpMailer
 from hoje.worker import HEARTBEAT_PATH
 from hoje.worker.backup_job import BackupJob
+from hoje.worker.birthday_job import BirthdaySyncJob
 
 log = get_logger("hoje.worker")
 
@@ -68,10 +70,12 @@ async def run(
     sm: async_sessionmaker[AsyncSession] | None = None,
     mailer: Mailer | None = None,
     backup_job: BackupJob | None = None,
+    birthday_job: BirthdaySyncJob | None = None,
 ) -> None:
     sm = sm or get_sessionmaker()
     mailer = mailer or SmtpMailer(settings, sm)
     backup_job = backup_job or BackupJob(sm, settings)
+    birthday_job = birthday_job or BirthdaySyncJob(sm, settings)
     interval = settings.worker_interval_seconds
     log.info(
         "worker_started",
@@ -91,6 +95,10 @@ async def run(
         except Exception as exc:
             log.error("backup_tick_failed", error=type(exc).__name__, detail=str(exc)[:300])
         try:
+            await birthday_job.tick()  # background task; syncs due FelizAnniv integrations
+        except Exception as exc:
+            log.error("birthday_tick_failed", error=type(exc).__name__, detail=str(exc)[:300])
+        try:
             if last_housekeeping is None or now - last_housekeeping >= HOUSEKEEPING_EVERY:
                 await run_housekeeping(sm)
                 last_housekeeping = now
@@ -107,6 +115,7 @@ async def run(
             log.error("worker_cycle_failed", error=type(exc).__name__, detail=str(exc)[:300])
         await _sleep(stop, interval)
     await backup_job.shutdown()
+    await birthday_job.shutdown()
     log.info("worker_stopped")
 
 

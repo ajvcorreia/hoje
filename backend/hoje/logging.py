@@ -13,7 +13,7 @@ REDACTED = "[REDACTED]"
 # "set-cookie") but not look-alikes such as "status_code" or "token_count".
 _SENSITIVE_KEY = re.compile(
     r"(^|[_-])(password|passwd|token|secret|cookie|authorization|otp|totp)s?$"
-    r"|^(code|codes|mfa_code|recovery_codes?|totp_code)$",
+    r"|^(code|codes|mfa_code|recovery_codes?|totp_code|api_?keys?)$",
     re.IGNORECASE,
 )
 
@@ -84,6 +84,10 @@ def configure_logging(level: str = "INFO") -> None:
         lg.propagate = True
         lg.setLevel(level.upper())
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    # httpx logs every request URL at INFO; for integration syncs that is a vetted address and a
+    # query string we do not want in the log stream.
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
