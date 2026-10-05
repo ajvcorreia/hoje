@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-10-05
+
+### Fixed
+
+- The app now reports its real version (the API, its OpenAPI document and `hoje.__version__`
+  still said 0.1.0 in the 1.0.0 images; image tags and labels were already correct).
+
 ## [1.0.0] — 2026-10-05
 
 ### Added
