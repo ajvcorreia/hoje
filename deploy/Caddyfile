@@ -72,6 +72,13 @@ http://127.0.0.1:2020 {
 	# Request bodies are tiny JSON documents: refuse anything over 1 MB with 413 before it reaches
 	# the API (which enforces its own 1 MiB cap as defence in depth).
 	handle /api/* {
+		# A declared Content-Length over the cap is answered here: left to request_body alone,
+		# the proxy would surface the aborted upload as 502. request_body below still cuts off
+		# chunked bodies (and a lying Content-Length) with 413.
+		@too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 1000000`
+		respond @too_large "Request body too large" 413 {
+			close
+		}
 		request_body {
 			max_size 1MB
 		}
