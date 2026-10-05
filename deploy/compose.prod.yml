@@ -6,7 +6,7 @@
 #   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d
 #
 # Networks
-#   backend  internal (no egress): db, api, worker, backup.
+#   backend  internal (no egress): db, api, worker.
 #   edge     web <-> api only. The API must stay reachable ONLY through hoje-web, because it
 #            trusts the X-Real-IP header that hoje-web sets (HOJE_TRUST_REAL_IP_HEADER).
 #   egress   the worker alone: outbound SMTP for reminder mail.
@@ -52,6 +52,12 @@ x-app-env: &app-env
   SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
   SMTP_TLS: ${SMTP_TLS:-false}
   SMTP_FROM: ${SMTP_FROM:-}
+  # In-app backups: the worker dumps the database into /backups (its own volume, see below).
+  # The API reads the same settings only to show the schedule in Settings > Backups.
+  HOJE_BACKUP_DIR: /backups
+  HOJE_BACKUP_ENABLED: ${HOJE_BACKUP_ENABLED:-true}
+  BACKUP_SCHEDULE_HOUR: ${BACKUP_SCHEDULE_HOUR:-2}
+  BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
   TZ: ${TZ:-UTC}
 
 services:
@@ -96,8 +102,13 @@ services:
     command: ["python", "-m", "hoje.worker"]
     environment:
       <<: *app-env
+    volumes:
+      # Only the worker mounts the backups (the API never sees them). A named volume by
+      # default; set HOJE_BACKUP_DIR_HOST=/abs/host/path to keep dumps on the host instead
+      # (that directory must be writable by uid 10001: sudo chown 10001:10001 <dir>).
+      - ${HOJE_BACKUP_DIR_HOST:-backups}:/backups
     networks: [backend, egress]
-    mem_limit: 256m
+    mem_limit: 320m
     healthcheck:
       test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
       interval: 30s
@@ -132,39 +143,6 @@ services:
     mem_limit: 128m
     depends_on:
       api:
-        condition: service_healthy
-
-  backup:
-    image: postgres:17-alpine
-    <<: *hardening
-    # Root inside the container (no capabilities except DAC_OVERRIDE) so it can write to a
-    # bind-mounted HOJE_BACKUP_DIR owned by any user. Dumps are created 0600.
-    user: "0:0"
-    cap_add: [DAC_OVERRIDE]
-    init: true
-    command: ["sh", "/backup/backup.sh"]
-    environment:
-      PGHOST: db
-      PGUSER: hoje
-      PGDATABASE: hoje
-      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
-      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
-      BACKUP_SCHEDULE_HOUR: ${BACKUP_SCHEDULE_HOUR:-2}
-      TZ: ${TZ:-UTC}
-    volumes:
-      - ./backup/backup.sh:/backup/backup.sh:ro
-      # A named volume by default; set HOJE_BACKUP_DIR=/abs/host/path to keep dumps on the host.
-      - ${HOJE_BACKUP_DIR:-backups}:/backups
-    networks: [backend]
-    mem_limit: 128m
-    healthcheck:
-      test: ["CMD", "sh", "/backup/backup.sh", "health"]
-      interval: 5m
-      timeout: 10s
-      retries: 1
-      start_period: 30s
-    depends_on:
-      db:
         condition: service_healthy
 
 networks:
