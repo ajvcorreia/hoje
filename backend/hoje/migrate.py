@@ -40,7 +40,7 @@ def script_head() -> str:
 
 async def run_migrations() -> None:
     settings = get_settings()
-    engine = create_async_engine(settings.database_url)
+    engine = create_async_engine(settings.database_url, hide_parameters=True)
     try:
         async with engine.connect() as lock_conn:
             lock_conn = await lock_conn.execution_options(isolation_level="AUTOCOMMIT")
