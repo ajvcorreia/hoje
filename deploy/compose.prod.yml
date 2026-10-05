@@ -124,7 +124,8 @@ services:
       API_UPSTREAM: api:8000
       # IPs/CIDRs of Nginx Proxy Manager as seen by this container. Only their
       # X-Forwarded-For is believed; everyone else is identified by the connecting address.
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-private_ranges}
+      # Required: a wider default would let any private-range peer pick its own client IP.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:?set TRUSTED_PROXIES to the address or subnet Nginx Proxy Manager connects from}
     ports:
       - "${HOJE_BIND:-127.0.0.1}:${HOJE_HTTP_PORT:-8080}:8080"
     networks: [edge]

@@ -8,6 +8,11 @@ Two mechanisms share the table (one row per key):
 * request counting (password forgot/reset, test email): every request counts, at most 5 per
   15 minute window.
 
+Per-key policy (``policy_for``): keys that anyone can aim at someone else (``login:acct:*`` is
+derived from a public email address) lock for at most 15 minutes and have no 24 hour escalation
+memory, so an attacker cannot keep the owner out for long. IP and trusted-device keys keep the
+full 1 hour cap and escalation.
+
 Counters are updated with ``INSERT ... ON CONFLICT DO UPDATE`` so concurrent requests cannot
 lose updates. Callers commit; failure counters must be committed *before* raising the 401/400,
 otherwise the rollback would erase them.
@@ -15,6 +20,7 @@ otherwise the rollback would erase them.
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
@@ -32,16 +38,33 @@ MAX_LOCK_SECONDS = 3600
 MAX_REQUESTS_PER_WINDOW = 5
 STALE_ROW_AGE = timedelta(days=1)
 ESCALATION_MEMORY = timedelta(days=1)
+ACCOUNT_MAX_LOCK_SECONDS = 15 * 60
+ACCOUNT_KEY_PREFIX = "login:acct:"
+
+
+@dataclass(frozen=True, slots=True)
+class Policy:
+    max_lock_seconds: int
+    escalates: bool  # remember past lockouts for ESCALATION_MEMORY instead of resetting each window
+
+
+DEFAULT_POLICY = Policy(MAX_LOCK_SECONDS, escalates=True)
+ACCOUNT_POLICY = Policy(ACCOUNT_MAX_LOCK_SECONDS, escalates=False)
 
 TOO_MANY = "Too many attempts. Try again later."
 
 
-def lockout_seconds(failures: int) -> int:
+def lockout_seconds(failures: int, max_seconds: int = MAX_LOCK_SECONDS) -> int:
     """Lock duration after ``failures`` failures in the window (0 below the threshold)."""
     if failures < LOCK_THRESHOLD:
         return 0
     exponent = min(failures - LOCK_THRESHOLD, 20)  # cap avoids huge shifts; result is capped too
-    return min(BASE_LOCK_SECONDS * 2**exponent, MAX_LOCK_SECONDS)
+    return min(BASE_LOCK_SECONDS * 2**exponent, max_seconds)
+
+
+def policy_for(key: str) -> Policy:
+    """The lockout policy of ``key``: capped, non-escalating for per-account login keys."""
+    return ACCOUNT_POLICY if key.startswith(ACCOUNT_KEY_PREFIX) else DEFAULT_POLICY
 
 
 def too_many(retry_after: int) -> HTTPException:
@@ -53,13 +76,16 @@ def too_many(retry_after: int) -> HTTPException:
 async def _bump(db: AsyncSession, key: str, now: datetime) -> tuple[int, datetime]:
     """Count one event on ``key`` (resetting a stale window). Returns (count, window_start).
 
-    A key that was locked within ``ESCALATION_MEMORY`` never starts a fresh window, so repeated
-    lockouts keep doubling up to ``MAX_LOCK_SECONDS`` instead of resetting every 15 minutes.
+    A key with an escalating policy that was locked within ``ESCALATION_MEMORY`` never starts a
+    fresh window, so repeated lockouts keep doubling up to the policy cap instead of resetting
+    every 15 minutes.
     """
-    recently_locked = AuthThrottle.locked_until.is_not(None) & (
-        AuthThrottle.locked_until > now - ESCALATION_MEMORY
-    )
-    stale = (AuthThrottle.window_start < now - WINDOW) & ~recently_locked
+    stale = AuthThrottle.window_start < now - WINDOW
+    if policy_for(key).escalates:
+        recently_locked = AuthThrottle.locked_until.is_not(None) & (
+            AuthThrottle.locked_until > now - ESCALATION_MEMORY
+        )
+        stale = stale & ~recently_locked
     stmt = (
         pg_insert(AuthThrottle)
         .values(key=key, failures=1, window_start=now, locked_until=None, updated_at=now)
@@ -96,7 +122,7 @@ async def record_failure(db: AsyncSession, *keys: str) -> None:
     now = clock.now()
     for key in keys:
         failures, _ = await _bump(db, key, now)
-        seconds = lockout_seconds(failures)
+        seconds = lockout_seconds(failures, policy_for(key).max_lock_seconds)
         if seconds:
             await db.execute(
                 update(AuthThrottle)

@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from hoje.constants import Colour
+from hoje.schemas.common import BoundedDate
 
 HolidayName = Annotated[str, Field(min_length=1, max_length=100)]
 
@@ -40,12 +41,12 @@ class Holiday(BaseModel):
 
 
 class HolidayCreate(BaseModel):
-    date: dt.date
+    date: BoundedDate
     name: HolidayName
     is_non_working: bool = True
 
 
 class HolidayUpdate(BaseModel):
-    date: dt.date | None = None
+    date: BoundedDate | None = None
     name: HolidayName | None = None
     is_non_working: bool | None = None

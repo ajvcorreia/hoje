@@ -345,3 +345,44 @@ async def test_hub_stop_ends_streams(live: Live):
     await live.hub.stop()
     assert await stream.frame() is None
     await stream.close()
+
+
+class _ClientGone(OSError):
+    pass
+
+
+async def test_subscription_is_released_when_the_first_send_fails(live: Live):
+    """The generator never starts when the client is already gone; the response must clean up."""
+    alice = await live.make_account("rt-alice@example.com")
+    path = "/api/v1/realtime/stream"
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.4"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(b"host", b"test"), (b"cookie", cookie_of(alice).encode())],
+        "client": ("127.0.0.1", 1),
+        "server": ("test", 80),
+    }
+    sent_request = False
+
+    async def receive() -> dict[str, Any]:
+        nonlocal sent_request
+        if not sent_request:
+            sent_request = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await asyncio.Event().wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: dict[str, Any]) -> None:
+        raise _ClientGone("client went away")
+
+    with pytest.raises(Exception):  # noqa: B017 - Starlette surfaces it as ClientDisconnect
+        await live.app(scope, receive, send)
+
+    assert live.hub.stream_count(alice.user_id) == 0

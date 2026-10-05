@@ -21,3 +21,9 @@ from hoje.services.throttle import lockout_seconds
 )
 def test_lockout_seconds(failures: int, seconds: int) -> None:
     assert lockout_seconds(failures) == seconds
+
+
+def test_lockout_seconds_honours_a_lower_cap():
+    assert lockout_seconds(5, 900) == 60
+    assert lockout_seconds(9, 900) == 900
+    assert lockout_seconds(1000, 900) == 900

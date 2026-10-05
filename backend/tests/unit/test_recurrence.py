@@ -132,3 +132,18 @@ def test_old_event_with_a_400_day_window_is_computed_arithmetically():
         )
     assert time.perf_counter() - began < 1.0
     assert len(monthly) == 14 and len(yearly) == 1
+
+
+def test_expand_near_the_end_of_the_calendar_returns_what_fits():
+    start, end = date(9998, 1, 1), date(9999, 12, 31)  # 729 days: later repetitions overflow
+
+    got = expand(start, end, "monthly", None, date(9998, 1, 1), end)
+
+    assert got == [(start, end)]  # the February 9998 repetition would end after date.max
+
+
+def test_expand_survives_a_window_at_the_start_of_the_calendar():
+    assert expand(date(2026, 1, 1), date(2026, 1, 3), "monthly", None, date.min, date.min) == []
+    assert expand(date(2026, 1, 1), date(2026, 1, 3), "none", None, date.min, date.max) == [
+        (date(2026, 1, 1), date(2026, 1, 3))
+    ]

@@ -43,9 +43,20 @@ http://127.0.0.1:2020 {
 }
 
 {$SITE_ADDRESS} {
+	# Access log: JSON with the resolved client_ip, minus anything that carries a credential or a
+	# search term (session / CSRF tokens in headers, Set-Cookie, the query string).
 	log {
 		output stdout
-		format json
+		format filter {
+			wrap json
+			fields {
+				request>headers>Cookie delete
+				request>headers>X-Csrf-Token delete
+				request>headers>Authorization delete
+				resp_headers>Set-Cookie delete
+				request>uri regexp "\?.*" ""
+			}
+		}
 	}
 
 	import security_headers
@@ -58,7 +69,19 @@ http://127.0.0.1:2020 {
 	}
 
 	# API and probes. flush_interval -1 keeps the SSE stream unbuffered.
+	# Request bodies are tiny JSON documents: refuse anything over 1 MB with 413 before it reaches
+	# the API (which enforces its own 1 MiB cap as defence in depth).
 	handle /api/* {
+		# A declared Content-Length over the cap is answered here: left to request_body alone,
+		# the proxy would surface the aborted upload as 502. request_body below still cuts off
+		# chunked bodies (and a lying Content-Length) with 413.
+		@too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 1000000`
+		respond @too_large "Request body too large" 413 {
+			close
+		}
+		request_body {
+			max_size 1MB
+		}
 		reverse_proxy {$API_UPSTREAM:api:8000} {
 			# Overwrites any client-supplied value; the API trusts this header (see client_ip).
 			header_up X-Real-IP {client_ip}

@@ -154,11 +154,14 @@ cp deploy/prod.env.example deploy/.env      # gitignored; edit every value
 ```
 
 Generate secrets with `openssl rand -base64 32` (`HOJE_SECRET_KEY`) and `openssl rand -hex 24`
-(`POSTGRES_PASSWORD`). Set `DOCKERHUB_NAMESPACE`, `HOJE_TAG`, the SMTP settings and:
+(`POSTGRES_PASSWORD`). Set `DOCKERHUB_NAMESPACE`, the SMTP settings and `HOJE_TAG`: pin a release
+version such as `1.0.0` rather than `latest`, so that an image pushed to the tag cannot change what
+you run without you noticing; upgrade by editing the tag (see Upgrades). Also set:
 
 - `HOJE_PUBLIC_URL`: the **https** URL users type (`https://hoje.example.com`). Cookies are
   `Secure` and the Origin check compares against it, so a wrong value breaks sign-in.
-- `TRUSTED_PROXIES`: the IP or CIDR NPM connects from, as seen by `hoje-web` (see below).
+- `TRUSTED_PROXIES`: **required** (compose refuses to start without it): the IP or CIDR NPM
+  connects from, as seen by `hoje-web` (see below and the comments in `deploy/prod.env.example`).
 - `TZ` and `BACKUP_SCHEDULE_HOUR` for the backup time.
 
 Back up `deploy/.env`, in particular `HOJE_SECRET_KEY`: the database holds TOTP secrets encrypted
@@ -205,12 +208,15 @@ Hosts, Proxy Hosts, Add Proxy Host:
   proxy_cache off;
   proxy_read_timeout 1h;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  client_max_body_size 1m;
   ```
 
   Live sync across devices streams events over one long-lived response: without
   `proxy_buffering off` Nginx holds the events back, and the default 60 s `proxy_read_timeout`
   would cut the stream (the app reconnects, but updates would lag). The `X-Forwarded-For` line
   makes NPM pass the real client address on, which `hoje-web` resolves against `TRUSTED_PROXIES`.
+  `client_max_body_size 1m` rejects oversized request bodies at the edge (NPM's default is far
+  larger); Caddy and the API enforce the same cap behind it.
 
 Check `https://<your domain>/healthz`, sign in, and make a change in two browsers to see it appear
 live.
@@ -263,9 +269,44 @@ another machine: a dump on the same disk does not survive losing the host.
 
 ## Security
 
-Security design including session management, CSRF protection, TOTP-based 2FA, rate limiting, and encryption at rest. Threat model and hardening checklist.
+Hoje is meant for one owner, but it is internet-facing, so the design assumes hostile traffic.
+Read the [threat model](docs/threat-model.md) for what is defended and what is accepted, and work
+through the [hardening checklist](docs/hardening-checklist.md) before exposing an instance.
 
-> TODO (phase 8)
+Main controls:
+
+- **Passwords and sessions**: argon2id hashes, zxcvbn strength check, random 256-bit session
+  tokens stored only as hashes, `__Host-` HttpOnly Secure SameSite=Lax cookies, rotation on every
+  login and credential change, 7 day idle and 30 day absolute lifetime.
+- **Two-factor authentication**: TOTP with replay protection and single-use recovery codes; the
+  TOTP seeds are encrypted at rest (AES-256-GCM) under `HOJE_SECRET_KEY`.
+- **CSRF**: the Origin must equal `HOJE_PUBLIC_URL` on every write, plus a per-session CSRF
+  token; no CORS headers are sent.
+- **Brute-force protection**: progressive lockouts per client address (IPv6 per /64), per account
+  (capped at 15 minutes so a stranger cannot keep you out) and per trusted browser; a signed
+  device cookie keeps a browser you already signed in with working while someone hammers your
+  account. Structured `auth_failed` / `auth_locked` log lines feed CrowdSec or fail2ban.
+- **Notifications**: an email after every password change or reset, 2FA disable and recovery-code
+  regeneration, so a takeover does not go unnoticed.
+- **Hard edges**: request bodies are capped at 1 MB (Caddy and the API), dates and ranges are
+  bounded, `Cache-Control: no-store` on API responses, strict CSP and security headers, no API
+  docs in production, and secrets, tokens and the query string never reach the logs.
+- **Containers**: non-root, read-only filesystems, all capabilities dropped, the database and API
+  on internal networks only.
+- **Supply chain**: base images pinned by digest and patched at build time, locked dependencies,
+  Dependabot, SHA-pinned GitHub Actions, and a release pipeline that publishes only the image it
+  scanned (with provenance and an SBOM).
+
+What you must set when deploying (details in the steps above and the checklist):
+
+- `HOJE_SETUP_TOKEN` (before the first registration; remove it afterwards if you like).
+- `TRUSTED_PROXIES`: required, the narrowest address of Nginx Proxy Manager as `hoje-web` sees it.
+- The NPM **Advanced** block exactly as in step 4, including `client_max_body_size 1m;`.
+- `HOJE_PUBLIC_URL` with `https://` (the API refuses to start in production otherwise),
+  `HOJE_ALLOW_REGISTRATION=false`, and a pinned `HOJE_TAG` (for example `1.0.0`).
+- A strong, backed-up `HOJE_SECRET_KEY`. Rotating it signs out nobody but invalidates the stored
+  TOTP seeds (re-enrol 2FA with a recovery code), CSRF tokens and the trusted-device cookies.
+- Encrypted off-host copies of the database dumps: dumps contain your data in plaintext.
 
 ## License
 

@@ -6,6 +6,10 @@ name: Release
 # Nothing runs for pull requests. Without the repository variable DOCKERHUB_NAMESPACE the whole
 # job is skipped; if the variable is set but the secrets are missing, it warns and skips.
 # Setup: README, "CI/CD and GitHub secrets".
+#
+# The image that is scanned is the image that is published: it is built once and pushed by
+# digest only (no tag points at it yet), Trivy scans that exact digest, and only a clean scan
+# lets the tags be attached to it. The push carries SLSA provenance (mode=max) and an SBOM.
 
 on:
   push:
@@ -59,6 +63,13 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: steps.creds.outputs.ok == 'true'
 
+      - name: Log in to Docker Hub
+        if: steps.creds.outputs.ok == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Image tags and OCI labels
         id: meta
         if: steps.creds.outputs.ok == 'true'
@@ -74,58 +85,58 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      # Build once locally and scan before anything is pushed; the push below reuses the cache.
-      - name: Build image for scanning
+      # Build once and push by digest: the registry holds the image, but no tag names it yet.
+      - name: Build and push by digest
+        id: build
         if: steps.creds.outputs.ok == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           platforms: linux/amd64
-          push: false
-          load: true
-          tags: hoje/${{ matrix.image }}:scan
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
 
+      # Scan the pushed digest itself. A failure here leaves an untagged digest in the registry
+      # and no tag moves.
       - name: Scan image
         if: steps.creds.outputs.ok == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
         with:
-          image-ref: hoje/${{ matrix.image }}:scan
+          image-ref: ${{ env.REPOSITORY }}@${{ steps.build.outputs.digest }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
 
-      - name: Log in to Docker Hub
+      - name: Tag the scanned image
         if: steps.creds.outputs.ok == 'true'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        if: steps.creds.outputs.ok == 'true'
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_args+=(--tag "$tag")
+          done <<< "$TAGS"
+          docker buildx imagetools create "${tag_args[@]}" "${REPOSITORY}@${DIGEST}"
 
       - name: Published tags
         if: steps.creds.outputs.ok == 'true'
         env:
+          DIGEST: ${{ steps.build.outputs.digest }}
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           {
             echo "### Published ${REPOSITORY}"
             echo '```'
             echo "$TAGS"
+            echo "digest: ${DIGEST}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

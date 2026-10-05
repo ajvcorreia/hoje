@@ -63,3 +63,22 @@ def test_split_by_year_boundary():
 
 def test_split_by_year_empty():
     assert split_by_year([]) == {}
+
+
+def test_working_days_never_steps_past_the_end_of_the_calendar():
+    top = date(9999, 12, 31)  # Friday: stepping one day further would raise OverflowError
+
+    assert working_days(date(9999, 12, 29), top, SAT_SUN, set()) == [
+        date(9999, 12, 29),
+        date(9999, 12, 30),
+        top,
+    ]
+    assert working_days(top, top, SAT_SUN, set()) == [top]
+    assert working_days(date.min, date.min, SAT_SUN, set()) == [date.min]  # a Monday
+
+
+def test_working_days_at_the_planner_bounds():
+    days = working_days(date(2200, 12, 25), date(2200, 12, 31), SAT_SUN, set())
+
+    assert days[-1] == date(2200, 12, 31)
+    assert working_days(date(1900, 1, 1), date(1900, 1, 1), SAT_SUN, set()) == [date(1900, 1, 1)]

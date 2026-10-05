@@ -4,6 +4,7 @@ import base64
 import binascii
 from functools import lru_cache
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -83,6 +84,8 @@ class Settings(BaseSettings):
                 raise ValueError("HOJE_PUBLIC_URL is required when HOJE_ENV=production")
             self.public_url = DEFAULT_DEV_PUBLIC_URL
         self.public_url = self.public_url.rstrip("/")
+        if self.env == "production" and urlsplit(self.public_url).scheme != "https":
+            raise ValueError("HOJE_PUBLIC_URL must use https when HOJE_ENV=production")
         return self
 
     @property

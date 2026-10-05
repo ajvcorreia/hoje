@@ -3,12 +3,13 @@
 import asyncio
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
+from starlette.types import Receive, Scope, Send
 
 from hoje import clock
 from hoje.api.deps import ActiveAuth, DbSession, SessionFactory, get_session_factory
@@ -36,6 +37,27 @@ _RESYNC = b"event: resync\ndata: {}\n\n"
 
 class EventStreamResponse(Response):
     media_type = "text/event-stream"
+
+
+class HubStreamingResponse(StreamingResponse):
+    """A streaming response that always releases its hub subscription when it ends.
+
+    The generator's own ``finally`` only runs once the generator has started. If the first
+    ``send`` fails (client already gone) or the request task is cancelled before that, the
+    generator never runs, so the release must live on the response itself (S-09).
+    """
+
+    def __init__(
+        self, content: AsyncIterator[bytes], *, on_close: Callable[[], None], **kwargs: Any
+    ) -> None:
+        super().__init__(content, **kwargs)
+        self._on_close = on_close
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            self._on_close()  # idempotent: RealtimeHub.unsubscribe ignores unknown subscribers
 
 
 router = APIRouter(prefix="/realtime", tags=["realtime"])
@@ -145,8 +167,9 @@ async def realtime_stream(
         sub = hub.subscribe(user_id)
     except TooManyStreams:
         raise HTTPException(status_code=429, detail="Too many open streams") from None
-    return StreamingResponse(
+    return HubStreamingResponse(
         _frames(request, hub, sub, session_id, factory),
+        on_close=lambda: hub.unsubscribe(sub),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )

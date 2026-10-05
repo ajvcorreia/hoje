@@ -32,7 +32,10 @@ def expand(
         return [(start, end)] if start <= window_to and end >= window_from else []
 
     # An occurrence overlaps the window iff its start lies in [lo, hi].
-    lo = window_from - length
+    try:
+        lo = window_from - length
+    except OverflowError:  # window starts so early that nothing before it can matter
+        lo = date.min
     hi = window_to if repeat_until is None else min(window_to, repeat_until)
     if hi < start or hi < lo:
         return []
@@ -50,7 +53,10 @@ def expand(
             if occ > hi:
                 break
             if occ >= lo:
-                result.append((occ, occ + length))
+                try:
+                    result.append((occ, occ + length))
+                except OverflowError:  # the occurrence would end after date.max: stop here
+                    break
             index += 1
     else:  # yearly
         year = max(start.year, lo.year)
@@ -59,6 +65,9 @@ def expand(
             if occ > hi:
                 break
             if occ >= lo:
-                result.append((occ, occ + length))
+                try:
+                    result.append((occ, occ + length))
+                except OverflowError:  # the occurrence would end after date.max: stop here
+                    break
             year += 1
     return result

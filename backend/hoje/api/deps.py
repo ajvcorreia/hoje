@@ -1,5 +1,6 @@
 """Shared FastAPI dependencies: database, auth context, CSRF, mailer."""
 
+import ipaddress
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Annotated
@@ -59,7 +60,21 @@ def client_ip(request: Request) -> str | None:
 
 
 def throttle_ip(request: Request) -> str:
-    return client_ip(request) or "unknown"
+    """The key part identifying the caller for throttling.
+
+    IPv4 addresses are used as they are. An IPv6 client usually owns a whole /64 and can rotate
+    through its addresses at will, so those are keyed on the /64 network. (``client_ip`` stays
+    the exact address, which is what sessions and the audit trail store.)
+    """
+    ip = client_ip(request)
+    if ip is None:
+        return "unknown"
+    addr = ipaddress.ip_address(ip)
+    if isinstance(addr, ipaddress.IPv6Address):
+        if addr.ipv4_mapped is not None:
+            return str(addr.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return ip
 
 
 def user_agent(request: Request) -> str | None:

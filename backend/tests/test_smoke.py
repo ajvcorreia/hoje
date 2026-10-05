@@ -102,3 +102,23 @@ def test_config_rejects_bad_secret_key():
     env = {**BASE_ENV, "HOJE_SECRET_KEY": base64.b64encode(b"short").decode()}
     with pytest.raises(ValidationError, match="32 bytes"):
         Settings(_env_file=None, HOJE_ENV="test", **env)
+
+
+@pytest.mark.parametrize("url", ["http://hoje.example.com", "http://localhost:8080", "ftp://x"])
+def test_config_rejects_a_non_https_public_url_in_production(url: str):
+    env = {**BASE_ENV, "HOJE_PUBLIC_URL": url}
+    with pytest.raises(ValidationError, match="HOJE_PUBLIC_URL must use https"):
+        Settings(_env_file=None, HOJE_ENV="production", **env)
+
+
+def test_config_accepts_https_public_url_in_production():
+    s = Settings(_env_file=None, HOJE_ENV="production", **BASE_ENV)
+    assert s.public_url == "https://hoje.example.com"
+
+
+@pytest.mark.parametrize("env", ["test", "development"])
+def test_config_allows_http_public_url_outside_production(env: str):
+    s = Settings(
+        _env_file=None, HOJE_ENV=env, **{**BASE_ENV, "HOJE_PUBLIC_URL": "http://192.168.1.5:8190"}
+    )
+    assert s.public_url == "http://192.168.1.5:8190"

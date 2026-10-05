@@ -34,7 +34,10 @@ class Base(DeclarativeBase):
 
 @lru_cache
 def get_engine() -> AsyncEngine:
-    return create_async_engine(get_settings().database_url, pool_pre_ping=True)
+    # hide_parameters keeps bound values (emails, notes, hashes) out of SQLAlchemy error messages.
+    return create_async_engine(
+        get_settings().database_url, pool_pre_ping=True, hide_parameters=True
+    )
 
 
 @lru_cache

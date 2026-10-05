@@ -13,6 +13,7 @@ from hoje.config import Settings, get_settings
 from hoje.db import dispose_engine, get_sessionmaker
 from hoje.errors import install_exception_handlers
 from hoje.logging import configure_logging, get_logger
+from hoje.middleware import ApiNoStoreMiddleware, BodyLimitMiddleware
 from hoje.request_context import ClientIdMiddleware
 from hoje.services import users
 from hoje.services.realtime import RealtimeHub, dsn_from_url
@@ -70,13 +71,16 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
         title="Hoje API",
         version=__version__,
         description="Self-hosted personal planner.",
-        openapi_url=OPENAPI_URL,
+        openapi_url=OPENAPI_URL if docs_enabled else None,
         docs_url=DOCS_URL if docs_enabled else None,
         redoc_url=None,
         generate_unique_id_function=_operation_id,
         lifespan=_lifespan,
     )
+    # Added last = outermost: no-store also covers the 413 from the body cap.
+    app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(ClientIdMiddleware)
+    app.add_middleware(ApiNoStoreMiddleware)
     install_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(api_router)

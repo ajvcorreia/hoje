@@ -19,6 +19,7 @@ from hoje.schemas import (
     OccurrenceList,
     SearchResult,
 )
+from hoje.schemas.common import MAX_DATE, MIN_DATE
 from hoje.services import events as service
 from hoje.services import leave
 from hoje.services.changes import VersionConflict
@@ -32,8 +33,8 @@ CategoryIds = Annotated[list[uuid.UUID] | None, Query()]
 async def events_list(
     db: DbSession,
     user: CurrentUser,
-    from_: Annotated[dt.date, Query(alias="from")],
-    to: dt.date,
+    from_: Annotated[dt.date, Query(alias="from", ge=MIN_DATE, le=MAX_DATE)],
+    to: Annotated[dt.date, Query(ge=MIN_DATE, le=MAX_DATE)],
     category_ids: CategoryIds = None,
 ) -> OccurrenceList:
     found = await service.occurrences(db, user, from_, to, category_ids)

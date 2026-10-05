@@ -166,7 +166,7 @@ async def balance(db: AsyncSession, user: User, year: int) -> LeaveBalance:
 def _impact_years(start: dt.date, end: dt.date, repeat: str, repeat_until: dt.date | None) -> range:
     first = start.year
     if repeat == "none":
-        return range(first, end.year + 1)
+        return range(first, min(end.year, first + MAX_IMPACT_YEARS - 1) + 1)
     if repeat_until is not None:
         last = max(repeat_until.year, end.year)
     else:

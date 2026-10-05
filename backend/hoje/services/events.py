@@ -15,6 +15,7 @@ from hoje import clock
 from hoje.models import Category, Event, Reminder, User
 from hoje.schemas import Event as EventSchema
 from hoje.schemas import EventCreate, EventUpdate, Occurrence
+from hoje.schemas.common import MAX_EVENT_SPAN_DAYS
 from hoje.schemas.events import ReminderOut
 from hoje.services import changes, recurrence
 from hoje.services.changes import VersionConflict
@@ -43,6 +44,8 @@ def validate_fields(
     """The rules every stored event must satisfy (applied to the merged result on update)."""
     if end_date < start_date:
         raise _unprocessable("end_date must be on or after start_date")
+    if (end_date - start_date).days > MAX_EVENT_SPAN_DAYS:
+        raise _unprocessable(f"an event may span at most {MAX_EVENT_SPAN_DAYS} days")
     if repeat_until is not None and repeat_until < start_date:
         raise _unprocessable("repeat_until must be on or after start_date")
     if all_day:
