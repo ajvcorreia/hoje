@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { dateInCurrentMonth, expect, registerUser, test } from './fixtures';
 
 test.skip(({ isMobile }) => isMobile, 'desktop grid only');
@@ -23,7 +24,12 @@ test('exports one account and merges the file into another', async ({
   await page.getByRole('button', { name: 'Export my data' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^hoje-export-\d{4}-\d{2}-\d{2}\.json$/);
-  const file = await download.path();
+  const exported = await readFile(await download.path());
+  const upload = {
+    name: download.suggestedFilename(),
+    mimeType: 'application/json',
+    buffer: exported,
+  };
 
   // A second, fresh account in its own browser context imports it (merge).
   const context = await browser.newContext({
@@ -34,7 +40,7 @@ test('exports one account and merges the file into another', async ({
     const other = await context.newPage();
     await registerUser(other, base);
     await other.goto('/settings');
-    await other.getByLabel('Export file to import').setInputFiles(file);
+    await other.getByLabel('Export file to import').setInputFiles(upload);
     await expect(other.getByRole('heading', { name: /^What importing hoje-export/ })).toBeVisible();
     await expect(other.getByText('3 to add, 0 already there (skipped)')).toBeVisible();
     await other.getByRole('button', { name: 'Import', exact: true }).click();
@@ -47,7 +53,7 @@ test('exports one account and merges the file into another', async ({
 
     // Importing the same file again changes nothing: everything is a duplicate.
     await other.goto('/settings');
-    await other.getByLabel('Export file to import').setInputFiles(file);
+    await other.getByLabel('Export file to import').setInputFiles(upload);
     await expect(other.getByText('0 to add, 3 already there (skipped)')).toBeVisible();
   } finally {
     await context.close();
