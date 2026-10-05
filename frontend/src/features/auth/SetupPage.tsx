@@ -16,6 +16,7 @@ export function SetupPage() {
   const register = useRegister();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [setupToken, setSetupToken] = useState('');
 
   if (state.isPending) return <Spinner />;
   const auth = state.data;
@@ -23,6 +24,8 @@ export function SetupPage() {
   if (auth?.authenticated) return <Navigate to="/" replace />;
   if (auth && !auth.registration_open) return <Navigate to="/login" replace />;
 
+  const tokenRequired = auth?.setup_token_required === true;
+  const tokenMissing = tokenRequired && setupToken.trim() === '';
   const longEnough = password.length >= MIN_PASSWORD_LENGTH;
   const serverHint =
     register.error instanceof ApiError && register.error.status === 422
@@ -31,8 +34,12 @@ export function SetupPage() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!longEnough) return;
-    register.mutate({ email: email.trim(), password });
+    if (!longEnough || tokenMissing) return;
+    register.mutate({
+      email: email.trim(),
+      password,
+      ...(tokenRequired ? { setup_token: setupToken.trim() } : {}),
+    });
   };
 
   return (
@@ -65,13 +72,25 @@ export function SetupPage() {
           }
           error={serverHint}
         />
+        {tokenRequired ? (
+          <Field
+            label="Setup token"
+            name="setup_token"
+            type="password"
+            value={setupToken}
+            onChange={(e) => setSetupToken(e.target.value)}
+            autoComplete="off"
+            required
+            hint="Find it in the server's deploy/.env (HOJE_SETUP_TOKEN)."
+          />
+        ) : null}
         <FormError
           message={register.isError && !serverHint ? describeError(register.error) : null}
         />
         <button
           type="submit"
           className={`${btnPrimary} w-full`}
-          disabled={register.isPending || !longEnough}
+          disabled={register.isPending || !longEnough || tokenMissing}
         >
           Create account
         </button>

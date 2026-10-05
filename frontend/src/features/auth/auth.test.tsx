@@ -168,6 +168,35 @@ describe('setup', () => {
     expect(patch?.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
   });
 
+  it('hides the setup token field unless the server requires one', async () => {
+    mockApi({ 'GET /api/v1/auth/state': { ...LOGGED_OUT, registration_open: true } });
+    renderApp('/setup');
+    await screen.findByRole('button', { name: 'Create account' });
+    expect(screen.queryByLabelText('Setup token')).not.toBeInTheDocument();
+  });
+
+  it('sends the setup token and shows the 403 message', async () => {
+    const api = mockApi({
+      'GET /api/v1/auth/state': {
+        ...LOGGED_OUT,
+        registration_open: true,
+        setup_token_required: true,
+      },
+      'POST /api/v1/auth/register': problem(403, 'A valid setup token is required'),
+    });
+    renderApp('/setup');
+    const token = await screen.findByLabelText('Setup token');
+    expect(token).toHaveAttribute('autocomplete', 'off');
+    await userEvent.type(screen.getByLabelText('Email'), 'ana@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'a long enough pass');
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    await userEvent.type(token, 'my-setup-token{Enter}');
+    expect(await screen.findByText('A valid setup token is required')).toBeInTheDocument();
+    const body = api.callsTo('POST', '/api/v1/auth/register')[0]?.body as
+      { setup_token?: string } | undefined;
+    expect(body?.setup_token).toBe('my-setup-token');
+  });
+
   it('shows the server strength feedback under the field', async () => {
     mockApi({
       'GET /api/v1/auth/state': { ...LOGGED_OUT, registration_open: true },
