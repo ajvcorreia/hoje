@@ -488,3 +488,15 @@
   border: 1.5px solid var(--ev-text);
   border-radius: 9999px;
 }
+
+/* ---- Birthdays (synced from FelizAnniv) ---------------------------------- */
+/* Drawn like a holiday but upright and with a plain tint, so the two read apart. */
+.cal-hol[data-birthday] {
+  font-style: normal;
+  background: color-mix(in srgb, var(--ev-fill) 60%, var(--surface));
+}
+
+.cal-hol-mark[data-birthday] {
+  border-top-width: 6px;
+  border-right-width: 6px;
+}

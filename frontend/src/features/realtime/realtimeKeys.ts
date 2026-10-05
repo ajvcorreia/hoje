@@ -8,7 +8,8 @@ export type RealtimeEntity =
   | 'holiday_calendar'
   | 'user'
   | 'backup_run'
-  | 'data';
+  | 'data'
+  | 'birthday';
 
 export interface ChangeMessage {
   entity: RealtimeEntity;
@@ -38,6 +39,8 @@ const KEYS: Record<RealtimeEntity, (c: ChangeMessage) => QueryKey[]> = {
   holiday_calendar: () => [['holidays'], ['holiday-calendars'], ['leave']],
   // Backup runs change status in the worker: refresh Settings > Backups (owner only).
   backup_run: () => [['backups']],
+  // A FelizAnniv sync or connection change: the overlay and Settings › FelizAnniv birthdays.
+  birthday: () => [['birthdays'], ['integrations', 'felizanniv']],
   // An import rewrites everything the user has: an empty key prefix invalidates every query.
   data: () => [[]],
 };

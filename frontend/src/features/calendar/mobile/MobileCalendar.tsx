@@ -10,7 +10,7 @@ import { CategoryChips } from '../../categories/CategoryChips';
 import { occurrencesQuery, useOccurrences } from '../../events/api';
 import { EventEditor } from '../../events/EventEditor';
 import { filterVisible, groupByDay } from '../../events/occurrences';
-import { useHolidayOverlay } from '../../holidays/api';
+import { useCalendarOverlay } from '../../birthdays/api';
 import { DayView } from './DayView';
 import { dayRange, loadView, monthRange, saveView, useSwipe, type MobileView } from './mobileLib';
 import { MonthView } from './MonthView';
@@ -57,7 +57,7 @@ export function MobileCalendar() {
     [occurrences.data, categories],
   );
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
-  const holidays = useHolidayOverlay(Number(selected.slice(0, 4)));
+  const holidays = useCalendarOverlay(Number(selected.slice(0, 4))); // holidays and birthdays
 
   const chooseView = (next: MobileView) => {
     setView(next);

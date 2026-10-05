@@ -1,5 +1,7 @@
+import { useShowBirthdays } from '../../lib/showBirthdays';
 import { useShowHolidays } from '../../lib/showHolidays';
-import { calendarColour, useHolidayCalendars } from '../holidays/api';
+import { useFelizAnnivStatus } from '../birthdays/api';
+import { CAKE, calendarColour, useHolidayCalendars } from '../holidays/api';
 import { useCategories, useUpdateCategory } from './api';
 import { CategorySwatch } from './CategorySwatch';
 
@@ -7,7 +9,8 @@ import { CategorySwatch } from './CategorySwatch';
  * Category filter chips: one toggle per category; pressed = shown. Toggling persists the
  * category's `hidden` flag (`PATCH /categories/{id}`), so the choice follows the user
  * across devices. A final "Holidays" chip (per device) shows or hides the holiday overlays;
- * it only appears while a holiday calendar is enabled. Shared by the desktop header and
+ * it only appears while a holiday calendar is enabled. A "Birthdays" chip (per device) does the
+ * same for synced FelizAnniv birthdays once there are any. Shared by the desktop header and
  * the mobile calendar.
  */
 export function CategoryChips({
@@ -22,8 +25,11 @@ export function CategoryChips({
   const { data: calendars } = useHolidayCalendars();
   const update = useUpdateCategory();
   const [showHolidays, setShowHolidays] = useShowHolidays();
+  const [showBirthdays, setShowBirthdays] = useShowBirthdays();
+  const { data: felizanniv } = useFelizAnnivStatus();
   const enabledCalendar = calendars?.find((c) => c.enabled);
-  if ((!categories || categories.length === 0) && !enabledCalendar) return null;
+  const hasBirthdays = !!felizanniv?.configured && felizanniv.count > 0;
+  if ((!categories || categories.length === 0) && !enabledCalendar && !hasBirthdays) return null;
   const chip = `inline-flex items-center gap-1.5 rounded-full border border-border text-xs ${
     scroll ? 'min-h-11 shrink-0 whitespace-nowrap px-3' : 'min-h-8 px-2.5 md:min-h-7'
   }`;
@@ -64,6 +70,21 @@ export function CategoryChips({
             className={showHolidays ? '' : 'opacity-40'}
           />
           Holidays
+        </button>
+      ) : null}
+      {hasBirthdays ? (
+        <button
+          type="button"
+          aria-pressed={showBirthdays}
+          onClick={() => setShowBirthdays(!showBirthdays)}
+          className={`${chip} ${
+            showBirthdays ? 'bg-surface text-text' : 'bg-transparent text-text-muted line-through'
+          }`}
+        >
+          <span aria-hidden="true" className={showBirthdays ? '' : 'opacity-40'}>
+            {CAKE}
+          </span>
+          Birthdays
         </button>
       ) : null}
     </div>

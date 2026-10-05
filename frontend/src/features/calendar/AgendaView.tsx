@@ -9,6 +9,8 @@ import { CategorySwatch } from '../categories/CategorySwatch';
 import { useOccurrences } from '../events/api';
 import { compareWithinDay, filterVisible, formatTimeRange } from '../events/occurrences';
 import { ReminderBell } from '../events/ReminderBell';
+import { useBirthdaysBetween } from '../birthdays/api';
+import { CAKE, birthdayName, type HolidayDay } from '../holidays/api';
 
 interface AgendaViewProps {
   today: string;
@@ -20,10 +22,19 @@ const STEP_MONTHS = 3;
 interface DayGroup {
   date: string;
   items: Occurrence[];
+  /** Synced birthdays of that day (read-only), listed before the events. */
+  birthdays: HolidayDay[];
 }
 
-/** Groups occurrences under their first day on or after `today`, in date order. */
-function groupForAgenda(occurrences: Occurrence[], today: string): DayGroup[] {
+/**
+ * Groups occurrences under their first day on or after `today`, in date order, and adds the
+ * birthdays of each day (a day with only birthdays gets a group too).
+ */
+function groupForAgenda(
+  occurrences: Occurrence[],
+  today: string,
+  birthdays: ReadonlyMap<string, HolidayDay[]>,
+): DayGroup[] {
   const map = new Map<string, Occurrence[]>();
   for (const o of occurrences) {
     const day = o.occurrence_start < today ? today : o.occurrence_start;
@@ -31,9 +42,14 @@ function groupForAgenda(occurrences: Occurrence[], today: string): DayGroup[] {
     if (bucket) bucket.push(o);
     else map.set(day, [o]);
   }
+  for (const date of birthdays.keys()) if (!map.has(date)) map.set(date, []);
   return [...map.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([date, items]) => ({ date, items: items.sort(compareWithinDay) }));
+    .map(([date, items]) => ({
+      date,
+      items: items.sort(compareWithinDay),
+      birthdays: birthdays.get(date) ?? [],
+    }));
 }
 
 /**
@@ -46,9 +62,10 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
   const { data, isPending, isError, error } = useOccurrences(today, to);
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
+  const birthdays = useBirthdaysBetween(today, to);
   const groups = useMemo(
-    () => groupForAgenda(filterVisible(data, categories), today),
-    [data, categories, today],
+    () => groupForAgenda(filterVisible(data, categories), today, birthdays),
+    [data, categories, today, birthdays],
   );
 
   if (isPending) return <p className="py-4 text-sm text-text-muted">Loading...</p>;
@@ -84,6 +101,16 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
                   {group.date === today ? <div className="text-xs text-accent">Today</div> : null}
                 </div>
                 <ul className="min-w-0 flex-1 space-y-0.5">
+                  {group.birthdays.map((b) => (
+                    <li
+                      key={b.id}
+                      className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1 text-sm"
+                    >
+                      <span aria-hidden="true">{CAKE}</span>
+                      <span className="min-w-0 flex-1 truncate">{birthdayName(b)}</span>
+                      <span className="shrink-0 text-xs text-text-muted">Birthday</span>
+                    </li>
+                  ))}
                   {group.items.map((o) => {
                     const category = byId.get(o.event.category_id);
                     const time = formatTimeRange(o.event);

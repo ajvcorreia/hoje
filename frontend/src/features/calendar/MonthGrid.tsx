@@ -24,7 +24,14 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { toLayoutInput } from '../events/occurrences';
-import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
+import {
+  NO_HOLIDAYS,
+  holidayText,
+  isBirthday,
+  isNonWorkingDay,
+  overlayAria,
+  type HolidayDay,
+} from '../holidays/api';
 import {
   measurerFor,
   monthFitWidth,
@@ -196,7 +203,8 @@ const MonthColumn = memo(function MonthColumn({
     const dayHolidays = holidays.get(iso);
     const label = `${formatDayHeading(iso)} ${year}${
       d.total > 0 ? `, ${d.total} ${d.total === 1 ? 'event' : 'events'}` : ''
-    }${dayHolidays ? `, holiday: ${holidayText(dayHolidays)}` : ''}`;
+    }${dayHolidays ? `, ${overlayAria(dayHolidays)}` : ''}`;
+    const onlyBirthdays = dayHolidays?.every(isBirthday) || undefined;
     cells.push(
       <button
         key={row}
@@ -217,7 +225,12 @@ const MonthColumn = memo(function MonthColumn({
           {day}
         </span>
         {dayHolidays && d.total === 0 ? (
-          <span className="cal-hol" data-cat={dayHolidays[0]?.colour} data-holiday="">
+          <span
+            className="cal-hol"
+            data-cat={dayHolidays[0]?.colour}
+            data-holiday=""
+            data-birthday={onlyBirthdays}
+          >
             {holidayText(dayHolidays)}
           </span>
         ) : null}
@@ -225,6 +238,7 @@ const MonthColumn = memo(function MonthColumn({
           <span
             className="cal-hol-mark"
             data-cat={dayHolidays[0]?.colour}
+            data-birthday={onlyBirthdays}
             aria-hidden="true"
             title={holidayText(dayHolidays)}
           />
