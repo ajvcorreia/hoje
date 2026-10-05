@@ -73,6 +73,7 @@ class RealtimeChange(BaseModel):
         "user",
         "backup_run",
         "data",
+        "birthday",
     ]
     op: Literal["create", "update", "delete"]
     id: uuid.UUID

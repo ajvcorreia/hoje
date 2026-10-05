@@ -2,6 +2,7 @@
 
 import base64
 import binascii
+import ipaddress
 from functools import lru_cache
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -12,6 +13,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DEV_PUBLIC_URL = "http://localhost:8080"
 MIN_SETUP_TOKEN_LENGTH = 16
+
+IPNetwork = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
 class Settings(BaseSettings):
@@ -48,6 +51,11 @@ class Settings(BaseSettings):
     tz: str = Field(default="UTC", validation_alias="TZ")
     # Required by POST /auth/register while no user exists (see PLAN section 5).
     setup_token: SecretStr | None = Field(default=None, validation_alias="HOJE_SETUP_TOKEN")
+    # Private / internal networks the FelizAnniv integration may connect to (comma-separated
+    # CIDRs). Empty: only public addresses are allowed. See services/outbound.py.
+    integration_allowed_private_cidrs: str = Field(
+        default="", validation_alias="HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS"
+    )
 
     smtp_host: str | None = Field(default=None, validation_alias="SMTP_HOST")
     smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
@@ -75,6 +83,12 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"HOJE_SETUP_TOKEN must be at least {MIN_SETUP_TOKEN_LENGTH} characters"
             )
+        return value
+
+    @field_validator("integration_allowed_private_cidrs")
+    @classmethod
+    def _check_private_cidrs(cls, value: str) -> str:
+        parse_cidrs(value)  # raises ValueError with the offending entry
         return value
 
     @field_validator("log_level")
@@ -114,6 +128,27 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.env == "production"
+
+    @property
+    def integration_private_networks(self) -> list[IPNetwork]:
+        return parse_cidrs(self.integration_allowed_private_cidrs)
+
+
+def parse_cidrs(value: str) -> list[IPNetwork]:
+    """``"192.168.10.0/24, 10.0.0.5"`` -> networks (a bare address is a /32 or /128)."""
+    networks: list[IPNetwork] = []
+    for raw in value.replace(";", ",").split(","):
+        entry = raw.strip()
+        if not entry:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError as exc:
+            raise ValueError(
+                f"HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS: {entry!r} is not an IP network "
+                "such as 192.168.10.0/24"
+            ) from exc
+    return networks
 
 
 @lru_cache

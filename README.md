@@ -11,6 +11,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Categories with colours**: 12-colour palette, filter chips, customizable icons.
 - **Vacation balance**: working-day counting, carry-over policy, leave impact preview on events.
 - **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
+- **Birthdays from FelizAnniv**: one-way sync of the birthdays in your [FelizAnniv](#felizanniv-birthdays) app, drawn read-only on the calendar ("🎂 Ana (34)").
 - **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
 - **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
 - **Two-factor authentication**: TOTP-based 2FA with single-use recovery codes and encrypted storage.
@@ -273,6 +274,36 @@ Import files can be larger than the usual 1 MB request limit, so raise `client_m
 NPM Advanced block to `10m` if you want to import files over 1 MB (Caddy and the API still cap every
 other route at 1 MB and the import route at 10 MB).
 
+## FelizAnniv birthdays
+
+If you also run FelizAnniv (the birthday tracker), Hoje can show its birthdays on the calendar as a
+read-only overlay, like holidays: "🎂 Ana (34)" on the day (29 February birthdays show on the 28th
+in other years). Hoje only reads; it never writes to FelizAnniv. Birthdays are not events: they
+cannot be edited in Hoje, never count as leave or working days, never send reminders and are not
+part of the export file.
+
+1. In FelizAnniv, open **Settings › API Keys › New API Key** and copy the key (it starts with
+   `fa_live_` and is shown once).
+2. In Hoje, open **Settings › FelizAnniv birthdays**, enter the address you open FelizAnniv at
+   (`https://felizanniv.example.com`, or `http://192.168.10.20:4000` on your network) and the key,
+   then **Save & test**. Hoje fetches the first page to check the address and key and only saves
+   them if that works. The key is stored encrypted (AES-256-GCM under `HOJE_SECRET_KEY`) and never
+   shown again, only its first characters.
+3. The worker syncs every 6 hours (with a little jitter; after repeated failures it waits 12, then
+   24 hours). **Sync now** queues a sync at once (at most 6 per hour). **Disconnect** removes the
+   address, the key and the synced birthdays. **Show birthdays** (and the Birthdays chip on the
+   calendar) hides or shows them on this device.
+
+**Private addresses must be allowed by the server.** Because Hoje connects to an address a user
+typed, it refuses loopback, link-local and metadata addresses always, and private networks (LAN,
+Docker) unless they are listed in `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS` (comma-separated, for
+example `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS=192.168.10.0/24` in `deploy/.env`). Hoje's own
+container networks (database, API, web) stay blocked even inside a listed range; if FelizAnniv runs
+in a container on the same Docker network as Hoje, list its exact address (`172.18.0.5/32`). A
+FelizAnniv on the public internet needs no setting. In the production compose file the worker
+(network `egress`) runs the syncs and the API (network `edge`) the connection test, so both need a
+route to FelizAnniv. Details: [threat model](docs/threat-model.md), "Outbound requests (SSRF)".
+
 ## Backup and restore
 
 The `worker` dumps the database nightly at `BACKUP_SCHEDULE_HOUR` (local `TZ`) with
@@ -348,6 +379,9 @@ Main controls:
 - **Hard edges**: request bodies are capped at 1 MB (10 MB for the data import route only; Caddy and the API), dates and ranges are
   bounded, `Cache-Control: no-store` on API responses, strict CSP and security headers, no API
   docs in production, and secrets, tokens and the query string never reach the logs.
+- **Outbound requests**: the FelizAnniv sync only connects to vetted addresses (no loopback,
+  link-local or metadata, private networks only when allowed, Hoje's own networks never), pinned
+  against DNS rebinding, without redirects and with time and size limits.
 - **Containers**: non-root, read-only filesystems, all capabilities dropped, the database and API
   on internal networks only.
 - **Supply chain**: base images pinned by digest and patched at build time, locked dependencies,

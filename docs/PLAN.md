@@ -50,6 +50,8 @@ All PKs `uuid` (generated server-side, uuid4), all timestamps `timestamptz`. Ext
 - **holidays**: id, calendar_id FK cascade, date date, name text, is_non_working bool default true, source text check in ('bundled','user'), estimated bool default false, created_at, updated_at. Index (calendar_id, date).
 - **notification_log**: id, user_id FK set null, kind text ('reminder','password_reset','test'), to_address text, subject text, status text ('sent','failed'), error text null, message_id text null, created_at. Never stores tokens or bodies.
 - **backup_runs**: id, requested_by uuid null (FK users, set null), trigger text check in ('schedule','manual'), status text check in ('requested','running','succeeded','failed'), created_at, started_at null, finished_at null, file_name text null, size_bytes bigint null, error text null (short, secrets scrubbed). Index (status, created_at). Written by the worker (and the API for manual requests); the worker is the only process that touches the dump files.
+- **felizanniv_integrations**: id, user_id FK cascade unique, base_url text (normalised), api_key_enc bytea (AES-GCM, AAD = purpose + user id), api_key_hint text, enabled bool default true, config_version int default 1, next_sync_at null, lease_until null (worker claim), last_sync_at null, last_success_at null, last_error text null (short, fixed messages), consecutive_failures int default 0 (check >= 0), created_at, updated_at. Index (next_sync_at).
+- **birthdays**: id, user_id FK cascade, external_id text (FelizAnniv person id), name text (<= 200, cleaned), birth_month smallint (1-12), birth_day smallint (1-31), birth_year smallint null, created_at, updated_at. Unique (user_id, external_id); index (user_id, birth_month, birth_day). Written only by the sync (full replace per user); FelizAnniv notes are never stored.
 
 Deferred features (RRULE, ICS, audit log, session list, half-days) fit without breaking changes: `rrule` column exists, numeric leave balances allow halves, `sessions` already stores ip/user_agent.
 
@@ -103,6 +105,11 @@ POST /api/v1/backups                   owner only → 202 run {status:"requested
                                        (no download and no restore endpoint, on purpose: restores are a CLI operation and a download would let a stolen session exfiltrate the database)
 GET  /api/v1/export                   JSON file download of the user's own data (docs/export-format.md); audit `data_exported`
 POST /api/v1/import                   {mode: "merge"|"replace", dry_run, password?, data} → counts + warnings; 10 MiB body, 10/hour per user; replace needs the password; 422 names the offending item
+GET  /api/v1/integrations/felizanniv     {configured, base_url, api_key_hint, enabled, last_sync_at, last_success_at, last_error, count, sync_pending} (the key is never returned)
+PUT  /api/v1/integrations/felizanniv     {base_url, api_key?} → status; validates the URL and the SSRF policy, fetches the first page and saves only if it works (422 invalid/not allowed address, 400 upstream failure such as a rejected key, 429 after 20/hour); api_key required the first time
+POST /api/v1/integrations/felizanniv/sync → 202 status (queued for the worker); 404 not connected, 409 a sync is running, 429 after 6/hour
+DELETE /api/v1/integrations/felizanniv  → 204; removes the connection and the synced birthdays
+GET  /api/v1/birthdays?from&to          → BirthdayOccurrence[] (<= 400 days; 29 Feb on 28 Feb in other years; none before the year of birth)
 GET  /api/v1/realtime/stream           text/event-stream
 ```
 
@@ -114,7 +121,8 @@ Core schemas:
 - `LeaveImpact {year, days, remaining_before, remaining_after, exceeds: bool}` — list, one per affected year.
 - `LeaveBalance {year, allowance_days, carried_over_days, used, planned, remaining, bookings: [{event_id, title, start_date, end_date, days}]}`
 - `Holiday {id, calendar_id, date, name, is_non_working, source, estimated}`
-- SSE: `event: change` / `data: {entity: "event"|"category"|"leave_policy"|"holiday"|"holiday_calendar"|"user"|"backup_run"|"data", op: "create"|"update"|"delete", id, version}`; `event: ping` every 25 s.
+- `BirthdayOccurrence {id, name, date, birth_month, birth_day, birth_year, age}`: read-only overlay, never an event (no leave, no reminders, not exported).
+- SSE: `event: change` / `data: {entity: "event"|"category"|"leave_policy"|"holiday"|"holiday_calendar"|"user"|"backup_run"|"data"|"birthday", op: "create"|"update"|"delete", id, version}`; `event: ping` every 25 s.
 
 ## 5. Security design
 - Session cookie `__Host-hoje_session` (httpOnly, Secure, SameSite=Lax, Path=/). Raw token 32 random bytes; DB stores sha256. Idle timeout 7 d, absolute 30 d. Rotate on login completion, password change/reset (revokes all others), 2FA changes.
@@ -127,6 +135,7 @@ Core schemas:
 - Headers (Caddy): CSP `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, HSTS (prod), nosniff, Referrer-Policy same-origin, Permissions-Policy minimal.
 - `HOJE_INSECURE_COOKIES=true` (test VM over HTTP) drops `Secure` and the `__Host-` prefix; the API refuses to start with it when `HOJE_ENV=production`.
 - Logging redacts keys matching password|token|secret|code|cookie|authorization.
+- Outbound integration requests (FelizAnniv birthday sync, `security/ssrf.py`): http/https only, no userinfo/query/fragment, canonical hosts; every resolved address vetted (loopback, link-local, metadata, multicast, reserved and embedded IPv4 forms always refused; private ranges only inside `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS`; the container's own networks only through a strictly narrower allowed CIDR); the vetted IP is pinned (Host header and TLS SNI keep the name), no redirects, no proxy from the environment, 10 s and 5 MiB per page, at most 50 pages. The API key is AES-GCM encrypted like TOTP seeds and never returned.
 
 ## 6. Environment variables (API and worker)
 
@@ -148,6 +157,7 @@ Core schemas:
 | BACKUP_KEEP_DAYS | 14 | 1-3650; older dumps are pruned after a successful backup, never the newest |
 | TZ | UTC | IANA zone of the containers; the backup schedule is interpreted in it |
 | HOJE_TRUST_REAL_IP_HEADER | true | API trusts `X-Real-IP`, which hoje-web (Caddy) sets from its trusted-proxy view; the API must only be reachable through hoje-web |
+| HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS | (empty) | comma-separated CIDRs of private networks the FelizAnniv sync may reach (e.g. `192.168.10.0/24`). Loopback, link-local and metadata are always refused; Hoje's own container networks only via a strictly narrower entry (an exact `/32`). Used by the API (connection test, `edge`) and the worker (scheduled syncs, `egress`) |
 
 Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`), `TRUSTED_PROXIES` (IPs/CIDRs of the reverse proxy in front, e.g. Nginx Proxy Manager). Postgres: `POSTGRES_PASSWORD`. Compose-only: `HOJE_BACKUP_DIR_HOST` (host directory or named volume mounted at `/backups` in the worker; default the named volume `backups`).
 

@@ -24,6 +24,7 @@ Entity = Literal[
     "user",
     "backup_run",
     "data",
+    "birthday",
 ]
 Op = Literal["create", "update", "delete"]
 

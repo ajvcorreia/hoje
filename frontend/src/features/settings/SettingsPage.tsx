@@ -10,6 +10,7 @@ import { inputClass } from '../../components/ui/classes';
 import { CategoriesSection } from './CategoriesSection';
 import { AccountSection } from './AccountSection';
 import { BackupsSection } from './BackupsSection';
+import { BirthdaysSection } from './BirthdaysSection';
 import { DataSection } from './DataSection';
 import { EmailSection } from './EmailSection';
 import { SecuritySection } from './SecuritySection';
@@ -99,6 +100,7 @@ export function SettingsPage() {
         <CategoriesSection />
         <VacationSection />
         <HolidaysSection />
+        <BirthdaysSection />
         <AccountSection />
         <SecuritySection />
         <EmailSection />

@@ -8,7 +8,7 @@ import {
   monthName,
 } from '../../lib/dates';
 import { groupByDay } from '../events/occurrences';
-import { NO_HOLIDAYS, holidayText, isNonWorkingDay, type HolidayDay } from '../holidays/api';
+import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../holidays/api';
 
 interface YearViewProps {
   year: number;
@@ -17,7 +17,7 @@ interface YearViewProps {
   categories: Category[];
   today: string;
   onOpenDay(date: string, anchor: HTMLElement): void;
-  /** Holidays of enabled calendars by date. */
+  /** Holidays of enabled calendars (and synced birthdays) by date. */
   holidays?: ReadonlyMap<string, HolidayDay[]>;
 }
 
@@ -26,7 +26,7 @@ const MAX_DOTS = 3;
 function dayLabel(iso: string, year: number, count: number, holidays?: HolidayDay[]): string {
   const base = `${formatDayHeading(iso)} ${year}`;
   const events = count > 0 ? `${base}, ${count} ${count === 1 ? 'event' : 'events'}` : base;
-  return holidays ? `${events}, holiday: ${holidayText(holidays)}` : events;
+  return holidays ? `${events}, ${overlayAria(holidays)}` : events;
 }
 
 /**

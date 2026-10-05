@@ -21,3 +21,5 @@ export type LeavePolicy = Schemas['LeavePolicy'];
 export type Holiday = Schemas['Holiday'];
 export type HolidayCalendar = Schemas['HolidayCalendar'];
 export type Problem = Schemas['Problem'];
+export type BirthdayOccurrence = Schemas['BirthdayOccurrence'];
+export type FelizAnnivStatus = Schemas['FelizAnnivStatus'];

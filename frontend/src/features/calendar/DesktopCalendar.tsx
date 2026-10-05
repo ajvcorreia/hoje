@@ -9,7 +9,7 @@ import { CategoryChips } from '../categories/CategoryChips';
 import { useOccurrences } from '../events/api';
 import { EventEditor } from '../events/EventEditor';
 import { filterVisible, groupByDay } from '../events/occurrences';
-import { useHolidayOverlay } from '../holidays/api';
+import { useCalendarOverlay } from '../birthdays/api';
 import { AgendaView } from './AgendaView';
 import { DayPopover } from './DayPopover';
 import { MonthGrid, type ScrollRequest } from './MonthGrid';
@@ -53,7 +53,7 @@ export function DesktopCalendar() {
   );
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
   const categoryList = categories ?? [];
-  const holidays = useHolidayOverlay(year);
+  const holidays = useCalendarOverlay(year); // holidays and birthdays
 
   const openDay = useCallback((date: string, anchor: HTMLElement) => {
     setPopover({ date, anchor });

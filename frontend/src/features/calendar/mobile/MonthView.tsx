@@ -6,7 +6,7 @@ import { DayEventList } from '../../events/DayEventList';
 import { occurrenceKey } from '../../events/occurrences';
 import { QuickAdd } from '../../events/QuickAdd';
 import { useWeekNumbers } from '../../../lib/weekNumbers';
-import { NO_HOLIDAYS, isNonWorkingDay, type HolidayDay } from '../../holidays/api';
+import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
 
 interface MonthViewProps {
@@ -109,7 +109,7 @@ function MonthCell({
         type="button"
         data-date={day}
         aria-label={`${format(parseIso(day), 'EEEE d MMMM')}, ${count} ${count === 1 ? 'event' : 'events'}${
-          holidays ? `, holiday: ${holidays.map((h) => h.name).join(', ')}` : ''
+          holidays ? `, ${overlayAria(holidays, ', ')}` : ''
         }`}
         aria-current={today ? 'date' : undefined}
         aria-pressed={selected}

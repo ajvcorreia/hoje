@@ -1,4 +1,4 @@
-"""Authenticated encryption of small secrets at rest (TOTP seeds): AES-256-GCM.
+"""Authenticated encryption of small secrets at rest (TOTP seeds, API keys): AES-256-GCM.
 
 Stored format: ``b"v1:" + nonce(12) + ciphertext+tag``. The additional authenticated data binds a
 ciphertext to its purpose and owner, so a blob copied to another user's row fails to decrypt.
@@ -47,3 +47,19 @@ def encrypt_totp_secret(key: bytes, user_id: uuid.UUID, secret: str) -> bytes:
 
 def decrypt_totp_secret(key: bytes, user_id: uuid.UUID, blob: bytes) -> str:
     return decrypt(key, blob, totp_aad(user_id)).decode("ascii")
+
+
+_INTEGRATION_AAD_PREFIX = b"hoje:felizanniv-key:"
+
+
+def integration_key_aad(user_id: uuid.UUID) -> bytes:
+    return _INTEGRATION_AAD_PREFIX + user_id.bytes
+
+
+def encrypt_integration_key(key: bytes, user_id: uuid.UUID, api_key: str) -> bytes:
+    """Encrypt a third-party API key (FelizAnniv) for ``user_id``'s integration row."""
+    return encrypt(key, api_key.encode("utf-8"), integration_key_aad(user_id))
+
+
+def decrypt_integration_key(key: bytes, user_id: uuid.UUID, blob: bytes) -> str:
+    return decrypt(key, blob, integration_key_aad(user_id)).decode("utf-8")
