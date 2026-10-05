@@ -17,7 +17,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Security**: Argon2id password hashing, CSRF protection, progressive brute-force lockouts, trusted-device relief.
 - **Themes and accessibility**: light/dark mode, configurable text size, inclusive colour palette.
 - **Installable PWA**: works offline, installable on mobile and desktop.
-- **Full-text search**: events indexed with PostgreSQL trigram (GIN) for fast keyword search.
+- **Search**: find events by title (case-insensitive, indexed), filter by category.
 
 ## Documentation
 

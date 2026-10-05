@@ -8,38 +8,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Setup token requirement for initial user registration (disabled after first account exists).
-- Security event logging and notification emails for password changes, 2FA updates, and recovery code regeneration.
-- Structured `auth_failed` and `auth_locked` log lines for integration with CrowdSec or fail2ban.
-- Trusted-device lockout relief: a signed device cookie allows already-signed-in browsers to work while per-IP login attempts are throttled.
-- IPv6 throttling per /64 subnet instead of full IPv6 address.
-- Date bounds validation to prevent invalid event dates and ranges.
-- Request body size caps (1 MB) at Caddy and API layers.
-- `Cache-Control: no-store` header on all API responses.
-- OpenAPI documentation endpoint disabled in production.
-- Security headers on error responses (Caddy).
-- Mobile test coverage for holiday cards, vacation balance sheet, and week-number column toggle.
+- Optional `HOJE_SETUP_TOKEN`: while no account exists, the first registration requires it.
+- Security notification emails after a password change or reset, turning 2FA off, and
+  regenerating recovery codes.
+- Structured security logs (`auth_failed`, `auth_locked`, `auth_event`) for CrowdSec or fail2ban.
+- Threat model (`docs/threat-model.md`) and internet-exposure hardening checklist
+  (`docs/hardening-checklist.md`).
+- Dependabot for GitHub Actions, Docker images, Python and npm dependencies.
+- Mobile test coverage for holiday cards and dots, the vacation balance sheet and week numbers.
 
 ### Changed
 
-- Vertical event names now read bottom-to-top and shrink to fit their block width (improved readability).
-- "Fit columns to text" setting was removed; column widths now always follow the text.
-- Base container images are pinned by digest and patched at build time during release.
+- Vertical event names read bottom-to-top and shrink to fit the height of their block.
+- Each month column's minimum width follows its widest title (three day-number widths when it has
+  no text); the "Fit columns to text" setting was removed.
+- Base images are pinned by digest and receive OS security updates at build time.
+- Releases push exactly the image that was scanned, with build provenance and an SBOM.
+- `TRUSTED_PROXIES` is required by the production compose file.
+- Email delivery log entries older than 180 days are deleted by the daily housekeeping.
 
 ### Fixed
 
-- SSE subscription releases properly even if the stream never starts.
-- SQL query parameters no longer appear in logs.
-- Image vulnerability scanning and provenance in the release pipeline.
+- A live-sync connection that failed before sending anything could keep counting toward the
+  10-stream limit.
+- Dates near the representable limits could cause server errors; dates are now limited to
+  1900–2200 and single events to 366 days.
 
 ### Security
 
-- Enforced HTTPS public URL in production (`HOJE_PUBLIC_URL` must begin with `https://`).
-- Dropped all Linux capabilities and run containers as non-root.
-- Read-only root filesystem for all containers.
-- Dependabot enabled for automated dependency updates.
-- Software Bill of Materials (SBOM) and build provenance published with releases.
-- Docker images signed and scanned by Trivy before release.
+- Request bodies are capped at 1 MB in Caddy and in the API, so oversized uploads can no longer
+  exhaust the API's memory.
+- Browsers that signed in before carry a signed device cookie, so strangers failing logins against
+  the account cannot lock the owner out; account-wide lockouts are capped at 15 minutes.
+- IPv6 clients are throttled per /64 network.
+- API responses are sent with `Cache-Control: no-store`; the OpenAPI schema is not served in
+  production; SQL parameters are kept out of logs; Caddy's access log no longer records cookies,
+  CSRF tokens or query strings.
+- Production requires an `https://` `HOJE_PUBLIC_URL`.
+- A test guarantees every state-changing API route keeps its CSRF and login protection.
 
 ## [0.7.0] — 2026-10-03
 
@@ -124,7 +130,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Desktop month grid: 12 months side by side, weekday-aligned rows, weekends shaded, today highlighted.
 - Year and Agenda views for alternate calendar layouts.
-- Event search with full-text indexing (GIN trgm).
+- Search events by title (case-insensitive, trigram-indexed).
 - Event and category API with category management and colour palette (12 fixed keys).
 - Month layout pure function with lane assignment for visual rendering.
 - Toast, popover, and sheet-capable dialog primitives for the UI.
