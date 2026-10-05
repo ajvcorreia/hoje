@@ -346,7 +346,13 @@ async def restore(db: AsyncSession, user: User, event_id: uuid.UUID) -> EventSch
         raise HTTPException(status_code=404, detail="Event is not deleted")
     if now - event.deleted_at > RESTORE_WINDOW:
         raise HTTPException(status_code=404, detail="Event was deleted more than 30 days ago")
-    category = await db.scalar(select(Category).where(Category.id == event.category_id))
+    # populate_existing: bulk updates (e.g. a replace import binning categories) bypass the
+    # identity map, so a cached Category could still look live.
+    category = await db.scalar(
+        select(Category)
+        .where(Category.id == event.category_id)
+        .execution_options(populate_existing=True)
+    )
     if category is None:
         raise HTTPException(status_code=409, detail=CATEGORY_DELETED)
     if category.deleted_at is not None:
