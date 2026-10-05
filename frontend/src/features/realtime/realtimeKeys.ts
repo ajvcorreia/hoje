@@ -1,7 +1,14 @@
 import type { QueryKey } from '@tanstack/react-query';
 
 export type RealtimeEntity =
-  'event' | 'category' | 'leave_policy' | 'holiday' | 'holiday_calendar' | 'user' | 'backup_run';
+  | 'event'
+  | 'category'
+  | 'leave_policy'
+  | 'holiday'
+  | 'holiday_calendar'
+  | 'user'
+  | 'backup_run'
+  | 'data';
 
 export interface ChangeMessage {
   entity: RealtimeEntity;
@@ -31,6 +38,8 @@ const KEYS: Record<RealtimeEntity, (c: ChangeMessage) => QueryKey[]> = {
   holiday_calendar: () => [['holidays'], ['holiday-calendars'], ['leave']],
   // Backup runs change status in the worker: refresh Settings > Backups (owner only).
   backup_run: () => [['backups']],
+  // An import rewrites everything the user has: an empty key prefix invalidates every query.
+  data: () => [[]],
 };
 
 export function keysForChange(change: ChangeMessage): QueryKey[] {

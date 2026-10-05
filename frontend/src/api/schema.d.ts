@@ -350,6 +350,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download all of your data as a JSON file */
+        get: operations["data_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/holiday-calendars": {
         parameters: {
             query?: never;
@@ -455,6 +472,27 @@ export interface paths {
         head?: never;
         /** Edit a holiday */
         patch: operations["holidays_update"];
+        trace?: never;
+    };
+    "/api/v1/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import an export file (merge or replace); dry_run previews without writing
+         * @description Everything happens in one transaction. ``replace`` needs the account password (it is
+         *     not checked for a dry run, which writes nothing). Dry runs count towards the 10/hour limit.
+         */
+        post: operations["data_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/leave/balance": {
@@ -718,6 +756,11 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /** CalendarCounts */
+        CalendarCounts: {
+            /** Update */
+            update: number;
+        };
         /** Category */
         Category: {
             /**
@@ -764,6 +807,13 @@ export interface components {
              * @default about:blank
              */
             type: string;
+        };
+        /** CategoryCounts */
+        CategoryCounts: {
+            /** Create */
+            create: number;
+            /** Reuse */
+            reuse: number;
         };
         /** CategoryCreate */
         CategoryCreate: {
@@ -930,6 +980,13 @@ export interface components {
              */
             type: string;
         };
+        /** EventCounts */
+        EventCounts: {
+            /** Create */
+            create: number;
+            /** Skip Duplicate */
+            skip_duplicate: number;
+        };
         /**
          * EventCreate
          * @description Event minus server fields. ``category_id`` defaults to the user's last category.
@@ -1021,6 +1078,181 @@ export interface components {
              */
             leave_impact: components["schemas"]["LeaveImpact"][];
         };
+        /** ExportCalendar */
+        ExportCalendar: {
+            /** Code */
+            code: string;
+            /** Colour */
+            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink") | null;
+            /**
+             * Custom Holidays
+             * @default []
+             */
+            custom_holidays: components["schemas"]["ExportHoliday"][];
+            /**
+             * Edited Bundled
+             * @default []
+             */
+            edited_bundled: components["schemas"]["ExportHoliday"][];
+            /** Enabled */
+            enabled?: boolean | null;
+            /**
+             * Removed Bundled
+             * @default []
+             */
+            removed_bundled: components["schemas"]["HolidayRef"][];
+        };
+        /** ExportCategory */
+        ExportCategory: {
+            /**
+             * Colour
+             * @enum {string}
+             */
+            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink";
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden: boolean;
+            /** Icon */
+            icon?: string | null;
+            /**
+             * Is Leave
+             * @default false
+             */
+            is_leave: boolean;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /**
+         * ExportDocument
+         * @description A complete export file. ``format`` and ``version`` are checked first by the importer.
+         */
+        ExportDocument: {
+            /** App Version */
+            app_version?: string | null;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["ExportCategory"][];
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["ExportEvent"][];
+            /** Exported At */
+            exported_at?: string | null;
+            /**
+             * Format
+             * @constant
+             */
+            format: "hoje-export";
+            /**
+             * Holiday Calendars
+             * @default []
+             */
+            holiday_calendars: components["schemas"]["ExportCalendar"][];
+            /**
+             * Leave Policies
+             * @default []
+             */
+            leave_policies: components["schemas"]["ExportLeavePolicy"][];
+            settings?: components["schemas"]["ExportSettings"] | null;
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+        };
+        /** ExportEvent */
+        ExportEvent: {
+            /**
+             * All Day
+             * @default true
+             */
+            all_day: boolean;
+            /** Category */
+            category: string;
+            /** End Date */
+            end_date?: string | null;
+            /** End Time */
+            end_time?: string | null;
+            /**
+             * Label Vertical
+             * @default false
+             */
+            label_vertical: boolean;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Reminders
+             * @default []
+             */
+            reminders: components["schemas"]["ExportReminder"][];
+            /**
+             * Repeat
+             * @default none
+             * @enum {string}
+             */
+            repeat: "none" | "monthly" | "yearly";
+            /** Repeat Until */
+            repeat_until?: string | null;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Start Time */
+            start_time?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** ExportHoliday */
+        ExportHoliday: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Is Non Working
+             * @default true
+             */
+            is_non_working: boolean;
+            /** Name */
+            name: string;
+        };
+        /** ExportLeavePolicy */
+        ExportLeavePolicy: {
+            /** Allowance Days */
+            allowance_days: number;
+            /** Carried Over Days */
+            carried_over_days: number;
+            /** Year */
+            year: number;
+        };
+        /** ExportReminder */
+        ExportReminder: {
+            /** Offset Minutes */
+            offset_minutes: number;
+        };
+        /** ExportSettings */
+        ExportSettings: {
+            /** Timezone */
+            timezone?: string | null;
+            /** Weekend Days */
+            weekend_days?: number[] | null;
+        };
         /** HealthStatus */
         HealthStatus: {
             /**
@@ -1105,6 +1337,16 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** HolidayRef */
+        HolidayRef: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Name */
+            name: string;
+        };
         /** HolidayUpdate */
         HolidayUpdate: {
             /** Date */
@@ -1113,6 +1355,45 @@ export interface components {
             is_non_working?: boolean | null;
             /** Name */
             name?: string | null;
+        };
+        /** ImportRequest */
+        ImportRequest: {
+            /**
+             * Data
+             * @description An export document (see docs/export-format.md)
+             */
+            data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "merge" | "replace";
+            /** Password */
+            password?: string | null;
+        };
+        /** ImportResult */
+        ImportResult: {
+            categories: components["schemas"]["CategoryCounts"];
+            /** Dry Run */
+            dry_run: boolean;
+            events: components["schemas"]["EventCounts"];
+            holiday_calendars: components["schemas"]["CalendarCounts"];
+            leave_policies: components["schemas"]["LeavePolicyCounts"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "merge" | "replace";
+            settings: components["schemas"]["SettingsCounts"];
+            /** Warnings */
+            warnings: string[];
         };
         /** LeaveBalance */
         LeaveBalance: {
@@ -1198,6 +1479,13 @@ export interface components {
              * @default about:blank
              */
             type: string;
+        };
+        /** LeavePolicyCounts */
+        LeavePolicyCounts: {
+            /** Create */
+            create: number;
+            /** Update */
+            update: number;
         };
         /** LeavePolicyUpdate */
         LeavePolicyUpdate: {
@@ -1407,6 +1695,11 @@ export interface components {
             items: components["schemas"]["Event"][];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /** SettingsCounts */
+        SettingsCounts: {
+            /** Update */
+            update: boolean;
         };
         /**
          * TotpConfirmRequest
@@ -3243,6 +3536,62 @@ export interface operations {
             };
         };
     };
+    data_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The export document, served as a file download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportDocument"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     holiday_calendars_list: {
         parameters: {
             query?: never;
@@ -3718,6 +4067,84 @@ export interface operations {
             };
         };
     };
+    data_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Bad request or failed re-authentication */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     leave_balance: {
         parameters: {
             query?: {
@@ -4103,7 +4530,7 @@ export interface operations {
                          * Entity
                          * @enum {string}
                          */
-                        entity: "event" | "category" | "leave_policy" | "holiday" | "holiday_calendar" | "user" | "backup_run";
+                        entity: "event" | "category" | "leave_policy" | "holiday" | "holiday_calendar" | "user" | "backup_run" | "data";
                         /**
                          * Id
                          * Format: uuid
