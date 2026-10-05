@@ -9,8 +9,11 @@
 #   backend  internal (no egress): db, api, worker.
 #   edge     web <-> api only. The API must stay reachable ONLY through hoje-web, because it
 #            trusts the X-Real-IP header that hoje-web sets (HOJE_TRUST_REAL_IP_HEADER).
-#   egress   the worker alone: outbound SMTP for reminder mail.
-#            (The api is on edge, which also has outbound access, for password-reset mail.)
+#   egress   the worker alone: outbound SMTP for reminder mail and the scheduled FelizAnniv
+#            birthday syncs. (The api is on edge, which also has outbound access, for
+#            password-reset mail and the connection test when a user saves FelizAnniv settings.)
+#            Both only connect to user-supplied addresses through the SSRF guard; private
+#            addresses need HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS.
 #
 # How NPM reaches hoje-web (pick ONE, see README "Deployment: production"):
 #   A. NPM is a container on this host (recommended): also pass
@@ -59,6 +62,9 @@ x-app-env: &app-env
   BACKUP_SCHEDULE_HOUR: ${BACKUP_SCHEDULE_HOUR:-2}
   BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
   TZ: ${TZ:-UTC}
+  # Private networks the FelizAnniv birthday sync may reach (comma-separated CIDRs, e.g. your
+  # LAN). Empty: public addresses only. Hoje's own Docker networks stay blocked regardless.
+  HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS: ${HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS:-}
 
 services:
   db:

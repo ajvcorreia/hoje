@@ -17,13 +17,13 @@ HOJE_UID="$(id -u)"
 HOJE_GID="$(id -g)"
 export HOJE_UID HOJE_GID
 
-SERVICES=(e2e-db e2e-api e2e-worker e2e-web e2e-mailpit playwright)
+SERVICES=(e2e-db e2e-api e2e-worker e2e-web e2e-mailpit e2e-felizanniv playwright)
 dc() { docker compose -p hoje-test -f deploy/compose.e2e.yml --profile e2e "$@"; }
 
 teardown() {
   dc rm -sfv "${SERVICES[@]}" >/dev/null 2>&1 || true
   # Compose leaves the (empty) networks behind; remove just ours.
-  docker network rm hoje-test_e2e_internal hoje-test_e2e_edge >/dev/null 2>&1 || true
+  docker network rm hoje-test_e2e_internal hoje-test_e2e_edge hoje-test_e2e_felizanniv >/dev/null 2>&1 || true
 }
 trap teardown EXIT
 
@@ -34,7 +34,7 @@ if [ "${E2E_SKIP_BUILD:-}" != "1" ]; then
   dc build e2e-api e2e-web || exit 1
 fi
 
-dc up -d --wait e2e-db e2e-mailpit e2e-api e2e-worker e2e-web || {
+dc up -d --wait e2e-db e2e-mailpit e2e-felizanniv e2e-api e2e-worker e2e-web || {
   dc logs --tail 80 e2e-api e2e-web e2e-worker || true
   exit 1
 }

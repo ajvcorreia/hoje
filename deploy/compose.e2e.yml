@@ -29,6 +29,9 @@ x-api-env: &api-env
   SMTP_STARTTLS: "false"
   SMTP_FROM: hoje@e2e.local
   HOJE_BACKUP_DIR: /backups
+  # The fake FelizAnniv shares the e2e_felizanniv network with the API and the worker, so it is
+  # inside their own container network: only an exact /32 can allow it (see security/ssrf.py).
+  HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS: 10.231.77.10/32
 
 services:
   e2e-db:
@@ -73,7 +76,7 @@ services:
     <<: *hardening
     environment:
       <<: *api-env
-    networks: [e2e_internal, e2e_edge]
+    networks: [e2e_internal, e2e_edge, e2e_felizanniv]
     mem_limit: 256m
     depends_on:
       e2e-db:
@@ -92,7 +95,7 @@ services:
     tmpfs:
       - /tmp
       - /backups:uid=10001,gid=10001,mode=0700
-    networks: [e2e_internal]
+    networks: [e2e_internal, e2e_felizanniv]
     mem_limit: 192m
     healthcheck:
       test: ["CMD", "python", "-m", "hoje.worker.healthcheck"]
@@ -103,6 +106,27 @@ services:
     depends_on:
       e2e-api:
         condition: service_healthy
+
+  # A stand-in for the user's FelizAnniv server (birthday sync), on a fixed private address.
+  e2e-felizanniv:
+    image: ${HOJE_API_IMAGE:-hoje-test/api:e2e}
+    <<: *hardening
+    command: ["python", "/fake/fake_felizanniv.py"]
+    volumes:
+      - ./e2e/fake_felizanniv.py:/fake/fake_felizanniv.py:ro
+    networks:
+      e2e_felizanniv:
+        ipv4_address: 10.231.77.10
+    mem_limit: 64m
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://127.0.0.1:4000/healthz", timeout=2)
+      interval: 3s
+      timeout: 3s
+      retries: 20
 
   e2e-web:
     image: ${HOJE_WEB_IMAGE:-hoje-test/web:e2e}
@@ -157,3 +181,8 @@ networks:
   e2e_internal:
     internal: true
   e2e_edge:
+  e2e_felizanniv:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.231.77.0/24
