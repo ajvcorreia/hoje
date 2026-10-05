@@ -80,7 +80,8 @@ looks like NPM (one attacker locks everyone out); too wide and a client can pick
   | B. NPM native on this host, `HOJE_BIND=127.0.0.1` | the gateway of `hoje_edge` (connections through a published port arrive from Docker's proxy) | `docker network inspect hoje_edge -f '{{(index .IPAM.Config 0).Gateway}}'` |
   | C. NPM on another machine | that machine's LAN IP, `/32` | |
 
-- [ ] Never leave it unset in production: the compose default is all private ranges.
+- [ ] `TRUSTED_PROXIES` has no default in `compose.prod.yml`: `$DC config` / `$DC up` fail until it is
+      set, so it cannot be forgotten. Avoid `0.0.0.0/0` and whole private ranges.
 - [ ] Verify: from your phone on mobile data, open the site and run
       `docker logs --since 2m hoje-web | grep '"uri":"/api/v1/auth/state"'`; `client_ip` must be
       the phone's public IP, not NPM's or a Docker address. Then
@@ -129,6 +130,49 @@ time, and covers IPv6 /64 rotation and scanners.
       and `chain = DOCKER-USER` when NPM runs in Docker.
 - [ ] Optional second source: `hoje-web`'s JSON access log (`docker logs hoje-web`) carries the
       resolved `request.client_ip`, `request.method`, `request.uri` and `status` of each request.
+      Cookies, `X-Csrf-Token`, `Authorization`, `Set-Cookie` and the query string are removed from
+      that log.
+- [ ] Better source: the API's own security events, which say *why* a request failed. The API
+      writes one JSON object per line to its stdout (`docker logs hoje-api-1`; with Docker's
+      default `json-file` driver the file is `/var/lib/docker/containers/<id>/<id>-json.log`).
+      `ip` is the client address Caddy resolved (the same `client_ip`), so it is only as trustworthy
+      as your `TRUSTED_PROXIES`. The events (level `INFO` or lower must be enabled for
+      `auth_event`; `auth_failed` and `auth_locked` are `warning`):
+
+      | Match this exact JSON text | Meaning | Other fields |
+      |---|---|---|
+      | `"event": "auth_failed"` | a wrong password, code, reset token or setup token | `kind` = `login`, `mfa`, `reauth`, `reset` or `setup_token`; `ip`; `acct` (first 12 hex of sha256 of the email, absent for `reset`/`setup_token`) |
+      | `"event": "auth_locked"` | a request refused with 429 by the lockout | `kind` (also `forgot`), `ip`, `retry_after` seconds |
+      | `"event": "auth_event"` | something that worked: `login_ok`, `registered`, `password_changed`, `password_reset`, `2fa_enabled`, `2fa_disabled`, `recovery_regenerated` | `kind`, `user_id`, `ip` |
+
+      A line looks like
+      `{"kind": "login", "ip": "203.0.113.9", "acct": "3f2a9c1b7d44", "event": "auth_failed", "logger": "hoje.audit", "level": "warning", "timestamp": "2026-10-05T12:00:00Z"}`.
+      Neither the email, the password, a code nor a token is ever written. Use the first two rows
+      for bans (`ip` comes before `event` on those lines) and alert on any `auth_event` you do not
+      recognise (a `password_reset` or `2fa_disabled` you did not do).
+- [ ] CrowdSec on those lines: add a `docker` data source for the API container in
+      `/etc/crowdsec/acquis.d/hoje-api.yaml` (see CrowdSec's Docker data source documentation for
+      the exact options; the container is `hoje-api-1` with the default compose project name):
+      ```yaml
+      source: docker
+      container_name_regexp:
+        - hoje-api-.*
+      labels:
+        type: hoje-api
+      ```
+      then add a small parser and scenario of your own for `type: hoje-api` that extract `ip` and
+      react to the two events above (CrowdSec parsers and scenarios are documented at
+      docs.crowdsec.net; check them with `cscli explain --log '<a line from above>' --type hoje-api`
+      before relying on them). The NPM collection does not know these lines.
+- [ ] fail2ban alternative on those lines (`/etc/fail2ban/filter.d/hoje-auth.conf`; the backslashes
+      are there because Docker wraps each log line in JSON again):
+      ```ini
+      [Definition]
+      failregex = ^.*\\"ip\\": \\"<HOST>\\".*\\"event\\": \\"auth_(?:failed|locked)\\"
+      ```
+      with a jail whose `logpath` is the API container's `*-json.log` file and `chain = DOCKER-USER`
+      when NPM runs in Docker. Keep `maxretry` above the in-app lockout threshold (5) so you ban
+      scanners, not yourself.
 
 ## 6. Secrets
 
@@ -140,7 +184,8 @@ time, and covers IPv6 /64 rotation and scanners.
       offline, e.g. in your password manager, separately from the database dumps.
 - [ ] Understand rotation: changing `HOJE_SECRET_KEY` makes stored TOTP secrets unreadable
       (sign in with a recovery code, disable 2FA, enable it again) and invalidates CSRF tokens of
-      open sessions (reload the page). Rotate only if the key leaked.
+      open sessions (reload the page) and of the trusted-device cookies (known browsers fall back
+      to the shared per-account lockout until they sign in again). Rotate only if the key leaked.
 - [ ] Recovery codes saved offline; 2FA enabled.
 - [ ] SMTP credentials are an app password / send-only credential for the relay, not your
       mailbox password. Docker Hub token is Read & Write for the two repositories only.

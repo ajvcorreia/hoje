@@ -46,7 +46,7 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
 
 | | Threat | Mitigation in this codebase |
 |---|---|---|
-| S | Password guessing | argon2id (`security/passwords.py`), zxcvbn >= 3 and 10-256 chars, per-IP and per-account progressive lockout 1 min doubling to 1 h with 24 h escalation memory (`services/throttle.py`) |
+| S | Password guessing | argon2id (`security/passwords.py`), zxcvbn >= 3 and 10-256 chars, progressive lockout 1 min doubling to 1 h with 24 h escalation memory per client address (IPv6 per /64) and per trusted device, per account capped at 15 min without escalation (`services/throttle.py`, `security/device.py`); `auth_failed` / `auth_locked` log events |
 | S | Account enumeration | Dummy-hash verify for unknown emails, `202` for every forgot request with the lookup in a background task, account throttle keys for unknown emails too (`api/auth.py`) |
 | S | 2FA bypass / replay | TOTP +-1 step with atomic compare-and-set on `totp_last_step` (`services/twofactor.py`), enrolment step burned, recovery codes argon2 + single use, MFA throttled per session and account |
 | S | Session theft / fixation | 256-bit tokens hashed at rest, `__Host-` + Secure + HttpOnly + SameSite=Lax, rotation on login, MFA, password change/reset and 2FA changes (all other sessions deleted), mfa_pending sessions expire in 10 min |
@@ -58,20 +58,24 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
 | I | Cross-user data access | Every service query filters on `user_id` (holidays via calendar ownership, reminders via event owner); SSE fan-out keyed by user id; SSE payloads carry ids only |
 | I | Secrets in logs / errors | structlog redaction of password/token/secret/cookie/code keys; validation errors never echo input; generic 500 body; docs UI off in production |
 | I | Framing, sniffing, referrer leaks | `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Referrer-Policy: same-origin`, COOP |
-| D | Resource exhaustion | argon2 limited to 2 concurrent hashes, 400-day range cap on listings, 10 SSE streams per user, bounded subscriber queues, container `mem_limit`, read-only root FS |
+| D | Resource exhaustion | argon2 limited to 2 concurrent hashes, 400-day range cap on listings, 10 SSE streams per user, bounded subscriber queues, container `mem_limit`, read-only root FS, 1 MB request body cap (NPM, Caddy, API), bounded dates and event spans |
 | E | Container escape / lateral movement | Non-root images (uid 10001), `cap_drop: ALL`, `no-new-privileges`, read-only FS, internal DB network, API not published, `--no-proxy-headers` |
-| E | Supply chain | Lockfiles committed (`uv.lock`, `package-lock.json`), Actions pinned by SHA, `permissions: contents: read`, no `pull_request_target`, release never runs on PRs, Trivy gate before push, pip-audit and npm audit in CI |
+| E | Supply chain | Lockfiles committed (`uv.lock`, `package-lock.json`), Actions pinned by SHA, base images pinned by digest and OS-patched at build, Dependabot, `permissions: contents: read`, no `pull_request_target`, release never runs on PRs, the scanned digest is the published image (Trivy gate before any tag moves, provenance + SBOM), pip-audit and npm audit in CI |
 
 ## Residual risks and accepted limitations
 
 * **Single user, registration open until the first account exists.** Whoever registers first
   owns the instance. Mitigation is operational: NPM Access List until you have registered.
-* **Account lockout is a denial of service.** Anyone who knows the owner's email can keep the
-  account key locked (one wrong password per hour after escalation). Existing sessions keep
-  working; a password reset clears the lock but it can be re-armed. Tracked as finding S-02.
-* **Per-IP throttling is per address.** An IPv6 /64 or a botnet gets many keys; the per-account
-  key and the password policy remain the real limit. CrowdSec/fail2ban at the edge helps.
-* **Unbounded request bodies** reach the API unless Caddy or NPM caps them (finding S-01).
+* **Account lockout can still inconvenience you, briefly.** Anyone who knows the owner's email
+  can fill the per-account key, but that lock is capped at 15 minutes with no escalation memory,
+  and a browser that already signed in (signed `hoje_device` cookie, 180 days) is throttled on its
+  own key instead and is unaffected. A new browser or device waits out the lock; a password reset
+  clears it. Existing sessions keep working. Rotating `HOJE_SECRET_KEY` invalidates the cookies.
+* **Throttling is per address, IPv6 per /64.** A botnet still gets many keys; the per-account
+  key, the device key and the password policy remain the real limit. CrowdSec/fail2ban at the
+  edge helps (the API logs `auth_failed` / `auth_locked` for exactly that).
+* **Request bodies are capped at 1 MB** by NPM (`client_max_body_size 1m`, operator setting),
+  Caddy (`request_body max_size`) and the API itself (413 before reading, byte count for chunked).
 * **Revocation latency for live sync.** An open SSE stream notices a revoked session at the next
   25 s check, so a logged-out tab can still receive change ids (never content) for up to ~50 s.
 * **The API trusts `X-Real-IP`.** Anything that can reach `api:8000` directly (host processes,
@@ -80,8 +84,11 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
   all events, notes and password hashes. Off-host copies must be encrypted by the operator.
 * **`HOJE_SECRET_KEY` has no rotation support.** Changing it makes stored TOTP secrets
   undecryptable (sign in with a recovery code, then disable and re-enrol 2FA) and invalidates
-  CSRF tokens of live sessions.
-* **No security notifications or audit trail** for password changes, resets or 2FA changes
-  (findings S-06, S-07).
+  CSRF tokens of live sessions and the trusted-device cookies.
+* **Audit trail is the log stream.** Security events (`auth_failed`, `auth_locked`,
+  `auth_event`) are structured log lines kept only as long as Docker keeps the container log;
+  there is no database audit table. Password changes and resets, 2FA disabling and recovery code
+  regeneration email the owner (`notification_log` kind `security`), which only helps if the
+  mailbox is not itself compromised and SMTP is configured.
 * **Mail content is trusted to the relay.** Reminder emails contain event titles; SMTP uses
   STARTTLS with certificate checks only when configured so.
