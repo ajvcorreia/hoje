@@ -26,7 +26,7 @@ backend/   pyproject.toml uv.lock alembic.ini Dockerfile openapi.json
            hoje/templates/email/ hoje/data/holidays/{pt,ae}.json hoje/data/seed_categories.json
            migrations/ tests/{unit,integration}/
 frontend/  package.json vite.config.ts playwright.config.ts public/ src/{api,app,features,components,lib,styles} e2e/
-deploy/    Caddyfile web.Dockerfile compose.{dev,test,prod,tools}.yml backup/ smoke-test.sh
+deploy/    Caddyfile web.Dockerfile compose.{dev,test,prod,tools}.yml backup/restore.md smoke-test.sh
 docs/      PLAN.md threat-model.md hardening-checklist.md adr/
 scripts/   vm.sh
 .github/workflows/ ci.yml release.yml
@@ -49,6 +49,7 @@ All PKs `uuid` (generated server-side, uuid4), all timestamps `timestamptz`. Ext
 - **holiday_calendars**: id, user_id FK cascade, code text ('PT','AE'), name text, enabled bool default false, colour text, created_at, updated_at. Unique (user_id, code).
 - **holidays**: id, calendar_id FK cascade, date date, name text, is_non_working bool default true, source text check in ('bundled','user'), estimated bool default false, created_at, updated_at. Index (calendar_id, date).
 - **notification_log**: id, user_id FK set null, kind text ('reminder','password_reset','test'), to_address text, subject text, status text ('sent','failed'), error text null, message_id text null, created_at. Never stores tokens or bodies.
+- **backup_runs**: id, requested_by uuid null (FK users, set null), trigger text check in ('schedule','manual'), status text check in ('requested','running','succeeded','failed'), created_at, started_at null, finished_at null, file_name text null, size_bytes bigint null, error text null (short, secrets scrubbed). Index (status, created_at). Written by the worker (and the API for manual requests); the worker is the only process that touches the dump files.
 
 Deferred features (RRULE, ICS, audit log, session list, half-days) fit without breaking changes: `rrule` column exists, numeric leave balances allow halves, `sessions` already stores ip/user_agent.
 
@@ -97,6 +98,9 @@ GET  /api/v1/holidays?from&to          (enabled calendars only)
 POST /api/v1/holiday-calendars/{id}/holidays   PATCH/DELETE /api/v1/holidays/{id}
 GET  /api/v1/settings/email            {configured, from_address}
 POST /api/v1/settings/email/test       → 202
+GET  /api/v1/backups                   owner only (earliest-created user, others get 404): {enabled, directory, schedule_hour, keep_days, timezone, next_run_at, last_success, stale, runs[last 10]}
+POST /api/v1/backups                   owner only → 202 run {status:"requested"}; 409 if one is queued/running or backups are disabled; 429 after 3 per hour
+                                       (no download and no restore endpoint, on purpose: restores are a CLI operation and a download would let a stolen session exfiltrate the database)
 GET  /api/v1/realtime/stream           text/event-stream
 ```
 
@@ -136,9 +140,14 @@ Core schemas:
 | HOJE_LOG_LEVEL | INFO | |
 | SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_STARTTLS, SMTP_TLS, SMTP_FROM | | |
 | HOJE_WORKER_INTERVAL_SECONDS | 60 | |
+| HOJE_BACKUP_DIR | /backups | worker only: where `pg_dump` files go (a volume mounted into the worker; the API never sees it) |
+| HOJE_BACKUP_ENABLED | true | `false`: the worker never backs up and manual requests are refused |
+| BACKUP_SCHEDULE_HOUR | 2 | 0-23, local hour of the nightly dump in `TZ` (a nonexistent local time runs at the next valid instant) |
+| BACKUP_KEEP_DAYS | 14 | 1-3650; older dumps are pruned after a successful backup, never the newest |
+| TZ | UTC | IANA zone of the containers; the backup schedule is interpreted in it |
 | HOJE_TRUST_REAL_IP_HEADER | true | API trusts `X-Real-IP`, which hoje-web (Caddy) sets from its trusted-proxy view; the API must only be reachable through hoje-web |
 
-Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`), `TRUSTED_PROXIES` (IPs/CIDRs of the reverse proxy in front, e.g. Nginx Proxy Manager). Postgres: `POSTGRES_PASSWORD`. Backup: `BACKUP_KEEP_DAYS`, `BACKUP_SCHEDULE_HOUR`.
+Web: `SITE_ADDRESS`, `API_UPSTREAM` (default `api:8000`), `TRUSTED_PROXIES` (IPs/CIDRs of the reverse proxy in front, e.g. Nginx Proxy Manager). Postgres: `POSTGRES_PASSWORD`. Compose-only: `HOJE_BACKUP_DIR_HOST` (host directory or named volume mounted at `/backups` in the worker; default the named volume `backups`).
 
 ## 7. Working conventions (all agents)
 

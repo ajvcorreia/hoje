@@ -44,7 +44,7 @@ from the network even when ufw denies it.**
 - [ ] From outside your network (phone hotspot, VPS): `nmap -Pn -p- <public IPv4>` (and the IPv6
       address) shows only 80 and 443 open.
 - [ ] The API and database are never published (`$DC ps` shows no ports for `api`, `db`,
-      `worker`, `backup`). The API trusts `X-Real-IP`, so nothing but `hoje-web` may reach it.
+      `worker`). The API trusts `X-Real-IP`, so nothing but `hoje-web` may reach it.
 
 ## 3. Nginx Proxy Manager
 
@@ -192,17 +192,23 @@ time, and covers IPv6 /64 rotation and scanners.
 
 ## 7. Backups
 
-- [ ] `$DC ps` shows `backup` healthy; `$DC exec backup sh /backup/backup.sh now` succeeds.
+- [ ] Settings > Backups (as the owner) shows a recent successful backup and no warning;
+      "Back up now" succeeds. `$DC exec worker ls -l /backups` lists the dumps (the worker is the
+      only container that mounts them; the API cannot read or delete them).
+- [ ] A host backup directory (`HOJE_BACKUP_DIR_HOST`) is owned by uid 10001 and not readable by
+      other users (`sudo chown 10001:10001 <dir>; sudo chmod 700 <dir>`).
 - [ ] Dumps are copied off the host at least daily, **encrypted** (they contain every event,
       note, email and password hash in plaintext), e.g.:
       ```bash
-      latest=$(ls -t /srv/hoje/backups/hoje-*.dump | head -1)   # HOJE_BACKUP_DIR
+      latest=$(ls -t /srv/hoje/backups/hoje-*.dump | head -1)   # HOJE_BACKUP_DIR_HOST
       age -r <your age public key> -o "/mnt/offsite/$(basename "$latest").age" "$latest"
       ```
       or restic/borg with a repository password. Copies on the same disk do not count.
 - [ ] Restore drill done once now and then every few months: restore the newest off-host copy
       into a scratch stack (`deploy/backup/restore.md`, "Restoring onto a brand-new host"), sign
       in with 2FA, check recent events.
+- [ ] The worker can read and delete the local dumps, so a compromised worker can wipe them:
+      the encrypted off-host copy is the real backup. Keep its credentials out of the worker.
 - [ ] `BACKUP_KEEP_DAYS` and the off-host retention match how far back you might need to go.
 
 ## 8. Updates, monitoring, email
@@ -215,7 +221,8 @@ time, and covers IPv6 /64 rotation and scanners.
       alerting you by a channel other than this server's email.
 - [ ] Alert on any `unhealthy` container (`docker ps --filter health=unhealthy` from cron), on
       disk usage above 80 % (`df -h`, `docker system df`), and on log lines
-      `unhandled_exception`, `worker_cycle_failed`, `email_send_failed` and backup `FAILED`.
+      `unhandled_exception`, `worker_cycle_failed`, `email_send_failed` and `backup_failed`
+      (a failed backup does not make the worker unhealthy; it shows in Settings > Backups).
 - [ ] Mail: the relay signs `SMTP_FROM`'s domain with **DKIM**, the domain's **SPF** record
       includes the relay, **DMARC** at least `p=quarantine`. Settings, Email, "Send test email"
       arrives with `spf=pass dkim=pass` in the headers.
