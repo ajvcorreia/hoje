@@ -64,3 +64,29 @@ def test_ignores_x_real_ip_when_not_trusted(monkeypatch: pytest.MonkeyPatch):
 def test_throttle_ip_uses_the_resolved_address_or_unknown():
     assert throttle_ip(make_request({"X-Real-IP": "203.0.113.9"})) == "203.0.113.9"
     assert throttle_ip(make_request(peer=None)) == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("address", "expected"),
+    [
+        ("2001:db8:1:2:3:4:5:6", "2001:db8:1:2::/64"),
+        ("2001:DB8:1:2:ffff:ffff:ffff:ffff", "2001:db8:1:2::/64"),
+        ("2001:db8:1:3::1", "2001:db8:1:3::/64"),
+        ("::ffff:203.0.113.9", "203.0.113.9"),  # IPv4-mapped: keyed like plain IPv4
+    ],
+)
+def test_throttle_ip_keys_ipv6_on_the_64_network(address: str, expected: str):
+    assert throttle_ip(make_request({"X-Real-IP": address})) == expected
+
+
+def test_throttle_ip_gives_one_key_to_every_address_in_a_64():
+    a = throttle_ip(make_request({"X-Real-IP": "2001:db8:aa:bb::1"}))
+    b = throttle_ip(make_request({"X-Real-IP": "2001:db8:aa:bb:dead:beef:0:7"}))
+    other = throttle_ip(make_request({"X-Real-IP": "2001:db8:aa:bc::1"}))
+    assert a == b
+    assert a != other
+
+
+def test_client_ip_still_stores_the_exact_ipv6_address():
+    req = make_request({"X-Real-IP": "2001:db8:aa:bb:dead:beef:0:7"})
+    assert client_ip(req) == "2001:db8:aa:bb:dead:beef:0:7"
