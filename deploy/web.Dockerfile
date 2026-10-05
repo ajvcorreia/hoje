@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Hoje web image: built SPA + Caddy. Build context: repository root.
 
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS build
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
@@ -11,7 +11,7 @@ RUN npm run build
 
 # Caddy compiled with the current Go toolchain and patched dependencies: the upstream
 # release binary lags behind Go and x/* security fixes, which fails the image scan.
-FROM golang:1.26-alpine AS caddy
+FROM golang:1.26-alpine@sha256:8ac98ca534ac3f51e1f420a1dd2c15e74c75cfa0f23f3ad27eb5d7236c349a0c AS caddy
 ARG CADDY_VERSION=v2.11.4
 WORKDIR /src
 RUN printf '%s\n' 'package main' \
@@ -28,13 +28,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
  && go mod tidy \
  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /usr/bin/caddy .
 
-FROM caddy:2-alpine AS runtime
+FROM caddy:2-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9 AS runtime
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 LABEL org.opencontainers.image.title="hoje-web" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: web (Caddy + SPA)" \
       org.opencontainers.image.vendor="Hoje"
+# The base image is pinned by digest, which also freezes its OS packages: apply the pending
+# security updates at build time (the scan fails on fixed HIGH/CRITICAL CVEs).
 # Non-root Caddy that can still bind 80/443 via file capability.
-RUN apk add --no-cache libcap \
+RUN apk upgrade --no-cache \
+ && apk add --no-cache libcap \
  && addgroup -S -g 10001 hoje \
  && adduser -S -u 10001 -G hoje -H -h /data -s /sbin/nologin hoje \
  && setcap cap_net_bind_service=+ep /usr/bin/caddy \
