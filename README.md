@@ -4,7 +4,28 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 
 ## Features
 
-> TODO (phase 3)
+- **Desktop month grid**: 12 months side by side, weekday-aligned rows, weekends shaded, week numbers, today highlighted.
+- **Mobile calendar**: day and week-strip views with quick add (click-type-Enter).
+- **Multiple views**: Year overview and Agenda view for flexible planning.
+- **Multi-day events**: visual blocks spanning columns, per-event vertical names, same-day halves with "+N" indicator.
+- **Categories with colours**: 12-colour palette, filter chips, customizable icons.
+- **Vacation balance**: working-day counting, carry-over policy, leave impact preview on events.
+- **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
+- **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
+- **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
+- **Two-factor authentication**: TOTP-based 2FA with single-use recovery codes and encrypted storage.
+- **Security**: Argon2id password hashing, CSRF protection, progressive brute-force lockouts, trusted-device relief.
+- **Themes and accessibility**: light/dark mode, configurable text size, inclusive colour palette.
+- **Installable PWA**: works offline, installable on mobile and desktop.
+- **Search**: find events by title (case-insensitive, indexed), filter by category.
+
+## Documentation
+
+- **[PLAN.md](docs/PLAN.md)**: Architecture decisions, database schema, API contract, and implementation conventions.
+- **[Threat Model](docs/threat-model.md)**: Security assumptions and attack surface for self-hosted deployments.
+- **[Hardening Checklist](docs/hardening-checklist.md)**: Pre-deployment security configuration steps.
+- **[Backup and Restore](deploy/backup/restore.md)**: Backup scheduling, verification, and recovery procedures.
+- **[CHANGELOG.md](CHANGELOG.md)**: Version history and notable changes.
 
 ## Architecture
 
