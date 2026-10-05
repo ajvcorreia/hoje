@@ -38,3 +38,6 @@ Thumbs.db
 
 # Playwright failure artifacts copied out by deploy/e2e.sh
 e2e-artifacts/
+
+# sed -i temp files left behind on the network share
+sed[A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]
