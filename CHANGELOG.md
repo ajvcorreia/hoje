@@ -4,6 +4,38 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-10-05
+
+### Added
+
+- Birthdays from FelizAnniv: Settings › FelizAnniv birthdays connects your FelizAnniv server with
+  its address and an API key (FelizAnniv Settings › API Keys). Hoje tests the connection before
+  saving, stores the key encrypted (only a short hint is ever shown) and syncs one way, FelizAnniv
+  to Hoje, every 6 hours or on "Sync now". Birthdays appear read-only on the calendar like
+  holidays ("🎂 Ana (34)"; 29 February on the 28th in other years) in the month grid, year view,
+  agenda, day popover and the mobile views, with a per-device "Show birthdays" switch and a
+  Birthdays chip. They are not events: no reminders, no leave or working-day effect, not exported.
+- API: `GET/PUT/DELETE /api/v1/integrations/felizanniv`, `POST /api/v1/integrations/felizanniv/sync`
+  and `GET /api/v1/birthdays?from&to`; realtime entity `birthday`. Migration 0005 adds
+  `felizanniv_integrations` and `birthdays`.
+- `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS`: private networks the sync may reach (empty by default:
+  public addresses only). Every outbound request goes through a new SSRF guard: loopback,
+  link-local and metadata addresses are always refused, Hoje's own container networks too (unless
+  an exact address is listed), the resolved address is pinned against DNS rebinding, redirects are
+  not followed and responses are limited to 10 s and 5 MiB per page.
+
+### Changed
+
+- The worker of `deploy/compose.test.yml` joins a new `egress` network so it can reach
+  FelizAnniv; in `deploy/compose.prod.yml` it already had one.
+- `httpx` is now a runtime dependency of the API image; its per-request log lines are silenced.
+
+### Upgrade notes
+
+- To sync from a FelizAnniv on your LAN, set `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS` in
+  `deploy/.env` (for example `192.168.10.0/24`, or better the FelizAnniv host as `/32`) and
+  recreate `api` and `worker`. Nothing to do otherwise.
+
 ## [1.2.0] — 2026-10-05
 
 ### Added

@@ -45,6 +45,14 @@ from the network even when ufw denies it.**
       address) shows only 80 and 443 open.
 - [ ] The API and database are never published (`$DC ps` shows no ports for `api`, `db`,
       `worker`). The API trusts `X-Real-IP`, so nothing but `hoje-web` may reach it.
+- [ ] `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS` (FelizAnniv birthday sync) is empty unless someone
+      connects a FelizAnniv on a private address, and then as narrow as possible: the FelizAnniv
+      host as `/32`, not the whole LAN and never `0.0.0.0/0` or `172.16.0.0/12`. Inside the listed
+      ranges a signed-in user can make the API and worker connect to any port (Hoje's own Docker
+      networks stay blocked regardless). Check it with `$DC config | grep INTEGRATION`.
+- [ ] A FelizAnniv outside your LAN is reached over `https://` (with `http://` the API key
+      travels in clear); revoke the key in FelizAnniv (Settings, API Keys) if a Hoje account is
+      ever compromised, then Disconnect in Hoje.
 
 ## 3. Nginx Proxy Manager
 
@@ -225,6 +233,7 @@ time, and covers IPv6 /64 rotation and scanners.
       disk usage above 80 % (`df -h`, `docker system df`), and on log lines
       `unhandled_exception`, `worker_cycle_failed`, `email_send_failed` and `backup_failed`
       (a failed backup does not make the worker unhealthy; it shows in Settings > Backups).
+      `felizanniv_sync_failed` (warning) is informational: the user sees the error in Settings.
 - [ ] Mail: the relay signs `SMTP_FROM`'s domain with **DKIM**, the domain's **SPF** record
       includes the relay, **DMARC** at least `p=quarantine`. Settings, Email, "Send test email"
       arrives with `spf=pass dkim=pass` in the headers.
