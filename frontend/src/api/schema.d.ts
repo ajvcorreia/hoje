@@ -208,6 +208,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup status and recent runs */
+        get: operations["backups_status"];
+        put?: never;
+        /** Ask the worker to back up now */
+        post: operations["backups_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories": {
         parameters: {
             query?: never;
@@ -631,6 +649,74 @@ export interface components {
             /** Stage */
             stage?: ("mfa_pending" | "active") | null;
             user?: components["schemas"]["Me"] | null;
+        };
+        /** BackupLastSuccess */
+        BackupLastSuccess: {
+            /** File Name */
+            file_name: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /**
+         * BackupRunOut
+         * @description One backup attempt, as recorded by the worker.
+         */
+        BackupRunOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error */
+            error?: string | null;
+            /** File Name */
+            file_name?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "running" | "succeeded" | "failed";
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "schedule" | "manual";
+        };
+        /** BackupStatus */
+        BackupStatus: {
+            /** Directory */
+            directory: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Keep Days */
+            keep_days: number;
+            last_success: components["schemas"]["BackupLastSuccess"] | null;
+            /** Next Run At */
+            next_run_at: string | null;
+            /** Runs */
+            runs: components["schemas"]["BackupRunOut"][];
+            /** Schedule Hour */
+            schedule_hour: number;
+            /** Stale */
+            stale: boolean;
+            /** Timezone */
+            timezone: string;
         };
         /** Category */
         Category: {
@@ -2235,6 +2321,154 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    backups_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupStatus"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    backups_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupRunOut"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3869,7 +4103,7 @@ export interface operations {
                          * Entity
                          * @enum {string}
                          */
-                        entity: "event" | "category" | "leave_policy" | "holiday" | "holiday_calendar" | "user";
+                        entity: "event" | "category" | "leave_policy" | "holiday" | "holiday_calendar" | "user" | "backup_run";
                         /**
                          * Id
                          * Format: uuid
