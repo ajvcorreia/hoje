@@ -29,7 +29,7 @@ x-api-env: &api-env
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     <<: *hardening
     # postgres entrypoint needs these to init the data dir and drop to the postgres user
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]

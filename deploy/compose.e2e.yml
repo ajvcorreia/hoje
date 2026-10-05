@@ -32,7 +32,7 @@ x-api-env: &api-env
 
 services:
   e2e-db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     <<: *hardening
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     tmpfs:

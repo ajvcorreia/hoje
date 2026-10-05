@@ -8,7 +8,7 @@ x-user: &user
 services:
   tools-db:
     profiles: [tools]
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: hoje
       POSTGRES_PASSWORD: hoje
