@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hoje import clock
+from hoje import audit, clock
 from hoje.api._common import problems
 from hoje.api.deps import (
     ActiveAuth,
@@ -39,9 +39,10 @@ from hoje.schemas import (
     TotpSetupRequest,
     TotpSetupResponse,
 )
-from hoje.security import passwords
+from hoje.security import device, passwords
+from hoje.security.device import DeviceCookie
 from hoje.security.tokens import csrf_token, email_key
-from hoje.services import password_reset, sessions, throttle, twofactor, users
+from hoje.services import password_reset, security_notice, sessions, throttle, twofactor, users
 from hoje.services.mailer import Mailer
 from hoje.services.sessions import AuthContext
 
@@ -52,6 +53,8 @@ INVALID_CODE = "Invalid code"
 INVALID_RESET = "This reset link is invalid or has expired"
 REAUTH_FAILED = "Incorrect password or code"
 SETUP_TOKEN_REQUIRED = "A valid setup token is required"  # noqa: S105
+
+MailerDep = Annotated[Mailer, Depends(get_mailer)]
 
 
 async def _require_strong(password: str, email: str) -> None:
@@ -64,9 +67,42 @@ def _reauth_key(user: User) -> str:
     return f"reauth:acct:{user.id}"
 
 
+def _trusted_device(request: Request, settings: Settings, user: User | None) -> DeviceCookie | None:
+    """The valid device cookie of this browser, if it was issued to ``user``."""
+    if user is None:
+        return None
+    cookie = device.parse(
+        settings.secret_key_bytes, request.cookies.get(device.cookie_name(settings)), clock.now()
+    )
+    return cookie if cookie is not None and cookie.user_id == user.id else None
+
+
+def _queue_notice(
+    background: BackgroundTasks,
+    mailer: Mailer,
+    settings: Settings,
+    request: Request,
+    user: User,
+    event: security_notice.SecurityEvent,
+) -> None:
+    """Email the owner about a credential change after the response has been sent."""
+    background.add_task(
+        security_notice.send,
+        mailer,
+        event=event,
+        to=user.email,
+        user_id=user.id,
+        timezone=user.timezone,
+        ip=client_ip(request),
+        when=clock.now(),
+        public_url=settings.public_url,
+    )
+
+
 async def _reauthenticate(
     db: AsyncSession,
     settings: Settings,
+    request: Request,
     user: User,
     *,
     password: str,
@@ -75,7 +111,8 @@ async def _reauthenticate(
 ) -> None:
     """Re-check the password (and optionally a second factor) or raise 400 / 429."""
     key = _reauth_key(user)
-    await throttle.ensure_not_locked(db, [key])
+    with audit.log_lockout("reauth", client_ip(request)):
+        await throttle.ensure_not_locked(db, [key])
     ok = await passwords.verify_password(user.password_hash, password)
     if ok and code is not None:
         ok = await twofactor.verify_second_factor(
@@ -84,6 +121,7 @@ async def _reauthenticate(
     if not ok:
         await throttle.record_failure(db, key)
         await db.commit()
+        audit.auth_failed("reauth", client_ip(request), user.email)
         raise HTTPException(status_code=400, detail=REAUTH_FAILED)
     await throttle.reset(db, key)
 
@@ -115,11 +153,13 @@ async def _check_setup_token(
     if not await users.setup_token_required(db, settings) or settings.setup_token is None:
         return
     key = f"register:ip:{throttle_ip(request)}"
-    await throttle.ensure_not_locked(db, [key])
+    with audit.log_lockout("setup_token", client_ip(request)):
+        await throttle.ensure_not_locked(db, [key])
     expected = settings.setup_token.get_secret_value().encode()
     if supplied is None or not hmac.compare_digest(supplied.encode(), expected):
         await throttle.record_failure(db, key)
         await db.commit()
+        audit.auth_failed("setup_token", client_ip(request))
         raise HTTPException(status_code=403, detail=SETUP_TOKEN_REQUIRED)
 
 
@@ -191,6 +231,7 @@ async def auth_register(
     me = Me.model_validate(user)
     await db.commit()
     sessions.set_cookie(response, settings, raw, sessions.STAGE_ACTIVE)
+    audit.auth_event("registered", user.id, client_ip(request))
     return me
 
 
@@ -208,21 +249,29 @@ async def auth_login(
     settings: AppSettings,
     ctx: OptionalAuth,
 ) -> LoginResponse:
-    ip_key = f"login:ip:{throttle_ip(request)}"
-    acct_key = f"login:acct:{email_key(body.email)}"
-    await throttle.ensure_not_locked(db, [ip_key, acct_key])
-
+    ip = client_ip(request)
     user = await users.get_by_email(db, body.email)
+    # A browser that already signed in to this account is throttled on its own device key, not
+    # on the per-account key that any stranger knowing the email address can fill (S-02).
+    trusted = _trusted_device(request, settings, user)
+    ip_key = f"login:ip:{throttle_ip(request)}"
+    subject_key = (
+        trusted.throttle_key if trusted is not None else f"login:acct:{email_key(body.email)}"
+    )
+    with audit.log_lockout("login", ip):
+        await throttle.ensure_not_locked(db, [ip_key, subject_key])
+
     # Unknown accounts are verified against a dummy hash so timing does not reveal existence.
     ok = await passwords.verify_password(user.password_hash if user else None, body.password)
     if user is None or not ok:
-        await throttle.record_failure(db, ip_key, acct_key)
+        await throttle.record_failure(db, ip_key, subject_key)
         await db.commit()
+        audit.auth_failed("login", ip, body.email)
         raise HTTPException(status_code=401, detail=INVALID_LOGIN)
 
     if passwords.needs_rehash(user.password_hash):
         await users.set_password(db, user, body.password)
-    await throttle.reset(db, acct_key)
+    await throttle.reset(db, subject_key)
     await throttle.purge_stale(db)
     await sessions.purge_expired(db, user.id)
 
@@ -232,11 +281,14 @@ async def auth_login(
         ctx.session if ctx is not None else None,
         user.id,
         stage=stage,
-        ip=client_ip(request),
+        ip=ip,
         user_agent=user_agent(request),
     )
     await db.commit()
     sessions.set_cookie(response, settings, raw, stage)
+    if not user.totp_enabled:  # with 2FA the device cookie waits for the second factor
+        device.set_cookie(response, settings, user.id, clock.now())
+        audit.auth_event("login_ok", user.id, ip)
     return LoginResponse(status="mfa_required" if user.totp_enabled else "ok")
 
 
@@ -256,14 +308,17 @@ async def auth_login_mfa(
 ) -> LoginResponse:
     if ctx is None or ctx.session.stage != sessions.STAGE_MFA_PENDING:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    ip = client_ip(request)
     keys = [f"mfa:sess:{ctx.session.id}", f"mfa:acct:{ctx.user.id}"]
-    await throttle.ensure_not_locked(db, keys)
+    with audit.log_lockout("mfa", ip):
+        await throttle.ensure_not_locked(db, keys)
     ok = await twofactor.verify_second_factor(
         db, settings, ctx.user, body.code, allow_recovery=True
     )
     if not ok:
         await throttle.record_failure(db, *keys)
         await db.commit()
+        audit.auth_failed("mfa", ip, ctx.user.email)
         raise HTTPException(status_code=401, detail=INVALID_CODE)
     await throttle.reset(db, *keys)
     raw, _ = await sessions.rotate(
@@ -271,11 +326,13 @@ async def auth_login_mfa(
         ctx.session,
         ctx.user.id,
         stage=sessions.STAGE_ACTIVE,
-        ip=client_ip(request),
+        ip=ip,
         user_agent=user_agent(request),
     )
     await db.commit()
     sessions.set_cookie(response, settings, raw, sessions.STAGE_ACTIVE)
+    device.set_cookie(response, settings, ctx.user.id, clock.now())
+    audit.auth_event("login_ok", ctx.user.id, ip)
     return LoginResponse(status="ok")
 
 
@@ -301,12 +358,20 @@ async def auth_password_forgot(
     background: BackgroundTasks,
     db: DbSession,
     settings: AppSettings,
-    mailer: Annotated[Mailer, Depends(get_mailer)],
+    mailer: MailerDep,
     factory: Annotated[SessionFactory, Depends(get_session_factory)],
 ) -> None:
-    await throttle.hit(
-        db, f"forgot:ip:{throttle_ip(request)}", f"forgot:acct:{email_key(body.email)}"
+    ip = client_ip(request)
+    # A shared per-account budget would let a stranger use up the owner's reset requests; a
+    # browser the owner already signed in with spends its own device budget instead.
+    trusted = _trusted_device(request, settings, await users.get_by_email(db, body.email))
+    subject_key = (
+        f"forgot:dev:{trusted.nonce}"
+        if trusted is not None
+        else f"forgot:acct:{email_key(body.email)}"
     )
+    with audit.log_lockout("forgot", ip):
+        await throttle.hit(db, f"forgot:ip:{throttle_ip(request)}", subject_key)
     # Same work and same response whether or not the account exists: the lookup and the
     # email happen after the response has been sent.
     background.add_task(
@@ -315,7 +380,7 @@ async def auth_password_forgot(
         mailer,
         settings,
         email=body.email,
-        requested_ip=client_ip(request),
+        requested_ip=ip,
     )
 
 
@@ -325,11 +390,21 @@ async def auth_password_forgot(
     responses=problems(400, 429),
     summary="Reset a password with a token",
 )
-async def auth_password_reset(body: PasswordReset, request: Request, db: DbSession) -> None:
-    await throttle.hit(db, f"reset:ip:{throttle_ip(request)}")
+async def auth_password_reset(
+    body: PasswordReset,
+    request: Request,
+    background: BackgroundTasks,
+    db: DbSession,
+    settings: AppSettings,
+    mailer: MailerDep,
+) -> None:
+    ip = client_ip(request)
+    with audit.log_lockout("reset", ip):
+        await throttle.hit(db, f"reset:ip:{throttle_ip(request)}")
     token = await password_reset.lock_valid_token(db, body.token)
     user = await users.get_by_id(db, token.user_id) if token is not None else None
     if user is None:
+        audit.auth_failed("reset", ip)
         raise HTTPException(status_code=400, detail=INVALID_RESET)
     await _require_strong(body.new_password, user.email)
     await users.set_password(db, user, body.new_password)
@@ -341,6 +416,8 @@ async def auth_password_reset(body: PasswordReset, request: Request, db: DbSessi
     await sessions.delete_user_sessions(db, user.id)
     await throttle.reset(db, f"login:acct:{email_key(user.email)}", _reauth_key(user))
     await db.commit()
+    audit.auth_event("password_reset", user.id, ip)
+    _queue_notice(background, mailer, settings, request, user, "password_reset")
 
 
 @router.post(
@@ -353,15 +430,19 @@ async def auth_password_change(
     body: PasswordChange,
     request: Request,
     response: Response,
+    background: BackgroundTasks,
     db: DbSession,
     settings: AppSettings,
+    mailer: MailerDep,
     ctx: ActiveAuth,
 ) -> None:
     user = ctx.user
-    await _reauthenticate(db, settings, user, password=body.current_password)
+    await _reauthenticate(db, settings, request, user, password=body.current_password)
     await _require_strong(body.new_password, user.email)
     await users.set_password(db, user, body.new_password)
     await _finish_security_change(db, request, response, settings, ctx)
+    audit.auth_event("password_changed", user.id, client_ip(request))
+    _queue_notice(background, mailer, settings, request, user, "password_changed")
 
 
 @router.post(
@@ -371,13 +452,17 @@ async def auth_password_change(
     summary="Begin TOTP enrolment",
 )
 async def auth_2fa_setup(
-    body: TotpSetupRequest, db: DbSession, settings: AppSettings, ctx: ActiveAuth
+    body: TotpSetupRequest,
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+    ctx: ActiveAuth,
 ) -> TotpSetupResponse:
     user = ctx.user
     await db.refresh(user, with_for_update=True)
     if user.totp_enabled:
         raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
-    await _reauthenticate(db, settings, user, password=body.password)
+    await _reauthenticate(db, settings, request, user, password=body.password)
     secret, uri, svg = await twofactor.begin_setup(db, settings, user)
     await db.commit()
     return TotpSetupResponse(otpauth_uri=uri, secret=secret, qr_svg=svg)
@@ -404,14 +489,17 @@ async def auth_2fa_enable(
     if user.totp_pending_enc is None:
         raise HTTPException(status_code=409, detail="Start two-factor setup first")
     key = _reauth_key(user)
-    await throttle.ensure_not_locked(db, [key])
+    with audit.log_lockout("reauth", client_ip(request)):
+        await throttle.ensure_not_locked(db, [key])
     if not await twofactor.confirm_enable(db, settings, user, body.code):
         await throttle.record_failure(db, key)
         await db.commit()
+        audit.auth_failed("reauth", client_ip(request), user.email)
         raise HTTPException(status_code=400, detail=INVALID_CODE)
     await throttle.reset(db, key)
     codes = await twofactor.replace_recovery_codes(db, user)
     await _finish_security_change(db, request, response, settings, ctx)
+    audit.auth_event("2fa_enabled", user.id, client_ip(request))
     return RecoveryCodes(recovery_codes=codes)
 
 
@@ -425,8 +513,10 @@ async def auth_2fa_disable(
     body: TotpConfirmRequest,
     request: Request,
     response: Response,
+    background: BackgroundTasks,
     db: DbSession,
     settings: AppSettings,
+    mailer: MailerDep,
     ctx: ActiveAuth,
 ) -> None:
     user = ctx.user
@@ -434,10 +524,12 @@ async def auth_2fa_disable(
     if not user.totp_enabled:
         raise HTTPException(status_code=409, detail="Two-factor authentication is not enabled")
     await _reauthenticate(
-        db, settings, user, password=body.password, code=body.code, allow_recovery=True
+        db, settings, request, user, password=body.password, code=body.code, allow_recovery=True
     )
     await twofactor.disable(db, user)
     await _finish_security_change(db, request, response, settings, ctx)
+    audit.auth_event("2fa_disabled", user.id, client_ip(request))
+    _queue_notice(background, mailer, settings, request, user, "2fa_disabled")
 
 
 @router.post(
@@ -450,15 +542,19 @@ async def auth_2fa_recovery_codes(
     body: TotpConfirmRequest,
     request: Request,
     response: Response,
+    background: BackgroundTasks,
     db: DbSession,
     settings: AppSettings,
+    mailer: MailerDep,
     ctx: ActiveAuth,
 ) -> RecoveryCodes:
     user = ctx.user
     await db.refresh(user, with_for_update=True)
     if not user.totp_enabled:
         raise HTTPException(status_code=409, detail="Two-factor authentication is not enabled")
-    await _reauthenticate(db, settings, user, password=body.password, code=body.code)
+    await _reauthenticate(db, settings, request, user, password=body.password, code=body.code)
     codes = await twofactor.replace_recovery_codes(db, user)
     await _finish_security_change(db, request, response, settings, ctx)
+    audit.auth_event("recovery_regenerated", user.id, client_ip(request))
+    _queue_notice(background, mailer, settings, request, user, "recovery_regenerated")
     return RecoveryCodes(recovery_codes=codes)
