@@ -4,6 +4,43 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-10-05
+
+### Added
+
+- Database backups run inside the app. The worker dumps the database every night
+  (`BACKUP_SCHEDULE_HOUR`, in `TZ`) with `pg_dump -Fc`, verifies and fsyncs each dump, keeps
+  `BACKUP_KEEP_DAYS` days and records every run in the new `backup_runs` table (migration 0004).
+  A missed schedule is made up for when the worker starts; two workers never back up at once.
+  New settings: `HOJE_BACKUP_ENABLED`, `HOJE_BACKUP_DIR`, `BACKUP_SCHEDULE_HOUR`,
+  `BACKUP_KEEP_DAYS`, `TZ`.
+- Settings › Backups (instance owner only): last backup, schedule, recent runs with errors,
+  a "Back up now" button and a warning when the last backup is older than 26 hours. Backed by
+  `GET /api/v1/backups` and `POST /api/v1/backups`; updates live through the realtime stream.
+  There is deliberately no download or restore endpoint: restores stay a command-line operation.
+
+### Changed
+
+- The separate `backup` container and `deploy/backup/backup.sh` are removed. The `hoje-api`
+  image now ships the PostgreSQL 17 client (`pg_dump`, `pg_restore` from the official PGDG
+  repository), and the worker mounts the backups volume at `/backups` (the API does not).
+- `HOJE_BACKUP_DIR` now names the directory inside the container; a host path for the backups is
+  `HOJE_BACKUP_DIR_HOST` in `deploy/.env`.
+- A failed backup no longer shows up as an unhealthy container; it is visible in Settings ›
+  Backups and in the worker log (`backup_failed`).
+- Restore guide, hardening checklist and threat model updated: the worker can now read and delete
+  the local dumps, so encrypted off-host copies matter more.
+
+### Upgrade notes
+
+- Delete the old `backup` service from your compose file (or use the new
+  `deploy/compose.prod.yml`) and rename `HOJE_BACKUP_DIR` to `HOJE_BACKUP_DIR_HOST` if you set it.
+- Existing dumps stay in the `hoje_backups` volume (or your host directory). Give them to the
+  app user once so the worker can write and prune there:
+  `docker run --rm -v hoje_backups:/b alpine chown -R 10001:10001 /b` (host directory:
+  `sudo chown -R 10001:10001 <dir>`). See `deploy/backup/restore.md`.
+- The worker takes a first backup when it starts, because it has no record of an earlier one.
+
 ## [1.0.1] — 2026-10-05
 
 ### Fixed
