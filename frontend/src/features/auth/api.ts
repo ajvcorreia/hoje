@@ -30,7 +30,7 @@ export function useLoginMfa() {
 export function useRegister() {
   const refresh = useRefreshAuth();
   return useMutation({
-    mutationFn: async (body: { email: string; password: string }) => {
+    mutationFn: async (body: { email: string; password: string; setup_token?: string }) => {
       unwrap(await api.POST('/api/v1/auth/register', { body }));
       // The new session has a new CSRF token: pick it up before the next unsafe request.
       await fetchAuthState();

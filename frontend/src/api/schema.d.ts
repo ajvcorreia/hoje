@@ -626,6 +626,8 @@ export interface components {
             csrf_token?: string | null;
             /** Registration Open */
             registration_open: boolean;
+            /** Setup Token Required */
+            setup_token_required: boolean;
             /** Stage */
             stage?: ("mfa_pending" | "active") | null;
             user?: components["schemas"]["Me"] | null;
@@ -1300,6 +1302,8 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+            /** Setup Token */
+            setup_token?: string | null;
         };
         /** ReminderIn */
         ReminderIn: {
@@ -2166,6 +2170,15 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 from sqlalchemy import delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hoje.models import Event, PasswordResetToken, ReminderDelivery
+from hoje.models import Event, NotificationLog, PasswordResetToken, ReminderDelivery
 from hoje.models import Session as SessionRow
 from hoje.services import sessions, throttle
 
 SOFT_DELETED_EVENT_AGE = timedelta(days=30)
 RESET_TOKEN_AGE = timedelta(days=7)
 DELIVERY_AGE = timedelta(days=180)
+NOTIFICATION_LOG_AGE = timedelta(days=180)
 
 
 async def run_daily(db: AsyncSession, now: datetime) -> dict[str, int]:
@@ -53,4 +54,9 @@ async def run_daily(db: AsyncSession, now: datetime) -> dict[str, int]:
         delete(ReminderDelivery).where(ReminderDelivery.due_at < now - DELIVERY_AGE)
     )
     removed["reminder_deliveries"] = result.rowcount or 0
+
+    result = await db.execute(
+        delete(NotificationLog).where(NotificationLog.created_at < now - NOTIFICATION_LOG_AGE)
+    )
+    removed["notification_log_rows"] = result.rowcount or 0
     return removed

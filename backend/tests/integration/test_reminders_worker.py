@@ -519,6 +519,19 @@ async def test_daily_housekeeping_purges_only_old_rows(live: Live):
         )
     )
     async with live.sm() as db:
+        for age, subject in ((181, "Old log"), (179, "Fresh log")):
+            db.add(
+                NotificationLog(
+                    user_id=user.id,
+                    kind="test",
+                    to_address=user.email,
+                    subject=subject,
+                    status="sent",
+                    created_at=now - age * day,
+                )
+            )
+        await db.commit()
+    async with live.sm() as db:
         db.add(
             PasswordResetToken(
                 user_id=user.id,
@@ -539,9 +552,18 @@ async def test_daily_housekeeping_purges_only_old_rows(live: Live):
         await db.commit()
     assert removed["events"] >= 1 and removed["reminder_deliveries"] == 1
     assert removed["reset_links"] >= 1 and removed["sessions"] >= 1
+    assert removed["notification_log_rows"] == 1
     async with live.sm() as db:
         titles = set((await db.scalars(select(Event.title).where(Event.user_id == user.id))).all())
         assert titles == {"Fresh", "Live"}
+        subjects = set(
+            (
+                await db.scalars(
+                    select(NotificationLog.subject).where(NotificationLog.user_id == user.id)
+                )
+            ).all()
+        )
+        assert subjects == {"Fresh log"}
         assert not await db.scalar(
             select(func.count())
             .select_from(PasswordResetToken)
