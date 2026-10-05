@@ -43,7 +43,7 @@ services:
   frontend-tools:
     profiles: [tools]
     <<: *user
-    image: node:24-bookworm-slim
+    image: node:26-bookworm-slim
     working_dir: /src/frontend
     environment:
       HOME: /tmp
