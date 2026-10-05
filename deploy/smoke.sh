@@ -23,7 +23,7 @@ PG_IMAGE="postgres:17-alpine"
 ORIGIN="http://e2e-web:8080"
 NET_INTERNAL="hoje-test_e2e_internal"
 NET_EDGE="hoje-test_e2e_edge"
-DUMP_DIR=$(mktemp -d)
+DUMP_DIR=
 
 SERVICES=(e2e-db e2e-api e2e-worker e2e-web e2e-mailpit)
 dc() { docker compose -p hoje-test -f deploy/compose.e2e.yml "$@"; }
@@ -37,6 +37,7 @@ teardown() {
 trap teardown EXIT
 
 teardown # clean slate in case a previous run was killed
+DUMP_DIR=$(mktemp -d)
 
 if [ "${SMOKE_SKIP_BUILD:-}" != "1" ]; then
   dc build e2e-api e2e-web || exit 1
