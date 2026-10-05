@@ -220,7 +220,11 @@ live.
 **Register before anyone else can find the site**: registration is open until the first user
 exists. The browser must use the https URL (the Origin check and `Secure` cookies do not work over
 plain HTTP), so do this right after step 4. To be safe, attach an NPM Access List that allows only
-your own IP to the proxy host until the account exists. Then enable 2FA under Settings and, if you
+your own IP to the proxy host until the account exists. Better still, set `HOJE_SETUP_TOKEN` in
+`deploy/.env` (generate it with `openssl rand -base64 24`): the Create-account form then asks for
+it, and wrong guesses are rate limited per address. The API logs a warning at start-up when
+production has no users and no token. The token is ignored once the first account exists, so you can
+remove it afterwards. Then enable 2FA under Settings and, if you
 used an Access List, remove it.
 
 ## Backup and restore

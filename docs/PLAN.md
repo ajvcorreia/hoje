@@ -131,6 +131,7 @@ Core schemas:
 | HOJE_SECRET_KEY | base64 32 bytes | TOTP encryption |
 | HOJE_PUBLIC_URL | https://hoje.example.com | links in emails, Origin check |
 | HOJE_ALLOW_REGISTRATION | false | re-open registration after first user |
+| HOJE_SETUP_TOKEN | (unset) | optional, >= 16 chars; required by register while no user exists |
 | HOJE_INSECURE_COOKIES | false | test only |
 | HOJE_LOG_LEVEL | INFO | |
 | SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_STARTTLS, SMTP_TLS, SMTP_FROM | | |
