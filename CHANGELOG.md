@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-10-06
+
+### Fixed
+
+- Pointing the FelizAnniv sync at FelizAnniv's web page (which answers every path with its HTML
+  page) now says so and asks for the backend address (usually port 4000), instead of "FelizAnniv
+  sent a response Hoje does not understand". The Settings hint and README now ask for the backend
+  address rather than "the address you open FelizAnniv at".
+
 ## [1.3.0] — 2026-10-05
 
 ### Added

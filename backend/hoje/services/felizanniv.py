@@ -64,6 +64,10 @@ MSG_TIMEOUT = "FelizAnniv did not answer in time"
 MSG_TLS = "Could not establish a secure connection (check the certificate)"
 MSG_TOO_LARGE = "FelizAnniv sent more data than allowed"
 MSG_MALFORMED = "FelizAnniv sent a response Hoje does not understand"
+MSG_WEB_PAGE = (
+    "That address serves the FelizAnniv web page, not its API; "
+    "enter the backend address instead (usually port 4000)"
+)
 MSG_TOO_MANY = f"Too many people to sync (more than {MAX_PEOPLE})"
 
 
@@ -161,6 +165,9 @@ def parse_page(body: bytes, today: dt.date) -> tuple[list[Person], int, int]:
     try:
         document = json.loads(body)
     except (ValueError, UnicodeDecodeError) as exc:
+        # The FelizAnniv frontend answers every path with its index.html (status 200).
+        if body.lstrip()[:1] == b"<":
+            raise SyncError(MSG_WEB_PAGE) from exc
         raise SyncError(MSG_MALFORMED) from exc
     if not isinstance(document, dict):
         raise SyncError(MSG_MALFORMED)

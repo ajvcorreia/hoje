@@ -284,9 +284,10 @@ part of the export file.
 
 1. In FelizAnniv, open **Settings › API Keys › New API Key** and copy the key (it starts with
    `fa_live_` and is shown once).
-2. In Hoje, open **Settings › FelizAnniv birthdays**, enter the address you open FelizAnniv at
-   (`https://felizanniv.example.com`, or `http://192.168.10.20:4000` on your network) and the key,
-   then **Save & test**. Hoje fetches the first page to check the address and key and only saves
+2. In Hoje, open **Settings › FelizAnniv birthdays**, enter the address of the FelizAnniv
+   **backend** (its API, `BACKEND_PORT`, 4000 by default), not the web page you open in the browser
+   (`FRONTEND_PORT`, 8080), for example `http://192.168.10.20:4000` or the public address your proxy
+   routes to the backend, and the key, then **Save & test**. Hoje fetches the first page to check the address and key and only saves
    them if that works. The key is stored encrypted (AES-256-GCM under `HOJE_SECRET_KEY`) and never
    shown again, only its first characters.
 3. The worker syncs every 6 hours (with a little jitter; after repeated failures it waits 12, then

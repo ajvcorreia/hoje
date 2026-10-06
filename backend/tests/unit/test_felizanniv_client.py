@@ -208,7 +208,7 @@ async def test_oversized_pages_are_aborted(monkeypatch):
 @pytest.mark.parametrize(
     "body",
     [
-        b"<html>not json</html>",
+        b"not json",
         b"[]",
         b'{"items": "nope", "totalPages": 1}',
         b'{"items": []}',
@@ -218,6 +218,13 @@ async def test_oversized_pages_are_aborted(monkeypatch):
 async def test_malformed_pages_fail(body):
     fake = FakeFelizAnniv([], hook=lambda r: httpx.Response(200, content=body))
     with pytest.raises(SyncError, match="does not understand"):
+        await fetch_all(fake.connection())
+
+
+async def test_the_frontend_web_page_points_to_the_backend_address():
+    page = b"\n<!doctype html><html><head><title>FelizAnniv</title></head><body></body></html>"
+    fake = FakeFelizAnniv([], hook=lambda r: httpx.Response(200, content=page))
+    with pytest.raises(SyncError, match=r"web page, not its API.*port 4000"):
         await fetch_all(fake.connection())
 
 

@@ -104,7 +104,7 @@ export function BirthdaysSection() {
           placeholder="https://felizanniv.example.com"
           value={urlValue}
           onChange={(e) => setUrl(e.target.value)}
-          hint="The address you open FelizAnniv at, for example http://192.168.1.20:4000 on your network."
+          hint="The address of the FelizAnniv backend (API), not its web page: usually port 4000, for example http://192.168.1.20:4000."
         />
         <Field
           label="API key"
