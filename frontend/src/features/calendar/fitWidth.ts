@@ -13,8 +13,10 @@ const LANE_MIN = 12;
 
 /** Smallest font size of a rotated label, in rem (keep in sync with `.cal-vlabel-text`). */
 export const VLABEL_MIN_REM = 0.5625;
-/** Line height of the largest rotated text (0.75rem x 1.15), in rem: the width of its lane. */
-const VLABEL_LANE_REM = 0.75 * 1.15;
+/** Line height of rotated text (`.cal-vlabel-text`), as a multiple of its font size. */
+const VLABEL_LINE_HEIGHT = 1.15;
+/** The user's preferred rotated font size (px, at a 16px root) when none is given. */
+export const DEFAULT_VERTICAL_SIZE = 12;
 /** Height a rotated label cannot use: 2 x 2px block padding, the 6px CSS margin and 2px slack. */
 const VLABEL_RESERVED = 12;
 /** Safety factor on the measured length of a rotated name (hinting, vertical glyph advances). */
@@ -116,12 +118,24 @@ export function verticalFits(
   return (days * rowHeight - VLABEL_RESERVED) / em >= VLABEL_MIN_REM * fonts.rem;
 }
 
-export function measurerFor(fonts: FitFonts, rowHeight = DEFAULT_ROW_HEIGHT): TextMeasurer {
+/**
+ * Width in px of one rotated label column for a preferred font size of `size` px (at a 16px root;
+ * it scales with the root font size like the rem it replaces): one line height plus 2px.
+ */
+export function verticalLaneWidth(size: number, rem = 16): number {
+  return Math.ceil(VLABEL_LINE_HEIGHT * size * (rem / 16)) + 2;
+}
+
+export function measurerFor(
+  fonts: FitFonts,
+  rowHeight = DEFAULT_ROW_HEIGHT,
+  verticalSize = DEFAULT_VERTICAL_SIZE,
+): TextMeasurer {
   return {
     text: (value) => measureText(value, fonts.normal),
     italic: (value) => measureText(value, fonts.italic),
     chip: (value) => measureText(value, fonts.chip),
-    lane: Math.ceil(VLABEL_LANE_REM * fonts.rem) + 2,
+    lane: verticalLaneWidth(verticalSize, fonts.rem),
     fitsVertical: (title, days) => verticalFits(title, days, rowHeight, fonts),
   };
 }

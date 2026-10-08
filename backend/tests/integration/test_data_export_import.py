@@ -679,3 +679,19 @@ async def test_five_thousand_events_import_quickly(alice):
     assert again.json()["events"] == {"create": 0, "skip_duplicate": 5000}
     exported = await export(alice)
     assert len(exported["events"]) == 5000
+
+
+async def test_vertical_text_size_round_trips_and_absent_keeps_the_current_value(alice):
+    assert (await alice.patch("/me", {"vertical_text_size": 20})).status_code == 200
+    exported = (await alice.get("/export")).json()
+    assert exported["settings"]["vertical_text_size"] == 20
+
+    assert (await alice.patch("/me", {"vertical_text_size": 9})).status_code == 200
+    older = small_doc(settings={"timezone": "Asia/Tokyo"})  # an export from before the setting
+    assert (await do_import(alice, older)).status_code == 200
+    assert (await alice.get("/me")).json()["vertical_text_size"] == 9
+
+    newer = small_doc(settings={"vertical_text_size": 28})
+    result = (await do_import(alice, newer)).json()
+    assert result["settings"] == {"update": True}
+    assert (await alice.get("/me")).json()["vertical_text_size"] == 28

@@ -24,6 +24,7 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { useMaxEvents } from '../../lib/maxEvents';
+import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { toLayoutInput } from '../events/occurrences';
 import {
   NO_HOLIDAYS,
@@ -101,6 +102,8 @@ interface MonthColumnProps {
   holidays: ReadonlyMap<string, HolidayDay[]>;
   /** Font family of the rotated labels (they size themselves from the name's length in it). */
   family: string;
+  /** Preferred font size (px) of rotated labels: sets `--vl-size`, the label shrinks only to fit. */
+  verticalSize: number;
   weekendDays: number[];
   today: string;
   /** Day (1-based) holding the roving tabindex in this column, or 0. */
@@ -121,6 +124,7 @@ function MonthColumnImpl({
   fit,
   holidays,
   family,
+  verticalSize,
   weekendDays,
   today,
   tabDay,
@@ -303,6 +307,7 @@ function MonthColumnImpl({
           '--m-start': offset,
           '--m-len': dim,
           '--col-fit': `${tracks.width}px`,
+          '--vl-size': verticalSize,
         } as CSSProperties
       }
     >
@@ -378,6 +383,7 @@ export function MonthGrid({
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
   const [maxEvents] = useMaxEvents();
+  const [verticalSize] = useVerticalTextSize();
   const [fonts, setFonts] = useState<FitFonts | null>(null);
 
   // Column widths follow the text: re-read the cell font on mount, on text-size changes and once web fonts load.
@@ -451,7 +457,7 @@ export function MonthGrid({
   // Required event-area width per month; memoised on the month inputs, holidays, font and row
   // height (a rotated label only fits a block tall enough for its name).
   const fits = useMemo(() => {
-    const measure = measurerFor(fonts ?? DEFAULT_FIT_FONTS, rowHeight);
+    const measure = measurerFor(fonts ?? DEFAULT_FIT_FONTS, rowHeight, verticalSize);
     const rotates = rotationRule(measure);
     return inputsByMonth.map((inputs, month): MonthFit => {
       const names = new Map<number, string>();
@@ -462,7 +468,7 @@ export function MonthGrid({
       const tracks = monthTracks(layout, names, measure);
       return { layout, tracks, key: JSON.stringify([layout, tracks]) };
     });
-  }, [fonts, rowHeight, inputsByMonth, holidaysByMonth, year, maxEvents]);
+  }, [fonts, rowHeight, inputsByMonth, holidaysByMonth, year, maxEvents, verticalSize]);
 
   // Roving tabindex.
   const defaultFocus = today.startsWith(`${year}-`) ? today : `${year}-01-01`;
@@ -575,6 +581,7 @@ export function MonthGrid({
             fit={fit}
             holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
             family={fonts?.family ?? DEFAULT_FIT_FONTS.family}
+            verticalSize={verticalSize}
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}

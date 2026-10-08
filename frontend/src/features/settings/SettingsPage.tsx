@@ -5,6 +5,7 @@ import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
+import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { useTheme } from '../../app/useTheme';
 import { useTextSize } from '../../app/useTextSize';
 import { inputClass } from '../../components/ui/classes';
@@ -25,6 +26,7 @@ const MAX_EVENT_CHOICES = Array.from(
   { length: MAX_MAX_EVENTS - MIN_MAX_EVENTS + 1 },
   (_, i) => MIN_MAX_EVENTS + i,
 );
+const VERTICAL_SIZE_CHOICES = [10, 12, 14, 16, 18, 20, 24, 28, 32];
 const SIZE_LABELS: Record<TextSize, string> = {
   small: 'Small',
   default: 'Default',
@@ -38,6 +40,7 @@ export function SettingsPage() {
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
   const [maxEvents, setMaxEvents] = useMaxEvents();
+  const [verticalSize, setVerticalSize] = useVerticalTextSize();
   // Links like /settings#vacation: scroll to the section once the page is there.
   const { hash } = useLocation();
   useEffect(() => {
@@ -120,6 +123,29 @@ export function SettingsPage() {
             </select>
             <p className="mt-1 text-xs text-text-muted">
               Desktop month grid; further events are counted as +N. Higher values make days taller.
+            </p>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="vertical-size" className="block text-sm font-medium">
+              Vertical event text size
+            </label>
+            <select
+              id="vertical-size"
+              value={verticalSize}
+              onChange={(e) => setVerticalSize(Number(e.target.value))}
+              className={`${inputClass} mt-2`}
+            >
+              {(VERTICAL_SIZE_CHOICES.includes(verticalSize)
+                ? VERTICAL_SIZE_CHOICES
+                : [...VERTICAL_SIZE_CHOICES, verticalSize].sort((a, b) => a - b)
+              ).map((n) => (
+                <option key={n} value={n}>
+                  {n} px
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              Shrinks automatically when the name does not fit the event's height
             </p>
           </div>
         </SettingsSection>

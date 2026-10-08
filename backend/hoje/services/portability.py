@@ -123,6 +123,7 @@ async def build_export(db: AsyncSession, user: User, *, app_version: str) -> dic
             "timezone": user.timezone,
             "weekend_days": list(user.weekend_days),
             "max_events_per_day": user.max_events_per_day,
+            "vertical_text_size": user.vertical_text_size,
         },
         "categories": [
             {
@@ -408,7 +409,10 @@ async def _plan(db: AsyncSession, user: User, doc: ExportDocument, mode: Mode) -
         me_changes = (
             new.max_events_per_day is not None and new.max_events_per_day != user.max_events_per_day
         )
-        plan.settings_update = tz_changes or wk_changes or me_changes
+        vt_changes = (
+            new.vertical_text_size is not None and new.vertical_text_size != user.vertical_text_size
+        )
+        plan.settings_update = tz_changes or wk_changes or me_changes or vt_changes
 
     if replace:
         plan.binned_events = await _count(db, Event, user.id)
@@ -572,6 +576,8 @@ async def _execute(db: AsyncSession, user: User, plan: _Plan, doc: ExportDocumen
             user.weekend_days = list(doc.settings.weekend_days)
         if doc.settings.max_events_per_day is not None:
             user.max_events_per_day = doc.settings.max_events_per_day
+        if doc.settings.vertical_text_size is not None:
+            user.vertical_text_size = doc.settings.vertical_text_size
         user.updated_at = now
     if replace and plan.category_rows:
         user.last_category_id = plan.category_rows[0]["id"]

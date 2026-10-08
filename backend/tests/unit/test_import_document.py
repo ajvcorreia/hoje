@@ -220,6 +220,14 @@ def test_settings_are_validated():
         "settings.max_events_per_day"
     ]
     assert parse_document(doc(settings={"max_events_per_day": 6})).settings.max_events_per_day == 6
+    assert ok.settings.vertical_text_size is None
+    for bad in (7, 33):
+        assert paths(invalid(doc(settings={"vertical_text_size": bad}))) == [
+            "settings.vertical_text_size"
+        ]
+    assert (
+        parse_document(doc(settings={"vertical_text_size": 32})).settings.vertical_text_size == 32
+    )
 
 
 def test_holiday_calendars_are_validated():

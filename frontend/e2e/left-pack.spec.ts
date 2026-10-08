@@ -68,7 +68,7 @@ test('events pack left next to a narrow rotated label and fill the cell to the r
   const doha = await box(label);
 
   // (a) the label is one narrow column, hard against the day number.
-  expect(doha.width).toBeLessThanOrEqual(30);
+  expect(doha.width).toBeLessThanOrEqual(17);
   expect(Math.abs(doha.x - right(num10))).toBeLessThanOrEqual(6);
 
   // (b) the events of the block's days start where the label ends and fill to the cell's edge.
@@ -119,7 +119,7 @@ test('with 4 to 6 events a day, events stay contiguous from the day number to th
   // Two overlapping rotated blocks: two narrow columns side by side, 30px at most each.
   const summit = await box(page.locator('.cal-vlabel', { hasText: 'Summit' }));
   const workshop = await box(page.locator('.cal-vlabel', { hasText: 'Workshop' }));
-  expect(summit.width).toBeLessThanOrEqual(30);
-  expect(workshop.width).toBeLessThanOrEqual(30);
+  expect(summit.width).toBeLessThanOrEqual(17);
+  expect(workshop.width).toBeLessThanOrEqual(17);
   expect(Math.abs(workshop.x - right(summit))).toBeLessThanOrEqual(2);
 });

@@ -282,3 +282,28 @@ describe('strike through past days setting', () => {
     await userEvent.click(box);
   });
 });
+
+describe('vertical event text size setting', () => {
+  it('defaults to 12 px and saves a choice on the user', async () => {
+    let me = { ...ME, vertical_text_size: 12 };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('Vertical event text size');
+    expect(select).toHaveValue('12');
+    expect(
+      screen.getByText("Shrinks automatically when the name does not fit the event's height"),
+    ).toBeInTheDocument();
+    await userEvent.selectOptions(select, '24');
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ vertical_text_size: 24 });
+    await waitFor(() => expect(select).toHaveValue('24'));
+  });
+});
