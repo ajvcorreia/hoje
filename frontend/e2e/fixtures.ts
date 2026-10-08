@@ -47,6 +47,12 @@ export class Api {
     return ((await res.json()) as { event: ApiEvent }).event;
   }
 
+  /** Per-user settings (PATCH /me), e.g. `{ max_events_per_day: 4 }`. */
+  async patchMe(data: Record<string, unknown>) {
+    const res = await this.request.patch('/api/v1/me', { headers: this.headers(), data });
+    expect(res.ok(), await res.text()).toBeTruthy();
+  }
+
   /** POST that returns the raw response, for tests that look at status codes. */
   async post(path: string, data: unknown, headers: Record<string, string> = {}) {
     return this.request.post(path, { headers: { ...this.headers(), ...headers }, data });

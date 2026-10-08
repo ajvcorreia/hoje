@@ -38,8 +38,8 @@ export function DayEventList({ date, occurrences, onSelect }: DayEventListProps)
             >
               <CategorySwatch colour={category?.colour} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{o.event.title}</span>
-                <span className="block truncate text-xs text-text-muted">
+                <span className="block break-words font-medium">{o.event.title}</span>
+                <span className="block break-words text-xs text-text-muted">
                   {[category?.name, time].filter(Boolean).join(' · ')}
                 </span>
               </span>

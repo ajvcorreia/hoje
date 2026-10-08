@@ -251,17 +251,16 @@
  * Events live in the grid tracks right of the day-number sub-column. A day with one event uses
  * the whole cell; otherwise MonthColumn gives the cell the month's shared tracks (overlay text,
  * then lane 0..N-1, then the "+N" chip) and each item picks its track with --c. Text is always
- * one horizontal line: the month column is made wide enough for it instead.
+ * one horizontal line and never cut or shortened: the month column is made wide enough for it
+ * instead (see fitWidth.ts), so there is no overflow or ellipsis here.
  */
 .cal-ev {
   grid-column: var(--c, 2);
   box-sizing: border-box;
   min-width: 0;
   padding: 0 4px;
-  overflow: hidden;
-  line-height: var(--row-h);
+  line-height: calc(var(--row-h) - 1px);
   white-space: nowrap;
-  text-overflow: ellipsis;
   color: var(--ev-text);
   background: var(--ev-fill);
 }
@@ -306,25 +305,19 @@
 }
 
 .cal-vlabel-text {
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
   /* Reads bottom-to-top (90° counter-clockwise), like the user's spreadsheet. */
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   /* On this vertical element cqi is the block HEIGHT and cqb its WIDTH. Size to the width,
-     shrunk so the whole name fits the height (--vl-em = name
-     length in em); below 9px it falls back to the ellipsis. */
-  font-size: max(
-    0.5625rem,
-    min(clamp(0.75rem, 26cqb, 2rem), calc((100cqi - 6px) / var(--vl-em, 1)))
-  );
+     shrunk so the whole name fits the height (--vl-em = name length in em). MonthGrid only rotates
+     a name whose size stays >= 0.5625rem (9px); a longer one is a horizontal title instead, so
+     the name is never cut. */
+  font-size: min(clamp(0.75rem, 26cqb, 2rem), calc((100cqi - 6px) / var(--vl-em, 1)));
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.02em;
   white-space: nowrap;
   text-align: center;
-  text-overflow: ellipsis;
 }
 
 .cal-more {
@@ -419,11 +412,9 @@
   min-width: 0;
   box-sizing: border-box;
   padding: 0 4px;
-  overflow: hidden;
   font-style: italic;
-  line-height: var(--row-h);
+  line-height: calc(var(--row-h) - 1px);
   white-space: nowrap;
-  text-overflow: ellipsis;
   color: var(--ev-text);
   background: repeating-linear-gradient(
     135deg,
