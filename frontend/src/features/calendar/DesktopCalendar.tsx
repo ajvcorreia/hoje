@@ -3,7 +3,7 @@ import type { Event as HojeEvent } from '../../api/types';
 import { useAuthState } from '../../app/useAuthState';
 import { btnSecondary } from '../../components/ui/classes';
 import { describeError } from '../../lib/errors';
-import { todayIso } from '../../lib/dates';
+import { useToday } from '../../lib/useToday';
 import { useCategories } from '../categories/api';
 import { CategoryChips } from '../categories/CategoryChips';
 import { useOccurrences } from '../events/api';
@@ -30,7 +30,7 @@ type EditorState = { mode: 'create'; date: string } | { mode: 'edit'; eventId: s
 
 /** The calendar for screens >= 768 px: toolbar, the three views, day popover and editor. */
 export function DesktopCalendar() {
-  const [today] = useState(todayIso);
+  const today = useToday();
   const [view, setView] = useState<View>('months');
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [popover, setPopover] = useState<{ date: string; anchor: HTMLElement } | null>(null);

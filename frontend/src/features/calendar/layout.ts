@@ -1,9 +1,8 @@
 import { daysInMonth, firstDayRow, splitIso } from '../../lib/dates';
+import { DEFAULT_MAX_EVENTS } from '../../lib/maxEvents';
 
 /** Weekday rows in the desktop grid: 6 leading empty rows + 31 days. */
 export const GRID_ROWS = 37;
-/** Number of side-by-side slots in a day cell (left half, right half). */
-export const LANE_COUNT = 2;
 
 /** What the layout needs to know about one event occurrence. */
 export interface LayoutInput {
@@ -40,7 +39,7 @@ export interface DayLayout {
   day: number;
   /** Every occurrence touching this day (placed or not). */
   total: number;
-  /** `lanes[0]` = left half, `lanes[1]` = right half. */
+  /** One slot per visible event; slot `l` sits in column `l % 2`, row `floor(l / 2)` of the cell. */
   lanes: (Placed | null)[];
   /** Occurrences that did not fit a lane: shown as "+N". */
   overflow: number;
@@ -80,8 +79,10 @@ export function compareForLayout(a: LayoutInput, b: LayoutInput): number {
 /**
  * Lays out one month column. Events are clipped to the month, ordered with
  * {@link compareForLayout} and greedily assigned the first free lane for their whole
- * span, so a multi-day event keeps the same half on every day. Events with no free lane
+ * span, so a multi-day event keeps the same slot on every day. Events with no free lane
  * only count towards `overflow` on the days they cover.
+ *
+ * @param laneCount visible events per day (the user's max-events setting)
  *
  * @returns one entry per day of the month (index = day - 1)
  */
@@ -89,6 +90,7 @@ export function layoutMonth(
   inputs: readonly LayoutInput[],
   year: number,
   month: number,
+  laneCount = DEFAULT_MAX_EVENTS,
 ): DayLayout[] {
   const dim = daysInMonth(year, month);
   const first = `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-01`;
@@ -96,17 +98,17 @@ export function layoutMonth(
   const days: DayLayout[] = Array.from({ length: dim }, (_, i) => ({
     day: i + 1,
     total: 0,
-    lanes: Array.from({ length: LANE_COUNT }, () => null),
+    lanes: Array.from({ length: laneCount }, () => null),
     overflow: 0,
   }));
-  const busy = Array.from({ length: LANE_COUNT }, () => new Uint8Array(dim + 2));
+  const busy = Array.from({ length: laneCount }, () => new Uint8Array(dim + 2));
 
   const visible = inputs.filter((e) => e.start <= last && e.end >= first).sort(compareForLayout);
   for (const input of visible) {
     const s = input.start < first ? 1 : Number(input.start.slice(8, 10));
     const e = input.end > last ? dim : Number(input.end.slice(8, 10));
     let lane = -1;
-    for (let l = 0; l < LANE_COUNT && lane < 0; l += 1) {
+    for (let l = 0; l < laneCount && lane < 0; l += 1) {
       const row = busy[l];
       let free = true;
       for (let d = s; d <= e && free; d += 1) if (row?.[d]) free = false;

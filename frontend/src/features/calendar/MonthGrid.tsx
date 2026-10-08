@@ -23,6 +23,7 @@ import {
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { useMaxEvents } from '../../lib/maxEvents';
 import { toLayoutInput } from '../events/occurrences';
 import {
   NO_HOLIDAYS,
@@ -35,6 +36,7 @@ import {
 import {
   measurerFor,
   monthFitWidth,
+  monthVerticalWidth,
   readFitFonts,
   verticalLabelEm,
   type FitFonts,
@@ -94,6 +96,14 @@ interface MonthColumnProps {
   weeks: boolean;
   /** Strike through days before `today`. */
   strikePast: boolean;
+  /** Visible events per day (lanes); the rest is counted as "+N". */
+  maxEvents: number;
+}
+
+/** Event-area widths of one month, px: horizontal text (`fit`) and rotated labels (`vertical`). */
+interface ColumnFit {
+  fit: number;
+  vertical: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -109,15 +119,20 @@ const MonthColumn = memo(function MonthColumn({
   tabDay,
   weeks,
   strikePast,
+  maxEvents,
 }: MonthColumnProps) {
-  const layout = useMemo(() => layoutMonth(inputs, year, month), [inputs, year, month]);
+  const layout = useMemo(
+    () => layoutMonth(inputs, year, month, maxEvents),
+    [inputs, year, month, maxEvents],
+  );
   const offset = firstDayRow(year, month, WEEK_START);
   const dim = daysInMonth(year, month);
   const prefix = `${String(year).padStart(4, '0')}-${pad(month + 1)}-`;
   const isCurrentMonth = today.startsWith(prefix);
   const title = `${monthName(month)} ${year}`;
 
-  // One rotated label per block segment of 2+ days whose event asks for a vertical name.
+  // One rotated label per block segment of 2+ days whose event asks for a vertical name. With
+  // more than one row of lanes a block is not a contiguous strip, so names stay horizontal.
   const segments: {
     key: string;
     title: string;
@@ -132,7 +147,7 @@ const MonthColumn = memo(function MonthColumn({
   for (let day = 1; day <= dim; day += 1) {
     const d = layout[day - 1] as DayLayout;
     for (const p of d.lanes) {
-      if (!p || !p.showTitle || !p.joinNext || !p.input.labelVertical) continue;
+      if (!p || !p.showTitle || !p.joinNext || !p.input.labelVertical || maxEvents > 2) continue;
       let len = 1;
       let split = d.total > 1;
       for (;;) {
@@ -216,6 +231,7 @@ const MonthColumn = memo(function MonthColumn({
         data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
         data-today={isToday || undefined}
         data-past={(strikePast && iso < today) || undefined}
+        data-overlay={(dayHolidays && d.total > 0) || undefined}
         data-cat={lead?.input.colour}
         tabIndex={day === tabDay ? 0 : -1}
         aria-label={label}
@@ -224,24 +240,17 @@ const MonthColumn = memo(function MonthColumn({
         <span className="cal-num" aria-hidden="true">
           {day}
         </span>
-        {dayHolidays && d.total === 0 ? (
+        {dayHolidays ? (
           <span
             className="cal-hol"
             data-cat={dayHolidays[0]?.colour}
             data-holiday=""
             data-birthday={onlyBirthdays}
+            data-strip={d.total > 0 || undefined}
+            title={d.total > 0 ? holidayText(dayHolidays) : undefined}
           >
             {holidayText(dayHolidays)}
           </span>
-        ) : null}
-        {dayHolidays && d.total > 0 ? (
-          <span
-            className="cal-hol-mark"
-            data-cat={dayHolidays[0]?.colour}
-            data-birthday={onlyBirthdays}
-            aria-hidden="true"
-            title={holidayText(dayHolidays)}
-          />
         ) : null}
         {placed.map((p) => (
           <span
@@ -249,8 +258,14 @@ const MonthColumn = memo(function MonthColumn({
             className="cal-ev"
             data-half={single ? undefined : ''}
             data-lane={single ? 'full' : String(p.lane)}
+            data-sep={(!single && maxEvents > 1 && p.lane % 2 === 0) || undefined}
             data-cat={p.input.colour}
             data-join-next={p.joinNext || undefined}
+            style={
+              single
+                ? undefined
+                : ({ '--lane-col': p.lane % 2, '--lane-row': p.lane >> 1 } as CSSProperties)
+            }
           >
             {p.showTitle && !verticalStarts.has(`${day}:${p.lane}`) ? p.input.title : ''}
           </span>
@@ -291,6 +306,7 @@ const MonthColumn = memo(function MonthColumn({
           data-past={seg.past || undefined}
           style={
             {
+              '--lane-col': seg.lane % 2,
               '--seg-row': seg.row,
               '--seg-len': seg.len,
               '--vl-em': verticalLabelEm(seg.title),
@@ -332,6 +348,11 @@ export function MonthGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
+  const [maxEvents] = useMaxEvents();
+  // Lanes are laid out two per row; the grid's row height scales with the number of lane rows.
+  const laneRows = Math.ceil(maxEvents / 2);
+  // Columns of lanes that rotated multi-day names are drawn in; 0 when names stay horizontal.
+  const verticalCols = maxEvents > 2 ? 0 : maxEvents > 1 ? 2 : 1;
   const [fonts, setFonts] = useState<FitFonts | null>(null);
 
   // Column widths follow the text: re-read the cell font on mount, on text-size changes and once web fonts load.
@@ -370,14 +391,14 @@ export function MonthGrid({
     if (!el || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       const next = Math.max(
-        MIN_ROW_HEIGHT,
+        MIN_ROW_HEIGHT * laneRows,
         Math.floor(((el.clientHeight - HEAD_HEIGHT) / GRID_ROWS) * 100) / 100,
       );
       setRowHeight((prev) => (prev === next ? prev : next));
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [laneRows]);
 
   // Partition the year's occurrences into one stable array per month column.
   const inputsByMonth = useMemo(() => {
@@ -404,9 +425,13 @@ export function MonthGrid({
       for (const [date, list] of holidaysByMonth[month] ?? []) {
         names.set(Number(date.slice(8, 10)), holidayText(list));
       }
-      return monthFitWidth(layoutMonth(inputs, year, month), names, measure);
+      const monthLayout = layoutMonth(inputs, year, month, maxEvents);
+      return {
+        fit: monthFitWidth(monthLayout, names, measure, verticalCols),
+        vertical: monthVerticalWidth(monthLayout, verticalCols),
+      };
     });
-  }, [fonts, inputsByMonth, holidaysByMonth, year]);
+  }, [fonts, inputsByMonth, holidaysByMonth, year, maxEvents, verticalCols]);
 
   // Roving tabindex.
   const defaultFocus = today.startsWith(`${year}-`) ? today : `${year}-01-01`;
@@ -463,14 +488,23 @@ export function MonthGrid({
   }, []);
 
   // Per-column minimum: lead (week + day-number columns and gaps) plus the widest text in that
-  // month, or three day-number widths for a month without text. Columns still share spare
-  // width (1fr); the strip is as wide as the sum of the minimums and scrolls sideways.
+  // month, or three day-number widths for a month without text. A month with nothing but
+  // rotated labels needs just their lanes, not the horizontal-text minimum. Columns still share
+  // spare width (1fr); the strip is as wide as the sum of the minimums and scrolls sideways.
   const lead = `var(--num-w) + ${weeks ? 'var(--wk-w-on)' : '0px'} + 2 * var(--gap)`;
-  const track = (fit: number) => `calc(${lead} + max(3 * var(--num-w), ${fit}px))`;
-  const minimums = fits ?? Array.from({ length: 12 }, () => 0);
+  const track = ({ fit, vertical }: ColumnFit) => {
+    const area =
+      fit === 0 && vertical > 0
+        ? `${vertical}px`
+        : `max(3 * var(--num-w), ${Math.max(fit, vertical)}px)`;
+    return `calc(${lead} + ${area})`;
+  };
+  const minimums = fits ?? Array.from({ length: 12 }, () => ({ fit: 0, vertical: 0 }));
   const style = {
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
+    '--cols': maxEvents > 1 ? 2 : 1,
+    '--rows': laneRows,
     gridTemplateColumns: `var(--gutter-w) ${minimums.map((f) => `minmax(${track(f)}, 1fr)`).join(' ')}`,
     width: `max(100%, calc(var(--gutter-w) + ${minimums.map(track).join(' + ')}))`,
   } as CSSProperties;
@@ -515,12 +549,13 @@ export function MonthGrid({
             month={month}
             inputs={inputs}
             holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
-            fit={fits?.[month]}
+            fit={fits?.[month]?.fit}
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}
             weeks={weeks}
             strikePast={strikePast}
+            maxEvents={maxEvents}
           />
         ))}
       </div>

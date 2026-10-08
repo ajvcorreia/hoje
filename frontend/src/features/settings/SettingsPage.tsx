@@ -4,6 +4,7 @@ import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useTheme } from '../../app/useTheme';
 import { useTextSize } from '../../app/useTextSize';
 import { inputClass } from '../../components/ui/classes';
@@ -20,6 +21,10 @@ import { SettingsSection } from './SettingsSection';
 import { VacationSection } from './VacationSection';
 
 const LABELS: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+const MAX_EVENT_CHOICES = Array.from(
+  { length: MAX_MAX_EVENTS - MIN_MAX_EVENTS + 1 },
+  (_, i) => MIN_MAX_EVENTS + i,
+);
 const SIZE_LABELS: Record<TextSize, string> = {
   small: 'Small',
   default: 'Default',
@@ -32,6 +37,7 @@ export function SettingsPage() {
   const [textSize, setTextSize] = useTextSize();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
+  const [maxEvents, setMaxEvents] = useMaxEvents();
   // Links like /settings#vacation: scroll to the section once the page is there.
   const { hash } = useLocation();
   useEffect(() => {
@@ -96,6 +102,26 @@ export function SettingsPage() {
             />
             Strike through past days
           </label>
+          <div className="mt-4">
+            <label htmlFor="max-events" className="block text-sm font-medium">
+              Events shown per day
+            </label>
+            <select
+              id="max-events"
+              value={maxEvents}
+              onChange={(e) => setMaxEvents(Number(e.target.value))}
+              className={`${inputClass} mt-2`}
+            >
+              {MAX_EVENT_CHOICES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              Desktop month grid; further events are counted as +N. Higher values make days taller.
+            </p>
+          </div>
         </SettingsSection>
         <CategoriesSection />
         <VacationSection />

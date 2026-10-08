@@ -36,6 +36,10 @@ export interface RealtimeOptions {
   hiddenPauseMs?: number;
   offlineAfterMs?: number;
   debounceMs?: number;
+  /** Coalesces the visibility/focus/online events that fire together on resume. */
+  resumeThrottleMs?: number;
+  /** Safety-net refetch while visible, in case the stream died silently (0 disables). */
+  safetyRefetchMs?: number;
 }
 
 function parseChange(data: string): ChangeMessage | null {
@@ -69,6 +73,8 @@ export function createRealtimeController(options: RealtimeOptions) {
   const hiddenPause = options.hiddenPauseMs ?? 5 * 60_000;
   const offlineAfter = options.offlineAfterMs ?? 10_000;
   const debounce = options.debounceMs ?? 150;
+  const resumeThrottle = options.resumeThrottleMs ?? 2000;
+  const safetyRefetch = options.safetyRefetchMs ?? 5 * 60_000;
 
   let source: EventSourceLike | null = null;
   let running = false;
@@ -81,6 +87,8 @@ export function createRealtimeController(options: RealtimeOptions) {
   let offlineTimer: ReturnType<typeof setTimeout> | undefined;
   let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
+  let safetyTimer: ReturnType<typeof setInterval> | undefined;
+  let lastResume = Number.NEGATIVE_INFINITY;
   const pending = new Map<string, readonly unknown[]>();
 
   const invalidateAll = () => {
@@ -179,19 +187,61 @@ export function createRealtimeController(options: RealtimeOptions) {
     closeSource();
   };
 
-  const onVisibility = () => {
+  const stopSafety = () => {
+    clearInterval(safetyTimer);
+    safetyTimer = undefined;
+  };
+
+  const startSafety = () => {
+    if (safetyRefetch > 0 && safetyTimer === undefined) {
+      safetyTimer = setInterval(invalidateAll, safetyRefetch);
+    }
+  };
+
+  /**
+   * The tab came back (visible, focused or online) after possibly missing changes: a sleeping
+   * laptop or a throttled background tab can leave the stream silently dead, so refetch
+   * everything unless a reopen is about to do it.
+   */
+  const resume = () => {
+    if (paused) {
+      paused = false;
+      attempt = 0;
+      open(); // onopen refetches everything (pause() set needsFullRefetch)
+      return;
+    }
+    const now = Date.now();
+    if (now - lastResume < resumeThrottle) return;
+    lastResume = now;
+    if (!source) {
+      // Waiting out a backoff (e.g. the network was down): retry right away.
+      clearTimeout(retryTimer);
+      attempt = 0;
+      needsFullRefetch = false;
+      invalidateAll();
+      open();
+      return;
+    }
+    invalidateAll();
+  };
+
+  const applyVisibility = (isResume: boolean) => {
     if (!running) return;
     if (document.visibilityState === 'hidden') {
+      stopSafety();
       if (hiddenTimer === undefined) hiddenTimer = setTimeout(pause, hiddenPause);
       return;
     }
     clearTimeout(hiddenTimer);
     hiddenTimer = undefined;
-    if (paused) {
-      paused = false;
-      attempt = 0;
-      open();
-    }
+    startSafety();
+    if (isResume) resume();
+  };
+
+  const onVisibility = () => applyVisibility(true);
+
+  const onWake = () => {
+    if (running && document.visibilityState !== 'hidden') resume();
   };
 
   return {
@@ -199,12 +249,18 @@ export function createRealtimeController(options: RealtimeOptions) {
       if (running) return;
       running = true;
       document.addEventListener('visibilitychange', onVisibility);
+      window.addEventListener('focus', onWake);
+      window.addEventListener('online', onWake);
       open();
-      onVisibility();
+      // The stream's first open is the baseline, so the initial call is not a resume.
+      applyVisibility(false);
     },
     stop() {
       running = false;
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('online', onWake);
+      stopSafety();
       [retryTimer, stableTimer, offlineTimer, hiddenTimer, flushTimer].forEach(clearTimeout);
       retryTimer = stableTimer = offlineTimer = hiddenTimer = flushTimer = undefined;
       pending.clear();
