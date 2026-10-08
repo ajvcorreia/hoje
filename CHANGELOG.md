@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] — 2026-10-08
+
+### Fixed
+
+- Event, birthday and holiday names are never cut off or shortened: month columns are re-measured
+  once web fonts have loaded and count the lane border, the ellipsis and clipping are gone, and a
+  rotated multi-day label whose name does not fit the block height is shown as a normal
+  horizontal title instead. The agenda, search results, day list, holiday list and vacation pill
+  no longer truncate either.
+
 ## [1.3.3] — 2026-10-08
 
 ### Changed
