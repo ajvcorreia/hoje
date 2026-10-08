@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { storeMaxEvents } from '../../lib/maxEvents';
 import { storeStrikePast } from '../../lib/strikePast';
 import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
@@ -579,5 +580,38 @@ describe('strike through past days', () => {
     renderApp();
     await gridReady();
     expect(document.querySelector('.cal-cell[data-past]')).toBeNull();
+  });
+});
+
+describe('max events per day setting', () => {
+  afterEach(() => storeMaxEvents(2));
+
+  it('lays N lanes in two columns and counts only the rest as +N', async () => {
+    storeMaxEvents(3);
+    mockApi(
+      baseRoutes([
+        makeEvent('e1', 'Alpha', '2026-03-10'),
+        makeEvent('e2', 'Beta', '2026-03-10'),
+        makeEvent('e3', 'Gamma', '2026-03-10'),
+        makeEvent('e4', 'Delta', '2026-03-10'),
+      ]),
+    );
+    renderApp();
+    await waitFor(() => expect(within(cell('2026-03-10')).getByText('Delta')).toBeInTheDocument());
+    const lanes = Array.from(cell('2026-03-10').querySelectorAll<HTMLElement>('.cal-ev'));
+    expect(lanes.map((l) => l.dataset.lane)).toEqual(['0', '1', '2']);
+    expect(lanes.map((l) => l.style.getPropertyValue('--lane-row'))).toEqual(['0', '0', '1']);
+    expect(within(cell('2026-03-10')).getByText('+1')).toBeInTheDocument();
+  });
+
+  it('shows a single event per day as a full-width box with a limit of one', async () => {
+    storeMaxEvents(1);
+    mockApi(
+      baseRoutes([makeEvent('e1', 'Alpha', '2026-03-10'), makeEvent('e2', 'Beta', '2026-03-10')]),
+    );
+    renderApp();
+    await waitFor(() => expect(within(cell('2026-03-10')).getByText('Alpha')).toBeInTheDocument());
+    expect(cell('2026-03-10').querySelectorAll('.cal-ev')).toHaveLength(1);
+    expect(within(cell('2026-03-10')).getByText('+1')).toBeInTheDocument();
   });
 });

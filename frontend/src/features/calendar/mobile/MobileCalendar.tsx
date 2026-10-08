@@ -3,7 +3,8 @@ import { format } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthState } from '../../../app/useAuthState';
 import { btnSecondary } from '../../../components/ui/classes';
-import { addDaysIso, addMonthsIso, parseIso, todayIso } from '../../../lib/dates';
+import { addDaysIso, addMonthsIso, parseIso } from '../../../lib/dates';
+import { useToday } from '../../../lib/useToday';
 import { describeError } from '../../../lib/errors';
 import { useCategories } from '../../categories/api';
 import { CategoryChips } from '../../categories/CategoryChips';
@@ -29,7 +30,7 @@ const VIEWS: { id: MobileView; label: string }[] = [
 
 /** The calendar for phones (< 768 px): day view with a week strip, or a compact month. */
 export function MobileCalendar() {
-  const [today] = useState(todayIso);
+  const today = useToday();
   const [view, setView] = useState<MobileView>(loadView);
   const [selected, setSelected] = useState(today);
   const [sheet, setSheet] = useState<Sheet>(null);

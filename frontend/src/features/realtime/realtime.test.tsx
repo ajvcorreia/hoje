@@ -241,6 +241,70 @@ describe('live sync stream', () => {
     expect(latest().closed).toBe(false);
   });
 
+  it('refetches everything when the tab becomes visible again after a short hide', () => {
+    const { spy } = mount();
+    act(() => latest().open());
+    act(() => setVisibility('hidden'));
+    advance(60_000);
+    spy.mockClear();
+    act(() => setVisibility('visible'));
+    expect(spy).toHaveBeenCalledWith();
+  });
+
+  it('refetches everything when the window regains focus or the browser comes online', () => {
+    const { spy } = mount();
+    act(() => latest().open());
+    advance(5000);
+    spy.mockClear();
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    advance(5000);
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('coalesces the events that fire together on resume', () => {
+    const { spy } = mount();
+    act(() => latest().open());
+    advance(5000);
+    spy.mockClear();
+    act(() => {
+      setVisibility('visible');
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries immediately when coming back online during a backoff', () => {
+    const { spy } = mount();
+    act(() => latest().open());
+    act(() => latest().fail());
+    expect(FakeEventSource.instances).toHaveLength(1);
+    spy.mockClear();
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(FakeEventSource.instances).toHaveLength(2);
+    expect(spy).toHaveBeenCalledWith();
+  });
+
+  it('refetches every few minutes while visible, and not while hidden', () => {
+    const { spy } = mount();
+    act(() => latest().open());
+    spy.mockClear();
+    advance(5 * 60_000);
+    expect(spy).toHaveBeenCalledTimes(1);
+    act(() => setVisibility('hidden'));
+    spy.mockClear();
+    advance(4 * 60_000);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('closes the stream on unmount', () => {
     const { view } = mount();
     act(() => latest().open());

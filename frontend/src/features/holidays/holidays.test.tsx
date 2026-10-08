@@ -120,13 +120,14 @@ describe('holiday overlays', () => {
     expect(cell('2026-04-25')).toHaveAccessibleName(/holiday: Freedom Day/);
   });
 
-  it('only marks the corner of a day that has events', async () => {
+  it('keeps the name as a strip above the events of a day that has events', async () => {
     mockApi(routes([event('e1', 'Party', '2026-12-25')]));
     renderApp();
     await holidaysDrawn();
     const day = cell('2026-12-25');
-    expect(day.querySelector('.cal-hol')).toBeNull();
-    expect(day.querySelector('.cal-hol-mark')).toHaveAttribute('data-cat', 'green');
+    expect(day.querySelector('.cal-hol')).toHaveAttribute('data-strip');
+    expect(day.querySelector('.cal-hol')).toHaveAttribute('data-cat', 'green');
+    expect(day.querySelector('.cal-hol')?.textContent).not.toBe('');
     expect(day.querySelector('.cal-ev')).toHaveTextContent('Party');
   });
 

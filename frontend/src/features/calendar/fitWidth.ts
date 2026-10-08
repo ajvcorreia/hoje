@@ -6,6 +6,8 @@ const BOX_PADDING = 8;
 const SLACK = 4;
 /** The "+N" chip: 4px padding each side, 1px border each side, 2px from the cell edge. */
 const CHIP_EXTRA = 12;
+/** Font size of the holiday / birthday strip on a day with events, relative to event text. */
+const STRIP_SCALE = 8 / 11;
 
 /** Fonts the grid draws event text with, as canvas `font` strings. */
 export interface FitFonts {
@@ -96,35 +98,77 @@ export function readFitFonts(root: ParentNode | null): FitFonts | null {
 
 /**
  * Width (px) the event area of one month column needs so that no title is truncated:
- * a full-width day needs its title; a split day needs twice its widest half (a half also
- * carries the "+N" chip when events overflow); a holiday on an empty day needs its name.
+ * a full-width day needs its title; a split day needs twice its widest column (the last
+ * column also carries the "+N" chip when events overflow); a holiday on an empty day needs its name.
  *
  * @param holidays text drawn on days that have no events, by 1-based day of month
+ * @param verticalCols columns of lanes (0 when names are never rotated, as with more than two
+ *   events a day); with 0 every multi-day title counts as horizontal text
  */
 export function monthFitWidth(
   layout: readonly DayLayout[],
   holidays: ReadonlyMap<number, string>,
   measure: TextMeasurer,
+  verticalCols = 2,
 ): number {
   let fit = 0;
   for (const d of layout) {
+    const name = holidays.get(d.day);
     if (d.total === 0) {
-      const name = holidays.get(d.day);
       if (name) fit = Math.max(fit, measure.italic(name) + BOX_PADDING);
       continue;
     }
+    // Next to events the name is drawn as a smaller strip along the top of the cell.
+    if (name) fit = Math.max(fit, measure.italic(name) * STRIP_SCALE + BOX_PADDING);
     // Titles are drawn on the first day of a block, except along a vertical label.
     const need = (lane: number) => {
       const p = d.lanes[lane];
-      if (!p || !p.showTitle || (p.joinNext && p.input.labelVertical)) return 0;
+      if (!p || !p.showTitle || (verticalCols > 0 && p.joinNext && p.input.labelVertical)) return 0;
       return measure.text(p.input.title) + BOX_PADDING;
     };
     if (d.total === 1) {
-      fit = Math.max(fit, need(0), need(1));
+      fit = Math.max(fit, ...d.lanes.map((_, l) => need(l)));
       continue;
     }
+    // Slots sit in one column (a single lane) or two; the chip rides in the last column.
+    const cols = d.lanes.length > 1 ? 2 : 1;
     const chip = d.overflow > 0 ? measure.chip(`+${d.overflow}`) + CHIP_EXTRA : 0;
-    fit = Math.max(fit, 2 * Math.max(need(0), need(1) + chip));
+    let widest = 0;
+    for (let col = 0; col < cols; col += 1) {
+      let colNeed = 0;
+      for (let l = col; l < d.lanes.length; l += 2) colNeed = Math.max(colNeed, need(l));
+      widest = Math.max(widest, colNeed + (col === cols - 1 ? chip : 0));
+    }
+    fit = Math.max(fit, cols * widest);
   }
   return fit === 0 ? 0 : Math.ceil(fit + SLACK);
+}
+
+/** Width of one rotated label column: the line height of its smallest comfortable text (0.75rem x 1.15). */
+const VLABEL_LANE = 16;
+
+/**
+ * Width (px) the event area needs for rotated multi-day labels alone: one lane column for a
+ * full-width label, `verticalCols` for a label that shares days with other events (its box is
+ * then one column of the split day). 0 when the month has no rotated label.
+ *
+ * @param verticalCols columns of lanes the grid draws (1 or 2); 0 when names are never rotated
+ */
+export function monthVerticalWidth(layout: readonly DayLayout[], verticalCols: number): number {
+  if (verticalCols <= 0) return 0;
+  let width = 0;
+  for (const [i, d] of layout.entries()) {
+    for (const p of d.lanes) {
+      if (!p || !p.showTitle || !p.joinNext || !p.input.labelVertical) continue;
+      let split = d.total > 1;
+      for (let j = i + 1; !split; j += 1) {
+        const next = layout[j];
+        const q = next?.lanes[p.lane];
+        if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
+        if (next.total > 1) split = true;
+      }
+      width = Math.max(width, (split ? verticalCols : 1) * VLABEL_LANE);
+    }
+  }
+  return width;
 }

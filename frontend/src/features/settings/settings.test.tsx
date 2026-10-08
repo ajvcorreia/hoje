@@ -235,6 +235,21 @@ describe('appearance settings', () => {
   });
 });
 
+describe('events per day setting', () => {
+  it('defaults to 2, persists a choice and clamps stored garbage', async () => {
+    window.localStorage.removeItem('hoje.maxEventsPerDay');
+    mockApi({ ...base, 'GET /api/v1/me': ME });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('Events shown per day');
+    expect(select).toHaveValue('2');
+    await userEvent.selectOptions(select, '4');
+    expect(select).toHaveValue('4');
+    expect(window.localStorage.getItem('hoje.maxEventsPerDay')).toBe('4');
+    await userEvent.selectOptions(select, '2');
+    window.localStorage.removeItem('hoje.maxEventsPerDay');
+  });
+});
+
 describe('strike through past days setting', () => {
   it('is off by default and persists when switched on', async () => {
     window.localStorage.removeItem('hoje.strikePast');

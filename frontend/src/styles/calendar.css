@@ -247,36 +247,56 @@
   background: var(--accent);
 }
 
-/* Events live in the area right of the day-number sub-column. */
+/*
+ * Events live in the area right of the day-number sub-column. With --cols columns and --rows
+ * rows of lanes (set on the grid from the max-events setting), lane l sits in column
+ * --lane-col, row --lane-row. A holiday / birthday strip takes the top half of the cell and
+ * pushes the lanes into the bottom half (--ev-top / --ev-frac).
+ */
+.cal-cell {
+  --ev-top: 0%;
+  --ev-frac: 1;
+}
+
+.cal-cell[data-overlay] {
+  --ev-top: 50%;
+  --ev-frac: 0.5;
+}
+
 .cal-ev {
+  --ev-h: calc((100% - var(--ev-top)) / var(--rows, 1));
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: calc(var(--ev-top) + var(--lane-row, 0) * var(--ev-h));
+  bottom: calc((var(--rows, 1) - var(--lane-row, 0) - 1) * var(--ev-h));
   display: block;
   box-sizing: border-box;
   padding: 0 4px;
   overflow: hidden;
-  line-height: var(--row-h);
+  line-height: calc(var(--row-h) * var(--ev-frac) / var(--rows, 1));
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--ev-text);
   background: var(--ev-fill);
 }
 
+.cal-cell[data-overlay] .cal-ev {
+  font-size: 0.5625rem;
+}
+
 .cal-ev[data-lane='full'] {
+  top: var(--ev-top);
+  bottom: 0;
   left: var(--num-w);
   right: 0;
 }
 
-.cal-ev[data-lane='0'] {
-  left: var(--num-w);
-  right: calc((100% - var(--num-w)) / 2);
+.cal-ev:not([data-lane='full']) {
+  left: calc(var(--num-w) + var(--lane-col) * (100% - var(--num-w)) / var(--cols, 2));
+  right: calc((var(--cols, 2) - var(--lane-col) - 1) * (100% - var(--num-w)) / var(--cols, 2));
+}
+
+.cal-ev[data-sep] {
   border-right: 1px solid var(--surface);
-}
-
-.cal-ev[data-lane='1'] {
-  left: calc(var(--num-w) + (100% - var(--num-w)) / 2);
-  right: 0;
 }
 
 .cal-ev[data-join-next] {
@@ -310,14 +330,15 @@
   right: var(--gap);
 }
 
-.cal-vlabel[data-lane='0'] {
-  left: calc(var(--gap) + var(--lead));
-  right: calc(var(--gap) + (100% - 2 * var(--gap) - var(--lead)) / 2);
-}
-
-.cal-vlabel[data-lane='1'] {
-  left: calc(var(--gap) + var(--lead) + (100% - 2 * var(--gap) - var(--lead)) / 2);
-  right: var(--gap);
+.cal-vlabel:not([data-lane='full']) {
+  left: calc(
+    var(--gap) + var(--lead) + var(--lane-col) * (100% - 2 * var(--gap) - var(--lead)) /
+      var(--cols, 2)
+  );
+  right: calc(
+    var(--gap) + (var(--cols, 2) - var(--lane-col) - 1) * (100% - 2 * var(--gap) - var(--lead)) /
+      var(--cols, 2)
+  );
 }
 
 .cal-vlabel-text {
@@ -345,7 +366,8 @@
 .cal-more {
   position: absolute;
   right: 2px;
-  bottom: 50%;
+  /* Centred on the last row of lanes (the whole event area when there is one row). */
+  bottom: calc((100% - var(--ev-top)) / var(--rows, 1) / 2);
   z-index: 2;
   padding: 1px 4px;
   font-size: 0.5625rem;
@@ -448,17 +470,12 @@
   );
 }
 
-/* A holiday on a day that has events: only a small triangle in the corner of the day number. */
-.cal-hol-mark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 3;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  border-top: 8px solid var(--ev-text);
-  border-right: 8px solid transparent;
+/* On a day that has events the name stays readable as a thin strip above the event lanes. */
+.cal-hol[data-strip] {
+  bottom: 50%;
+  z-index: 2;
+  font-size: 0.5rem;
+  line-height: calc(var(--row-h) / 2);
 }
 
 .cal-cell[data-past] .cal-hol {
@@ -494,9 +511,4 @@
 .cal-hol[data-birthday] {
   font-style: normal;
   background: color-mix(in srgb, var(--ev-fill) 60%, var(--surface));
-}
-
-.cal-hol-mark[data-birthday] {
-  border-top-width: 6px;
-  border-right-width: 6px;
 }

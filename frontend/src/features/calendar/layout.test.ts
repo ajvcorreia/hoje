@@ -141,6 +141,32 @@ describe('layoutMonth', () => {
     expect(feb[2]?.total).toBe(0);
   });
 
+  it('uses laneCount lanes and counts the rest as overflow', () => {
+    const four = ['a', 'b', 'c', 'd'].map((k) => ev(k, '2026-03-10', '2026-03-10'));
+    const one = layoutMonth(four, 2026, 2, 1);
+    expect(one[9]?.lanes).toHaveLength(1);
+    expect(one[9]?.overflow).toBe(3);
+    const six = layoutMonth([...four, ev('e', '2026-03-10', '2026-03-10')], 2026, 2, 6);
+    expect(six[9]?.lanes.map((l) => l?.input.key)).toEqual(['a', 'b', 'c', 'd', 'e', undefined]);
+    expect(six[9]?.overflow).toBe(0);
+    expect(layoutMonth(four, 2026, 2, 3)[9]?.overflow).toBe(1);
+  });
+
+  it('keeps a multi-day event in one lane with many lanes', () => {
+    const days = layoutMonth(
+      [
+        ev('trip', '2026-03-10', '2026-03-12'),
+        ev('x', '2026-03-11', '2026-03-11'),
+        ev('y', '2026-03-11', '2026-03-11'),
+      ],
+      2026,
+      2,
+      4,
+    );
+    for (const d of [10, 11, 12]) expect(days[d - 1]?.lanes[0]?.input.key).toBe('trip');
+    expect(days[10]?.lanes.map((l) => l?.input.key)).toEqual(['trip', 'x', 'y', undefined]);
+  });
+
   it('ignores events outside the month', () => {
     const days = layoutMonth([ev('x', '2026-04-01', '2026-04-05')], 2026, 2);
     expect(days.every((d) => d.total === 0)).toBe(true);
