@@ -39,14 +39,14 @@ import {
   measurerFor,
   monthTracks,
   readFitFonts,
-  sameTracks,
+  rotationRule,
   verticalLabelEm,
+  type DayTracks,
   type FitFonts,
   type MonthTracks,
 } from './fitWidth';
 import {
   GRID_ROWS,
-  dayMode,
   layoutMonth,
   moveFocusDate,
   type ArrowKey,
@@ -84,14 +84,21 @@ interface MonthGridProps {
   holidays?: ReadonlyMap<string, HolidayDay[]>;
 }
 
+/** One month laid out for the current fonts and row height, with the geometry it needs. */
+interface MonthFit {
+  layout: DayLayout[];
+  tracks: MonthTracks;
+  /** Everything that affects rendering, so equal fits can be told apart cheaply. */
+  key: string;
+}
+
 interface MonthColumnProps {
   year: number;
   month: number;
-  inputs: LayoutInput[];
+  /** The month's layout and day track widths (the widest day sets the column minimum). */
+  fit: MonthFit;
   /** This month's holidays by date. */
   holidays: ReadonlyMap<string, HolidayDay[]>;
-  /** Overlay, lane and chip track widths of this month (they set the column minimum). */
-  tracks: MonthTracks;
   /** Font family of the rotated labels (they size themselves from the name's length in it). */
   family: string;
   weekendDays: number[];
@@ -102,8 +109,6 @@ interface MonthColumnProps {
   weeks: boolean;
   /** Strike through days before `today`. */
   strikePast: boolean;
-  /** Visible events per day (lanes); the rest is counted as "+N". */
-  maxEvents: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -113,59 +118,24 @@ const track = (width: number) => `minmax(${width}px, ${width}fr)`;
 function MonthColumnImpl({
   year,
   month,
-  inputs,
+  fit,
   holidays,
-  tracks,
   family,
   weekendDays,
   today,
   tabDay,
   weeks,
   strikePast,
-  maxEvents,
 }: MonthColumnProps) {
-  const layout = useMemo(
-    () => layoutMonth(inputs, year, month, maxEvents),
-    [inputs, year, month, maxEvents],
-  );
+  const { layout, tracks } = fit;
   const offset = firstDayRow(year, month, WEEK_START);
   const dim = daysInMonth(year, month);
   const prefix = `${String(year).padStart(4, '0')}-${pad(month + 1)}-`;
   const isCurrentMonth = today.startsWith(prefix);
   const title = `${monthName(month)} ${year}`;
 
-  // Days that put their content in the month's shared tracks (the others use the whole cell).
-  const inRow = (n: number) =>
-    dayMode(layout[n - 1] as DayLayout, holidays.has(`${prefix}${pad(n)}`)) === 'row';
-  // The month's tracks: day number | lanes holding a rotated label | overlay? | the other lanes |
-  // chip?. Rotated lanes come first at a fixed width, so their labels sit hard left of the
-  // column. Lane `l` is grid column `laneCol[l]` of a cell; the day number is column 1.
-  const rotatedLanes = tracks.rotatedLanes.filter((l) => l < tracks.lanes.length);
-  const otherLanes = tracks.lanes.map((_, l) => l).filter((l) => !rotatedLanes.includes(l));
-  const overlayCol = 2 + rotatedLanes.length;
-  const laneCol: number[] = [];
-  rotatedLanes.forEach((l, i) => (laneCol[l] = 2 + i));
-  otherLanes.forEach((l, i) => (laneCol[l] = overlayCol + (tracks.overlay > 0 ? 1 : 0) + i));
-  const chipCol = 2 + tracks.lanes.length + (tracks.overlay > 0 ? 1 : 0);
-  const rowTemplate = [
-    'var(--num-w)',
-    ...rotatedLanes.map((l) => `${tracks.lanes[l] ?? 0}px`),
-    ...(tracks.overlay > 0 ? [track(tracks.overlay)] : []),
-    ...otherLanes.map((l) => track(tracks.lanes[l] ?? 0)),
-    ...(tracks.chip > 0 ? [`${tracks.chip}px`] : []),
-  ].join(' ');
-  // Left offset and width (px) of a rotated lane, counted from the end of the day number.
-  const laneBox = (lane: number) =>
-    ({
-      '--vl-x': `${rotatedLanes
-        .slice(0, rotatedLanes.indexOf(lane))
-        .reduce((sum, l) => sum + (tracks.lanes[l] ?? 0), 0)}px`,
-      '--vl-w': `${tracks.lanes[lane] ?? 0}px`,
-    }) as CSSProperties;
-
-  // One rotated label per block segment of 2+ days whose event asks for a vertical name and whose
-  // name fits the block height (`tracks.rotated`; any other block keeps its horizontal title). It
-  // follows the lane's track, so it sits at the same place on every day it covers.
+  // One rotated label per rotated block, drawn over its narrow column. The column index is the
+  // block's rotated lane on every day it covers, so the label sits at the same x on all of them.
   const segments: {
     key: string;
     title: string;
@@ -173,32 +143,19 @@ function MonthColumnImpl({
     row: number;
     len: number;
     lane: number;
-    split: boolean;
     past: boolean;
   }[] = [];
-  const verticalStarts = tracks.rotated;
   for (let day = 1; day <= dim; day += 1) {
-    const d = layout[day - 1] as DayLayout;
-    for (const p of d.lanes) {
-      if (!p || !verticalStarts.has(`${day}:${p.lane}`)) continue;
-      let len = 1;
-      let split = inRow(day);
-      for (;;) {
-        const next = layout[day - 1 + len];
-        const q = next?.lanes[p.lane];
-        if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
-        if (inRow(day + len)) split = true;
-        len += 1;
-      }
+    for (const p of (layout[day - 1] as DayLayout).rotated) {
+      if (!p || !p.showTitle) continue;
       segments.push({
         key: `${p.input.key}:${day}`,
         title: p.input.title,
         colour: p.input.colour,
         row: day - 1 + offset,
-        len,
+        len: p.blockLen,
         lane: p.lane,
-        split,
-        past: strikePast && `${prefix}${pad(day + len - 1)}` < today,
+        past: strikePast && `${prefix}${pad(day + p.blockLen - 1)}` < today,
       });
     }
   }
@@ -242,16 +199,31 @@ function MonthColumnImpl({
       continue;
     }
     const d = layout[day - 1] as DayLayout;
+    const t = tracks.days[day - 1] as DayTracks;
     const iso = `${prefix}${pad(day)}`;
     const isToday = iso === today;
-    const placed = d.lanes.filter((l) => l !== null);
     const dayHolidays = holidays.get(iso);
-    const shared = dayMode(d, !!dayHolidays) === 'row';
-    const lead = shared ? d.lanes[0] : placed[0];
+    const lead = d.rotated.find((p) => p) ?? d.items[0];
     const label = `${formatDayHeading(iso)} ${year}${
       d.total > 0 ? `, ${d.total} ${d.total === 1 ? 'event' : 'events'}` : ''
     }${dayHolidays ? `, ${overlayAria(dayHolidays)}` : ''}`;
     const onlyBirthdays = dayHolidays?.every(isBirthday) || undefined;
+    // Day number | rotated columns | overlay | one track per event | chip. Columns are numbered
+    // from 1 (the day number); every item names its own column, so a spacer column left by a
+    // free rotated lane never shifts the others.
+    const overlayCol = 2 + t.rotated;
+    const firstItemCol = overlayCol + (t.overlay > 0 ? 1 : 0);
+    const chipCol = firstItemCol + t.items.length;
+    const template = [
+      'var(--num-w)',
+      ...Array.from({ length: t.rotated }, () => `${tracks.lane}px`),
+      ...(t.overlay > 0 ? [track(t.overlay)] : []),
+      ...t.items.map(track),
+      ...(t.chip > 0 ? [`${t.chip}px`] : []),
+    ];
+    // The last coloured box of a cell reaches the right edge: no separator border on it.
+    const nothingAfterRotated = d.items.length === 0 && !dayHolidays && d.overflow === 0;
+    const lastItem = d.overflow === 0 ? d.items.length - 1 : -1;
     cells.push(
       <button
         key={row}
@@ -266,32 +238,48 @@ function MonthColumnImpl({
         data-cat={lead?.input.colour}
         tabIndex={day === tabDay ? 0 : -1}
         aria-label={label}
-        style={shared ? { ...gridRow, gridTemplateColumns: rowTemplate } : gridRow}
+        style={
+          template.length > 1 ? { ...gridRow, gridTemplateColumns: template.join(' ') } : gridRow
+        }
       >
         <span className="cal-num" aria-hidden="true">
           {day}
         </span>
+        {d.rotated.map((p, l) =>
+          p ? (
+            <span
+              key={`r${l}`}
+              className="cal-ev"
+              data-rot={l}
+              data-cat={p.input.colour}
+              data-join-next={p.joinNext || undefined}
+              data-edge={nothingAfterRotated && l === t.rotated - 1 ? '' : undefined}
+              style={{ '--c': 2 + l } as CSSProperties}
+            />
+          ) : null,
+        )}
         {dayHolidays ? (
           <span
             className="cal-hol"
             data-cat={dayHolidays[0]?.colour}
             data-holiday=""
             data-birthday={onlyBirthdays}
-            style={shared ? ({ '--c': overlayCol } as CSSProperties) : undefined}
+            style={{ '--c': overlayCol } as CSSProperties}
           >
             {holidayText(dayHolidays)}
           </span>
         ) : null}
-        {placed.map((p) => (
+        {d.items.map((p, i) => (
           <span
             key={p.lane}
             className="cal-ev"
-            data-lane={shared ? String(p.lane) : 'full'}
+            data-slot={i}
             data-cat={p.input.colour}
             data-join-next={p.joinNext || undefined}
-            style={shared ? ({ '--c': laneCol[p.lane] } as CSSProperties) : undefined}
+            data-edge={i === lastItem ? '' : undefined}
+            style={{ '--c': firstItemCol + i } as CSSProperties}
           >
-            {p.showTitle && !verticalStarts.has(`${day}:${p.lane}`) ? p.input.title : ''}
+            {p.showTitle ? p.input.title : ''}
           </span>
         ))}
         {d.overflow > 0 ? (
@@ -330,13 +318,12 @@ function MonthColumnImpl({
           className="cal-vlabel"
           aria-hidden="true"
           data-cat={seg.colour}
-          data-lane={seg.split ? String(seg.lane) : 'full'}
+          data-lane={seg.lane}
           data-past={seg.past || undefined}
           style={
             {
-              ...(seg.split
-                ? laneBox(seg.lane)
-                : ({ '--vl-w': `${tracks.vlabelLane}px` } as CSSProperties)),
+              '--vl-x': `${seg.lane * tracks.lane}px`,
+              '--vl-w': `${tracks.lane}px`,
               '--seg-row': seg.row,
               '--seg-len': seg.len,
               '--vl-em': verticalLabelEm(seg.title, family),
@@ -351,14 +338,12 @@ function MonthColumnImpl({
 }
 
 /**
- * Props are compared shallowly, except `tracks`: a window resize recomputes every month's tracks
+ * Props are compared shallowly, except `fit`: a window resize recomputes every month's layout
  * (the row height feeds the rotated-label cutoff) but most months come out the same.
  */
 function sameColumnProps(a: MonthColumnProps, b: MonthColumnProps): boolean {
   const keys = Object.keys(a) as (keyof MonthColumnProps)[];
-  return keys.every((k) =>
-    k === 'tracks' ? sameTracks(a.tracks, b.tracks) : Object.is(a[k], b[k]),
-  );
+  return keys.every((k) => (k === 'fit' ? a.fit.key === b.fit.key : Object.is(a[k], b[k])));
 }
 
 const MonthColumn = memo(MonthColumnImpl, sameColumnProps);
@@ -467,12 +452,15 @@ export function MonthGrid({
   // height (a rotated label only fits a block tall enough for its name).
   const fits = useMemo(() => {
     const measure = measurerFor(fonts ?? DEFAULT_FIT_FONTS, rowHeight);
-    return inputsByMonth.map((inputs, month) => {
+    const rotates = rotationRule(measure);
+    return inputsByMonth.map((inputs, month): MonthFit => {
       const names = new Map<number, string>();
       for (const [date, list] of holidaysByMonth[month] ?? []) {
         names.set(Number(date.slice(8, 10)), holidayText(list));
       }
-      return monthTracks(layoutMonth(inputs, year, month, maxEvents), names, measure);
+      const layout = layoutMonth(inputs, year, month, maxEvents, rotates);
+      const tracks = monthTracks(layout, names, measure);
+      return { layout, tracks, key: JSON.stringify([layout, tracks]) };
     });
   }, [fonts, rowHeight, inputsByMonth, holidaysByMonth, year, maxEvents]);
 
@@ -535,7 +523,7 @@ export function MonthGrid({
   // rotated labels needs just their lanes, not the horizontal-text minimum. Columns still share
   // spare width (1fr); the strip is as wide as the sum of the minimums and scrolls sideways.
   const lead = `var(--num-w) + ${weeks ? 'var(--wk-w-on)' : '0px'} + 2 * var(--gap)`;
-  const columnMin = ({ width, onlyVertical }: MonthTracks) => {
+  const columnMin = ({ tracks: { width, onlyVertical } }: MonthFit) => {
     const area = onlyVertical ? `${width}px` : `max(3 * var(--num-w), ${width}px)`;
     return `calc(${lead} + ${area})`;
   };
@@ -579,21 +567,19 @@ export function MonthGrid({
             </div>
           ))}
         </div>
-        {inputsByMonth.map((inputs, month) => (
+        {fits.map((fit, month) => (
           <MonthColumn
             key={month}
             year={year}
             month={month}
-            inputs={inputs}
+            fit={fit}
             holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
-            tracks={fits[month] as MonthTracks}
             family={fonts?.family ?? DEFAULT_FIT_FONTS.family}
             weekendDays={weekendDays}
             today={today}
             tabDay={month === focusMonth ? focusDay : 0}
             weeks={weeks}
             strikePast={strikePast}
-            maxEvents={maxEvents}
           />
         ))}
       </div>

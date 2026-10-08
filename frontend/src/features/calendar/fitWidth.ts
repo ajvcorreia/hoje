@@ -1,4 +1,4 @@
-import { dayMode, type DayLayout, type Placed } from './layout';
+import type { DayLayout, RotatesFn } from './layout';
 
 /** Horizontal padding of an event / holiday box (`padding: 0 4px`). */
 const BOX_PADDING = 8;
@@ -145,82 +145,85 @@ export function readFitFonts(root: ParentNode | null): FitFonts | null {
   };
 }
 
-/** Track widths (px) of one month column's event area; see {@link monthTracks}. */
-export interface MonthTracks {
-  /** Holiday / birthday track before the lanes on days with events; 0 when the month has none. */
+/**
+ * The rule that decides which events are drawn as a rotated label: flagged as vertical, a block
+ * of 2+ days of the month and a name that fits the block height at the minimum size. It does not
+ * depend on lanes, so it can run before lane assignment.
+ */
+export function rotationRule(measure: TextMeasurer): RotatesFn {
+  return (input, days) =>
+    !!input.labelVertical && days >= 2 && measure.fitsVertical(input.title, days);
+}
+
+/** Track widths (px) of one day cell's event area (everything right of the day number). */
+export interface DayTracks {
+  /** Rotated columns, 0..h where h is the highest rotated lane covering the day. */
+  rotated: number;
+  /** Holiday / birthday track, after the rotated columns; 0 when the day has none. */
   overlay: number;
-  /** One entry per lane column: the widest title (or rotated label) of that lane in the month. */
-  lanes: number[];
-  /** "+N" chip track after the lanes; 0 when no day overflows. */
+  /** Minimum width of each horizontal event, in packed order. */
+  items: number[];
+  /** "+N" chip track, last; 0 when the day does not overflow. */
   chip: number;
   /** Minimum width of the whole event area, slack included. */
+  need: number;
+  /** The day shows horizontal text (overlay or a title): it gets {@link SLACK}. */
+  text: boolean;
+  /** The day has horizontal content (overlay or events), not just rotated columns. */
+  horizontal: boolean;
+}
+
+/**
+ * The tracks of one day: rotated columns at a fixed width, then the overlay text, then one track
+ * per horizontal event in packed order and the "+N" chip. Nothing is shared with other days: a
+ * rotated label keeps its x offset because its column index is its lane.
+ */
+export function dayTracks(
+  d: DayLayout,
+  name: string | undefined,
+  measure: TextMeasurer,
+): DayTracks {
+  let rotatedCols = 0;
+  d.rotated.forEach((p, l) => {
+    if (p) rotatedCols = l + 1;
+  });
+  const overlay = name ? measure.italic(name) + BOX_PADDING : 0;
+  const items = d.items.map((p) =>
+    p.showTitle ? measure.text(p.input.title) + BOX_PADDING + LANE_BORDER : LANE_MIN,
+  );
+  const chip = d.overflow > 0 ? measure.chip(`+${d.overflow}`) + CHIP_EXTRA : 0;
+  const text = overlay > 0 || d.items.some((p) => p.showTitle);
+  const sum = rotatedCols * measure.lane + overlay + items.reduce((a, b) => a + b, 0) + chip;
+  return {
+    rotated: rotatedCols,
+    overlay,
+    items,
+    chip,
+    need: text ? Math.ceil(sum + SLACK) : sum,
+    text,
+    horizontal: overlay > 0 || items.length > 0 || chip > 0,
+  };
+}
+
+/** The geometry of one month column. */
+export interface MonthTracks {
+  /** One entry per day (index = day - 1). */
+  days: DayTracks[];
+  /** Width (px) of a rotated column. */
+  lane: number;
+  /** Minimum width of the event area: the widest day. */
   width: number;
   /** Nothing but rotated labels: the month needs no horizontal-text minimum. */
   onlyVertical: boolean;
-  /** `${day}:${lane}` of the blocks drawn as a rotated label (the others use a horizontal title). */
-  rotated: ReadonlySet<string>;
-  /** Lane indexes holding a rotated label, ascending: their tracks come first, at a fixed width. */
-  rotatedLanes: number[];
-  /** Width (px) of a rotated label that sits on single-event days, which use the whole cell. */
-  vlabelLane: number;
-}
-
-/** Whether two sets of tracks describe the same geometry (so a column need not re-render). */
-export function sameTracks(a: MonthTracks, b: MonthTracks): boolean {
-  return (
-    a.overlay === b.overlay &&
-    a.chip === b.chip &&
-    a.width === b.width &&
-    a.onlyVertical === b.onlyVertical &&
-    a.lanes.length === b.lanes.length &&
-    a.lanes.every((w, i) => w === b.lanes[i]) &&
-    a.vlabelLane === b.vlabelLane &&
-    a.rotatedLanes.length === b.rotatedLanes.length &&
-    a.rotatedLanes.every((l, i) => l === b.rotatedLanes[i]) &&
-    a.rotated.size === b.rotated.size &&
-    Array.from(a.rotated).every((k) => b.rotated.has(k))
-  );
-}
-
-/** Days (rows) the block in `lane` that is on day-index `index` covers, from that day on. */
-export function blockLength(layout: readonly DayLayout[], index: number, lane: number): number {
-  const key = layout[index]?.lanes[lane]?.input.key;
-  let len = 1;
-  for (;;) {
-    const q = layout[index + len]?.lanes[lane];
-    if (!q || q.input.key !== key || !q.joinPrev) return len;
-    len += 1;
-  }
 }
 
 /**
- * Whether the block starting on day-index `index` is drawn as a rotated label: it is flagged,
- * spans 2+ days of this month and its name fits the block height at the minimum size.
- */
-export function isRotated(
-  layout: readonly DayLayout[],
-  index: number,
-  p: Placed,
-  measure: TextMeasurer,
-): boolean {
-  return (
-    !!p.input.labelVertical &&
-    p.showTitle &&
-    p.joinNext &&
-    measure.fitsVertical(p.input.title, blockLength(layout, index, p.lane))
-  );
-}
-
-/**
- * Widths one month column needs so that nothing is cut off. A day's content sits in one row:
- * day number, then the holiday / birthday text, then the lanes side by side, then the "+N" chip.
- * A day with a single event and no overlay uses the whole cell and needs just that title; an
- * empty day with an overlay needs the overlay text. Every other day shares the month's tracks, so
- * lane `i` has the same width and position on all of them (and rotated labels can follow it):
- * the widest overlay, the widest title per lane and the widest chip of the month. A rotated
- * label needs one line height per lane it sits in, not its text width; a flagged block whose
- * name does not fit its height is a horizontal title like any other and needs its text width.
+ * Widths one month column needs so that nothing is cut off: the widest day, where a day needs its
+ * rotated columns, overlay text, event titles and chip side by side. A rotated label needs one
+ * line height, not its text width; a flagged block whose name does not fit its height is a
+ * horizontal title like any other (see {@link rotationRule}).
  *
+ * @param layout the month laid out with {@link rotationRule}
  * @param overlays holiday / birthday text by 1-based day of month
  */
 export function monthTracks(
@@ -228,61 +231,12 @@ export function monthTracks(
   overlays: ReadonlyMap<number, string>,
   measure: TextMeasurer,
 ): MonthTracks {
-  const rotated = new Set<string>();
-  const rotatedKeys = new Set<string>();
-  const rotatedLaneSet = new Set<number>();
-  layout.forEach((d, i) => {
-    for (const p of d.lanes) {
-      if (p && isRotated(layout, i, p, measure)) {
-        rotated.add(`${d.day}:${p.lane}`);
-        rotatedKeys.add(p.input.key);
-        rotatedLaneSet.add(p.lane);
-      }
-    }
-  });
-  const titleNeed = (p: Placed, border: number) => {
-    if (rotatedKeys.has(p.input.key)) return measure.lane;
-    return p.showTitle ? measure.text(p.input.title) + BOX_PADDING + border : 0;
-  };
-  let single = 0;
-  let overlay = 0;
-  let chip = 0;
-  let rows = false;
-  let text = false;
-  const lanes: number[] = [];
-  for (const d of layout) {
-    const name = overlays.get(d.day);
-    const nameWidth = name ? measure.italic(name) + BOX_PADDING : 0;
-    if (name) text = true;
-    const mode = dayMode(d, name !== undefined);
-    if (mode === 'empty') {
-      single = Math.max(single, nameWidth);
-      continue;
-    }
-    for (const p of d.lanes) if (p && p.showTitle && !rotatedKeys.has(p.input.key)) text = true;
-    if (mode === 'full') {
-      single = Math.max(single, ...d.lanes.map((p) => (p ? titleNeed(p, 0) : 0)));
-      continue;
-    }
-    rows = true;
-    overlay = Math.max(overlay, nameWidth);
-    d.lanes.forEach((p, l) => {
-      if (p) lanes[l] = Math.max(lanes[l] ?? 0, LANE_MIN, titleNeed(p, LANE_BORDER));
-    });
-    if (d.overflow > 0) chip = Math.max(chip, measure.chip(`+${d.overflow}`) + CHIP_EXTRA);
-  }
-  // Lanes nobody uses on a shared-track day but a later lane does keep a minimal column.
-  const filled = Array.from(lanes, (w) => w ?? LANE_MIN);
-  const row = rows ? overlay + filled.reduce((a, b) => a + b, 0) + chip : 0;
-  const widest = Math.max(single, row);
+  const days = layout.map((d) => dayTracks(d, overlays.get(d.day), measure));
+  const width = days.reduce((m, t) => Math.max(m, t.need), 0);
   return {
-    overlay: rows ? overlay : 0,
-    lanes: rows ? filled : [],
-    chip: rows ? chip : 0,
-    width: text ? Math.ceil(widest + SLACK) : widest,
-    onlyVertical: !text && widest > 0,
-    rotated,
-    rotatedLanes: Array.from(rotatedLaneSet).sort((a, b) => a - b),
-    vlabelLane: measure.lane,
+    days,
+    lane: measure.lane,
+    width,
+    onlyVertical: width > 0 && days.every((t) => !t.horizontal),
   };
 }

@@ -191,6 +191,7 @@ test.describe('per-event vertical labels', () => {
     const labelBox = await label.boundingBox();
     expect(num && labelBox).toBeTruthy();
     expect(Math.abs((labelBox?.x ?? 0) - ((num?.x ?? 0) + (num?.width ?? 0)))).toBeLessThan(6);
+    expect(labelBox?.width).toBeLessThanOrEqual(30);
   });
 
   test('a long vertical name shrinks to fit a short block instead of being cut off', async ({

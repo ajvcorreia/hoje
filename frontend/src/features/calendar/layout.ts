@@ -22,10 +22,15 @@ export interface LayoutInput {
   labelVertical?: boolean;
 }
 
-/** An occurrence placed in a lane of a month column. */
+/** An occurrence placed in a month column. */
 export interface Placed {
   input: LayoutInput;
+  /** Rotated block: its rotated lane (column). Horizontal event: its packed position that day. */
   lane: number;
+  /** Drawn as a rotated label along the block (a narrow column of its own). */
+  rotated: boolean;
+  /** Days the block covers inside this month column. */
+  blockLen: number;
   /** First day of the block inside this month column: draw the title here. */
   showTitle: boolean;
   /** The block also covers the previous day in this column (no border between). */
@@ -39,23 +44,19 @@ export interface DayLayout {
   day: number;
   /** Every occurrence touching this day (placed or not). */
   total: number;
-  /** One slot per visible event; lane `l` is the `l`-th column after the day number. */
-  lanes: (Placed | null)[];
-  /** Occurrences that did not fit a lane: shown as "+N". */
+  /**
+   * Rotated blocks covering this day by rotated lane (the month has the same number of rotated
+   * lanes on every day); `null` where the lane is free on this day.
+   */
+  rotated: (Placed | null)[];
+  /** Visible horizontal events of this day, packed left to right in placement order. */
+  items: Placed[];
+  /** Occurrences that did not fit: shown as "+N". */
   overflow: number;
 }
 
-export type DayMode = 'empty' | 'full' | 'row';
-
-/**
- * How a day cell is laid out: `empty` (no events: blank, or the overlay text alone), `full` (one
- * event and nothing else: it uses the whole cell) or `row` (day number, overlay text, lanes and
- * "+N" chip side by side, on the month's shared tracks).
- */
-export function dayMode(d: DayLayout, hasOverlay: boolean): DayMode {
-  if (d.total === 0) return 'empty';
-  return d.total === 1 && d.overflow === 0 && !hasOverlay ? 'full' : 'row';
-}
+/** Decides whether an event is drawn as a rotated label along a block of `days` days. */
+export type RotatesFn = (input: LayoutInput, days: number) => boolean;
 
 const isMultiDay = (e: LayoutInput) => e.end > e.start;
 
@@ -89,12 +90,15 @@ export function compareForLayout(a: LayoutInput, b: LayoutInput): number {
 }
 
 /**
- * Lays out one month column. Events are clipped to the month, ordered with
- * {@link compareForLayout} and greedily assigned the first free lane for their whole
- * span, so a multi-day event keeps the same slot on every day. Events with no free lane
- * only count towards `overflow` on the days they cover.
+ * Lays out one month column. Events are clipped to the month and ordered with
+ * {@link compareForLayout}. Rotated blocks (`rotates`: a flagged multi-day event whose name
+ * fits) go first, each into the first rotated lane that is free for its whole span, so a block
+ * keeps one narrow column on every day and non-overlapping blocks share a column. All other
+ * events are then packed per day, left to right, with no gaps. At most `laneCount` events are
+ * visible per day in total; the rest only count towards `overflow` on the days they cover.
  *
  * @param laneCount visible events per day (the user's max-events setting)
+ * @param rotates which events are drawn rotated; none when omitted
  *
  * @returns one entry per day of the month (index = day - 1)
  */
@@ -103,6 +107,7 @@ export function layoutMonth(
   year: number,
   month: number,
   laneCount = DEFAULT_MAX_EVENTS,
+  rotates?: RotatesFn,
 ): DayLayout[] {
   const dim = daysInMonth(year, month);
   const first = `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-01`;
@@ -110,33 +115,79 @@ export function layoutMonth(
   const days: DayLayout[] = Array.from({ length: dim }, (_, i) => ({
     day: i + 1,
     total: 0,
-    lanes: Array.from({ length: laneCount }, () => null),
+    rotated: [],
+    items: [],
     overflow: 0,
   }));
-  const busy = Array.from({ length: laneCount }, () => new Uint8Array(dim + 2));
+  const shown = new Uint8Array(dim + 2);
+  const busy: Uint8Array[] = [];
 
-  const visible = inputs.filter((e) => e.start <= last && e.end >= first).sort(compareForLayout);
-  for (const input of visible) {
-    const s = input.start < first ? 1 : Number(input.start.slice(8, 10));
-    const e = input.end > last ? dim : Number(input.end.slice(8, 10));
+  const clipped = inputs
+    .filter((e) => e.start <= last && e.end >= first)
+    .sort(compareForLayout)
+    .map((input) => {
+      const s = input.start < first ? 1 : Number(input.start.slice(8, 10));
+      const e = input.end > last ? dim : Number(input.end.slice(8, 10));
+      const len = e - s + 1;
+      return { input, s, e, len, rot: len >= 2 && !!rotates?.(input, len) };
+    });
+
+  for (const { input, s, e, len } of clipped.filter((c) => c.rot)) {
+    let free = true;
+    for (let d = s; d <= e && free; d += 1) if ((shown[d] ?? 0) >= laneCount) free = false;
     let lane = -1;
-    for (let l = 0; l < laneCount && lane < 0; l += 1) {
-      const row = busy[l];
-      let free = true;
-      for (let d = s; d <= e && free; d += 1) if (row?.[d]) free = false;
-      if (free) lane = l;
+    if (free) {
+      for (let l = 0; l < busy.length && lane < 0; l += 1) {
+        const row = busy[l] as Uint8Array;
+        let ok = true;
+        for (let d = s; d <= e && ok; d += 1) if (row[d]) ok = false;
+        if (ok) lane = l;
+      }
+      if (lane < 0) {
+        lane = busy.length;
+        busy.push(new Uint8Array(dim + 2));
+        for (const cell of days) cell.rotated.push(null);
+      }
     }
     for (let d = s; d <= e; d += 1) {
-      const cell = days[d - 1];
-      if (!cell) continue;
+      const cell = days[d - 1] as DayLayout;
       cell.total += 1;
       if (lane < 0) {
         cell.overflow += 1;
-      } else {
-        const row = busy[lane];
-        if (row) row[d] = 1;
-        cell.lanes[lane] = { input, lane, showTitle: d === s, joinPrev: d > s, joinNext: d < e };
+        continue;
       }
+      (busy[lane] as Uint8Array)[d] = 1;
+      shown[d] = (shown[d] ?? 0) + 1;
+      cell.rotated[lane] = {
+        input,
+        lane,
+        rotated: true,
+        blockLen: len,
+        showTitle: d === s,
+        joinPrev: d > s,
+        joinNext: d < e,
+      };
+    }
+  }
+
+  for (const { input, s, e, len } of clipped.filter((c) => !c.rot)) {
+    for (let d = s; d <= e; d += 1) {
+      const cell = days[d - 1] as DayLayout;
+      cell.total += 1;
+      if ((shown[d] ?? 0) >= laneCount) {
+        cell.overflow += 1;
+        continue;
+      }
+      shown[d] = (shown[d] ?? 0) + 1;
+      cell.items.push({
+        input,
+        lane: cell.items.length,
+        rotated: false,
+        blockLen: len,
+        showTitle: d === s,
+        joinPrev: d > s,
+        joinNext: d < e,
+      });
     }
   }
   return days;

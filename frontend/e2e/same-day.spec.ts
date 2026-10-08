@@ -12,7 +12,6 @@ test('one event fills the whole cell', async ({ page, api }) => {
   const cell = page.locator(`[data-date="${date}"]`);
   const events = cell.locator('.cal-ev');
   await expect(events).toHaveCount(1);
-  await expect(events).toHaveAttribute('data-lane', 'full');
   const cellBox = await cell.boundingBox();
   const eventBox = await events.boundingBox();
   // The event area is the cell minus the day-number sub-column.
