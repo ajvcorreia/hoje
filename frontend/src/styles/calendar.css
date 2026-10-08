@@ -545,3 +545,92 @@
 :root[data-theme='light-contrast'] .m-hol-dot {
   border-width: 2px;
 }
+
+/*
+ * Row highlight: MonthGrid writes data-hover-row on the grid while the pointer or keyboard focus is
+ * in a row. That row's weekday label lights up and its cells (every month) get a faint tint.
+ */
+.cal-grid[data-hover-row='0'] .cal-wd[data-row='0'],
+.cal-grid[data-hover-row='1'] .cal-wd[data-row='1'],
+.cal-grid[data-hover-row='2'] .cal-wd[data-row='2'],
+.cal-grid[data-hover-row='3'] .cal-wd[data-row='3'],
+.cal-grid[data-hover-row='4'] .cal-wd[data-row='4'],
+.cal-grid[data-hover-row='5'] .cal-wd[data-row='5'],
+.cal-grid[data-hover-row='6'] .cal-wd[data-row='6'],
+.cal-grid[data-hover-row='7'] .cal-wd[data-row='7'],
+.cal-grid[data-hover-row='8'] .cal-wd[data-row='8'],
+.cal-grid[data-hover-row='9'] .cal-wd[data-row='9'],
+.cal-grid[data-hover-row='10'] .cal-wd[data-row='10'],
+.cal-grid[data-hover-row='11'] .cal-wd[data-row='11'],
+.cal-grid[data-hover-row='12'] .cal-wd[data-row='12'],
+.cal-grid[data-hover-row='13'] .cal-wd[data-row='13'],
+.cal-grid[data-hover-row='14'] .cal-wd[data-row='14'],
+.cal-grid[data-hover-row='15'] .cal-wd[data-row='15'],
+.cal-grid[data-hover-row='16'] .cal-wd[data-row='16'],
+.cal-grid[data-hover-row='17'] .cal-wd[data-row='17'],
+.cal-grid[data-hover-row='18'] .cal-wd[data-row='18'],
+.cal-grid[data-hover-row='19'] .cal-wd[data-row='19'],
+.cal-grid[data-hover-row='20'] .cal-wd[data-row='20'],
+.cal-grid[data-hover-row='21'] .cal-wd[data-row='21'],
+.cal-grid[data-hover-row='22'] .cal-wd[data-row='22'],
+.cal-grid[data-hover-row='23'] .cal-wd[data-row='23'],
+.cal-grid[data-hover-row='24'] .cal-wd[data-row='24'],
+.cal-grid[data-hover-row='25'] .cal-wd[data-row='25'],
+.cal-grid[data-hover-row='26'] .cal-wd[data-row='26'],
+.cal-grid[data-hover-row='27'] .cal-wd[data-row='27'],
+.cal-grid[data-hover-row='28'] .cal-wd[data-row='28'],
+.cal-grid[data-hover-row='29'] .cal-wd[data-row='29'],
+.cal-grid[data-hover-row='30'] .cal-wd[data-row='30'],
+.cal-grid[data-hover-row='31'] .cal-wd[data-row='31'],
+.cal-grid[data-hover-row='32'] .cal-wd[data-row='32'],
+.cal-grid[data-hover-row='33'] .cal-wd[data-row='33'],
+.cal-grid[data-hover-row='34'] .cal-wd[data-row='34'],
+.cal-grid[data-hover-row='35'] .cal-wd[data-row='35'],
+.cal-grid[data-hover-row='36'] .cal-wd[data-row='36'] {
+  font-weight: 700;
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.cal-grid[data-hover-row='0'] :is(.cal-cell, .cal-empty)[data-row='0'],
+.cal-grid[data-hover-row='1'] :is(.cal-cell, .cal-empty)[data-row='1'],
+.cal-grid[data-hover-row='2'] :is(.cal-cell, .cal-empty)[data-row='2'],
+.cal-grid[data-hover-row='3'] :is(.cal-cell, .cal-empty)[data-row='3'],
+.cal-grid[data-hover-row='4'] :is(.cal-cell, .cal-empty)[data-row='4'],
+.cal-grid[data-hover-row='5'] :is(.cal-cell, .cal-empty)[data-row='5'],
+.cal-grid[data-hover-row='6'] :is(.cal-cell, .cal-empty)[data-row='6'],
+.cal-grid[data-hover-row='7'] :is(.cal-cell, .cal-empty)[data-row='7'],
+.cal-grid[data-hover-row='8'] :is(.cal-cell, .cal-empty)[data-row='8'],
+.cal-grid[data-hover-row='9'] :is(.cal-cell, .cal-empty)[data-row='9'],
+.cal-grid[data-hover-row='10'] :is(.cal-cell, .cal-empty)[data-row='10'],
+.cal-grid[data-hover-row='11'] :is(.cal-cell, .cal-empty)[data-row='11'],
+.cal-grid[data-hover-row='12'] :is(.cal-cell, .cal-empty)[data-row='12'],
+.cal-grid[data-hover-row='13'] :is(.cal-cell, .cal-empty)[data-row='13'],
+.cal-grid[data-hover-row='14'] :is(.cal-cell, .cal-empty)[data-row='14'],
+.cal-grid[data-hover-row='15'] :is(.cal-cell, .cal-empty)[data-row='15'],
+.cal-grid[data-hover-row='16'] :is(.cal-cell, .cal-empty)[data-row='16'],
+.cal-grid[data-hover-row='17'] :is(.cal-cell, .cal-empty)[data-row='17'],
+.cal-grid[data-hover-row='18'] :is(.cal-cell, .cal-empty)[data-row='18'],
+.cal-grid[data-hover-row='19'] :is(.cal-cell, .cal-empty)[data-row='19'],
+.cal-grid[data-hover-row='20'] :is(.cal-cell, .cal-empty)[data-row='20'],
+.cal-grid[data-hover-row='21'] :is(.cal-cell, .cal-empty)[data-row='21'],
+.cal-grid[data-hover-row='22'] :is(.cal-cell, .cal-empty)[data-row='22'],
+.cal-grid[data-hover-row='23'] :is(.cal-cell, .cal-empty)[data-row='23'],
+.cal-grid[data-hover-row='24'] :is(.cal-cell, .cal-empty)[data-row='24'],
+.cal-grid[data-hover-row='25'] :is(.cal-cell, .cal-empty)[data-row='25'],
+.cal-grid[data-hover-row='26'] :is(.cal-cell, .cal-empty)[data-row='26'],
+.cal-grid[data-hover-row='27'] :is(.cal-cell, .cal-empty)[data-row='27'],
+.cal-grid[data-hover-row='28'] :is(.cal-cell, .cal-empty)[data-row='28'],
+.cal-grid[data-hover-row='29'] :is(.cal-cell, .cal-empty)[data-row='29'],
+.cal-grid[data-hover-row='30'] :is(.cal-cell, .cal-empty)[data-row='30'],
+.cal-grid[data-hover-row='31'] :is(.cal-cell, .cal-empty)[data-row='31'],
+.cal-grid[data-hover-row='32'] :is(.cal-cell, .cal-empty)[data-row='32'],
+.cal-grid[data-hover-row='33'] :is(.cal-cell, .cal-empty)[data-row='33'],
+.cal-grid[data-hover-row='34'] :is(.cal-cell, .cal-empty)[data-row='34'],
+.cal-grid[data-hover-row='35'] :is(.cal-cell, .cal-empty)[data-row='35'],
+.cal-grid[data-hover-row='36'] :is(.cal-cell, .cal-empty)[data-row='36'] {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--accent) 12%, transparent),
+    color-mix(in srgb, var(--accent) 12%, transparent)
+  );
+}

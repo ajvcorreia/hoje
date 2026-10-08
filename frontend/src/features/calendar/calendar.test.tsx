@@ -109,6 +109,33 @@ describe('month grid', () => {
     expect(document.querySelectorAll('[data-month="0"] .cal-empty')).toHaveLength(37 - 31);
   });
 
+  it('highlights the weekday of the hovered row and clears it on leave', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    const grid = document.querySelector('.cal-grid') as HTMLElement;
+    expect(grid).not.toHaveAttribute('data-hover-row');
+    fireEvent.pointerOver(cell('2026-01-01'));
+    expect(grid).toHaveAttribute('data-hover-row', '3');
+    // The gutter label of that row carries the same row index the CSS keys on.
+    expect(document.querySelector('.cal-wd[data-row="3"]')).not.toBeNull();
+    fireEvent.pointerOver(cell('2026-02-01'));
+    expect(grid).toHaveAttribute('data-hover-row', '6');
+    fireEvent.pointerLeave(document.querySelector('.cal-scroll') as HTMLElement);
+    expect(grid).not.toHaveAttribute('data-hover-row');
+  });
+
+  it('highlights the row of the focused day', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    const grid = document.querySelector('.cal-grid') as HTMLElement;
+    fireEvent.focus(cell('2026-06-01'));
+    expect(grid).toHaveAttribute('data-hover-row', '0');
+    fireEvent.blur(cell('2026-06-01'));
+    expect(grid).not.toHaveAttribute('data-hover-row');
+  });
+
   it('shades weekend rows from the user settings', async () => {
     mockApi(baseRoutes());
     renderApp();
