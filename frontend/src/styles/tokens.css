@@ -17,7 +17,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme='light']):not([data-theme='light-contrast']) {
     color-scheme: dark;
     --bg: #111418;
     --surface: #181c21;
@@ -50,4 +50,26 @@
   --today: #1c2a44;
   --weekend: #1b1f24;
   --danger: #ff7b72;
+}
+
+/*
+ * High-contrast light theme: pure white surfaces, near-black text, dark borders and accent.
+ * Text pairs reach WCAG AAA (7:1); non-text boundaries reach 3:1 or more. Its category palette
+ * lives in palette.css and calendar.css adds the extra outlines for this theme.
+ */
+:root[data-theme='light-contrast'] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #e4e7eb;
+  --border: #6b7280;
+  --border-strong: #374151;
+  --month-outline: #000000;
+  --text: #000000;
+  --text-muted: #2e3640;
+  --accent: #0a36a8;
+  --accent-contrast: #ffffff;
+  --today: #b9d0ff;
+  --weekend: #d8dce2;
+  --danger: #8f0000;
 }

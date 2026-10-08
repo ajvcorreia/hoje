@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { THEME_STORAGE_KEY, applyTheme, readStoredTheme, storeTheme } from './theme';
+import {
+  THEMES,
+  THEME_STORAGE_KEY,
+  applyTheme,
+  isTheme,
+  readStoredTheme,
+  storeTheme,
+} from './theme';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -30,6 +37,19 @@ describe('theme persistence', () => {
     });
     expect(readStoredTheme()).toBe('system');
     expect(() => storeTheme('light')).not.toThrow();
+  });
+
+  it('lists the four themes including high-contrast light', () => {
+    expect([...THEMES]).toEqual(['system', 'light', 'light-contrast', 'dark']);
+    expect(isTheme('light-contrast')).toBe(true);
+    expect(isTheme('contrast')).toBe(false);
+  });
+
+  it('round-trips the high-contrast theme', () => {
+    storeTheme('light-contrast');
+    expect(readStoredTheme()).toBe('light-contrast');
+    applyTheme('light-contrast');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light-contrast');
   });
 
   it('applies the theme to the html element', () => {

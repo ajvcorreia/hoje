@@ -47,6 +47,38 @@
   --ev-fill: var(--cat-pink-fill);
   --ev-text: var(--cat-pink-text);
 }
+[data-cat='rose'] {
+  --ev-fill: var(--cat-rose-fill);
+  --ev-text: var(--cat-rose-text);
+}
+[data-cat='fuchsia'] {
+  --ev-fill: var(--cat-fuchsia-fill);
+  --ev-text: var(--cat-fuchsia-text);
+}
+[data-cat='purple'] {
+  --ev-fill: var(--cat-purple-fill);
+  --ev-text: var(--cat-purple-text);
+}
+[data-cat='sky'] {
+  --ev-fill: var(--cat-sky-fill);
+  --ev-text: var(--cat-sky-text);
+}
+[data-cat='emerald'] {
+  --ev-fill: var(--cat-emerald-fill);
+  --ev-text: var(--cat-emerald-text);
+}
+[data-cat='yellow'] {
+  --ev-fill: var(--cat-yellow-fill);
+  --ev-text: var(--cat-yellow-text);
+}
+[data-cat='brown'] {
+  --ev-fill: var(--cat-brown-fill);
+  --ev-text: var(--cat-brown-text);
+}
+[data-cat='gray'] {
+  --ev-fill: var(--cat-gray-fill);
+  --ev-text: var(--cat-gray-text);
+}
 
 .cat-swatch {
   background: var(--ev-fill);
@@ -459,4 +491,52 @@
 .cal-hol[data-birthday] {
   font-style: normal;
   background: color-mix(in srgb, var(--ev-fill) 60%, var(--surface));
+}
+
+/* ---- High-contrast light theme ------------------------------------------- */
+/* Extra outlines that never change layout (inset shadows and outlines only). */
+:root[data-theme='light-contrast'] :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+:root[data-theme='light-contrast'] .cat-swatch {
+  border: 2px solid var(--ev-text);
+}
+
+:root[data-theme='light-contrast'] .cal-ev,
+:root[data-theme='light-contrast'] .cal-hol {
+  box-shadow:
+    inset 0 1px 0 var(--ev-text),
+    inset 0 -1px 0 var(--ev-text);
+}
+
+:root[data-theme='light-contrast'] .cal-hol {
+  background: repeating-linear-gradient(135deg, var(--ev-fill) 0 4px, var(--surface) 4px 8px);
+}
+
+:root[data-theme='light-contrast'] .cal-hol[data-birthday] {
+  background: var(--ev-fill);
+  box-shadow:
+    inset 0 1px 0 var(--ev-text),
+    inset 0 -1px 0 var(--ev-text),
+    inset 0 0 0 1px var(--ev-text);
+}
+
+:root[data-theme='light-contrast'] .m-card {
+  background: var(--ev-fill);
+  border: 1px solid var(--ev-text);
+  border-left: 6px solid var(--ev-text);
+}
+
+:root[data-theme='light-contrast'] .yr-day[data-cat] {
+  box-shadow: inset 0 0 0 1px var(--ev-text);
+}
+
+:root[data-theme='light-contrast'] .yr-day[data-today] {
+  box-shadow: inset 0 0 0 2.5px var(--accent);
+}
+
+:root[data-theme='light-contrast'] .m-hol-dot {
+  border-width: 2px;
 }

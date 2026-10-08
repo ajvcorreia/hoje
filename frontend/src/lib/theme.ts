@@ -1,4 +1,4 @@
-export const THEMES = ['system', 'light', 'dark'] as const;
+export const THEMES = ['system', 'light', 'light-contrast', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export const THEME_STORAGE_KEY = 'hoje.theme';

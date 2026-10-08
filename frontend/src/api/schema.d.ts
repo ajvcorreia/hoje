@@ -850,7 +850,7 @@ export interface components {
              * Colour
              * @enum {string}
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink";
+            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
             /** Hidden */
             hidden: boolean;
             /** Icon */
@@ -904,7 +904,7 @@ export interface components {
              * Colour
              * @enum {string}
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink";
+            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
             /**
              * Hidden
              * @default false
@@ -931,7 +931,7 @@ export interface components {
          */
         CategoryUpdate: {
             /** Colour */
-            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink") | null;
+            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray") | null;
             /** Hidden */
             hidden?: boolean | null;
             /** Icon */
@@ -1166,7 +1166,7 @@ export interface components {
             /** Code */
             code: string;
             /** Colour */
-            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink") | null;
+            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray") | null;
             /**
              * Custom Holidays
              * @default []
@@ -1191,7 +1191,7 @@ export interface components {
              * Colour
              * @enum {string}
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink";
+            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
             /**
              * Hidden
              * @default false
@@ -1426,7 +1426,7 @@ export interface components {
              * Colour
              * @enum {string}
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink";
+            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
             /** Enabled */
             enabled: boolean;
             /**
@@ -1445,7 +1445,7 @@ export interface components {
         /** HolidayCalendarUpdate */
         HolidayCalendarUpdate: {
             /** Colour */
-            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink") | null;
+            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray") | null;
             /** Enabled */
             enabled?: boolean | null;
         };

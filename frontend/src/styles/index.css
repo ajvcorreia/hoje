@@ -41,6 +41,22 @@
   --color-cat-violet-text: var(--cat-violet-text);
   --color-cat-pink-fill: var(--cat-pink-fill);
   --color-cat-pink-text: var(--cat-pink-text);
+  --color-cat-rose-fill: var(--cat-rose-fill);
+  --color-cat-rose-text: var(--cat-rose-text);
+  --color-cat-fuchsia-fill: var(--cat-fuchsia-fill);
+  --color-cat-fuchsia-text: var(--cat-fuchsia-text);
+  --color-cat-purple-fill: var(--cat-purple-fill);
+  --color-cat-purple-text: var(--cat-purple-text);
+  --color-cat-sky-fill: var(--cat-sky-fill);
+  --color-cat-sky-text: var(--cat-sky-text);
+  --color-cat-emerald-fill: var(--cat-emerald-fill);
+  --color-cat-emerald-text: var(--cat-emerald-text);
+  --color-cat-yellow-fill: var(--cat-yellow-fill);
+  --color-cat-yellow-text: var(--cat-yellow-text);
+  --color-cat-brown-fill: var(--cat-brown-fill);
+  --color-cat-brown-text: var(--cat-brown-text);
+  --color-cat-gray-fill: var(--cat-gray-fill);
+  --color-cat-gray-text: var(--cat-gray-text);
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 

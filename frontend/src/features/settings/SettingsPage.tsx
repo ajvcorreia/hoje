@@ -21,7 +21,12 @@ import { HolidaysSection } from './HolidaysSection';
 import { SettingsSection } from './SettingsSection';
 import { VacationSection } from './VacationSection';
 
-const LABELS: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+const LABELS: Record<Theme, string> = {
+  system: 'System',
+  light: 'Light',
+  'light-contrast': 'Light (high contrast)',
+  dark: 'Dark',
+};
 const MAX_EVENT_CHOICES = Array.from(
   { length: MAX_MAX_EVENTS - MIN_MAX_EVENTS + 1 },
   (_, i) => MIN_MAX_EVENTS + i,

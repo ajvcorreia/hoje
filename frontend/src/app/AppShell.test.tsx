@@ -62,4 +62,12 @@ describe('AppShell', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(window.localStorage.getItem('hoje.theme')).toBe('dark');
   });
+
+  it('offers the high-contrast light theme', async () => {
+    mockApi(authed);
+    renderApp('/settings');
+    await userEvent.selectOptions(await screen.findByLabelText('Theme'), 'Light (high contrast)');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light-contrast');
+    expect(window.localStorage.getItem('hoje.theme')).toBe('light-contrast');
+  });
 });

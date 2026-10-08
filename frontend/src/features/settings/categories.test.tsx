@@ -68,7 +68,7 @@ describe('settings › categories', () => {
     renderApp('/settings');
     await userEvent.click(await screen.findByRole('button', { name: /Colour of Work/ }));
     const picker = screen.getByRole('radiogroup', { name: 'Colour for Work' });
-    expect(within(picker).getAllByRole('radio')).toHaveLength(12);
+    expect(within(picker).getAllByRole('radio')).toHaveLength(20);
     expect(within(picker).getByRole('radio', { name: 'Teal' })).toHaveAttribute(
       'aria-checked',
       'true',

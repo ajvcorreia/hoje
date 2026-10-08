@@ -1,4 +1,4 @@
-/* Category palette. Mirrors palette.ts (verified by palette.test.ts); WCAG AA text on fill. */
+/* Category palette. Mirrors palette.ts (verified by palette.test.ts); WCAG AA text on fill (AAA in light-contrast). */
 :root {
   --cat-slate-fill: #e2e8f0;
   --cat-slate-text: #1e293b;
@@ -24,10 +24,26 @@
   --cat-violet-text: #5b21b6;
   --cat-pink-fill: #fce7f3;
   --cat-pink-text: #9d174d;
+  --cat-rose-fill: #ffe4e6;
+  --cat-rose-text: #9f1239;
+  --cat-fuchsia-fill: #fae8ff;
+  --cat-fuchsia-text: #86198f;
+  --cat-purple-fill: #f3e8ff;
+  --cat-purple-text: #6b21a8;
+  --cat-sky-fill: #e0f2fe;
+  --cat-sky-text: #075985;
+  --cat-emerald-fill: #d1fae5;
+  --cat-emerald-text: #065f46;
+  --cat-yellow-fill: #fef9c3;
+  --cat-yellow-text: #854d0e;
+  --cat-brown-fill: #efe3d6;
+  --cat-brown-text: #6b3f1d;
+  --cat-gray-fill: #e5e5e5;
+  --cat-gray-text: #262626;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme='light']):not([data-theme='light-contrast']) {
     --cat-slate-fill: #334155;
     --cat-slate-text: #e2e8f0;
     --cat-red-fill: #7f1d1d;
@@ -52,6 +68,22 @@
     --cat-violet-text: #ddd6fe;
     --cat-pink-fill: #831843;
     --cat-pink-text: #fbcfe8;
+    --cat-rose-fill: #881337;
+    --cat-rose-text: #fecdd3;
+    --cat-fuchsia-fill: #701a75;
+    --cat-fuchsia-text: #f5d0fe;
+    --cat-purple-fill: #581c87;
+    --cat-purple-text: #e9d5ff;
+    --cat-sky-fill: #0c4a6e;
+    --cat-sky-text: #bae6fd;
+    --cat-emerald-fill: #064e3b;
+    --cat-emerald-text: #a7f3d0;
+    --cat-yellow-fill: #713f12;
+    --cat-yellow-text: #fef08a;
+    --cat-brown-fill: #4a2c17;
+    --cat-brown-text: #e8d0b8;
+    --cat-gray-fill: #404040;
+    --cat-gray-text: #e5e5e5;
   }
 }
 
@@ -80,4 +112,63 @@
   --cat-violet-text: #ddd6fe;
   --cat-pink-fill: #831843;
   --cat-pink-text: #fbcfe8;
+  --cat-rose-fill: #881337;
+  --cat-rose-text: #fecdd3;
+  --cat-fuchsia-fill: #701a75;
+  --cat-fuchsia-text: #f5d0fe;
+  --cat-purple-fill: #581c87;
+  --cat-purple-text: #e9d5ff;
+  --cat-sky-fill: #0c4a6e;
+  --cat-sky-text: #bae6fd;
+  --cat-emerald-fill: #064e3b;
+  --cat-emerald-text: #a7f3d0;
+  --cat-yellow-fill: #713f12;
+  --cat-yellow-text: #fef08a;
+  --cat-brown-fill: #4a2c17;
+  --cat-brown-text: #e8d0b8;
+  --cat-gray-fill: #404040;
+  --cat-gray-text: #e5e5e5;
+}
+
+:root[data-theme='light-contrast'] {
+  --cat-slate-fill: #cbd5e1;
+  --cat-slate-text: #020617;
+  --cat-red-fill: #fecaca;
+  --cat-red-text: #450a0a;
+  --cat-orange-fill: #fed7aa;
+  --cat-orange-text: #431407;
+  --cat-amber-fill: #fde68a;
+  --cat-amber-text: #451a03;
+  --cat-lime-fill: #d9f99d;
+  --cat-lime-text: #1a2e05;
+  --cat-green-fill: #bbf7d0;
+  --cat-green-text: #052e16;
+  --cat-teal-fill: #99f6e4;
+  --cat-teal-text: #042f2e;
+  --cat-cyan-fill: #a5f3fc;
+  --cat-cyan-text: #083344;
+  --cat-blue-fill: #bfdbfe;
+  --cat-blue-text: #172554;
+  --cat-indigo-fill: #c7d2fe;
+  --cat-indigo-text: #1e1b4b;
+  --cat-violet-fill: #ddd6fe;
+  --cat-violet-text: #2e1065;
+  --cat-pink-fill: #fbcfe8;
+  --cat-pink-text: #500724;
+  --cat-rose-fill: #fecdd3;
+  --cat-rose-text: #4c0519;
+  --cat-fuchsia-fill: #f5d0fe;
+  --cat-fuchsia-text: #4a044e;
+  --cat-purple-fill: #e9d5ff;
+  --cat-purple-text: #3b0764;
+  --cat-sky-fill: #bae6fd;
+  --cat-sky-text: #082f49;
+  --cat-emerald-fill: #a7f3d0;
+  --cat-emerald-text: #022c22;
+  --cat-yellow-fill: #fef08a;
+  --cat-yellow-text: #422006;
+  --cat-brown-fill: #e3cdb4;
+  --cat-brown-text: #2b1708;
+  --cat-gray-fill: #d4d4d4;
+  --cat-gray-text: #171717;
 }
