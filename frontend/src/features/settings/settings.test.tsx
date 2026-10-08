@@ -236,17 +236,36 @@ describe('appearance settings', () => {
 });
 
 describe('events per day setting', () => {
-  it('defaults to 2, persists a choice and clamps stored garbage', async () => {
-    window.localStorage.removeItem('hoje.maxEventsPerDay');
-    mockApi({ ...base, 'GET /api/v1/me': ME });
+  it('defaults to 2 and saves a choice on the user', async () => {
+    let me = { ...ME, max_events_per_day: 2 };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
     renderApp('/settings');
     const select = await screen.findByLabelText('Events shown per day');
     expect(select).toHaveValue('2');
     await userEvent.selectOptions(select, '4');
     expect(select).toHaveValue('4');
-    expect(window.localStorage.getItem('hoje.maxEventsPerDay')).toBe('4');
-    await userEvent.selectOptions(select, '2');
-    window.localStorage.removeItem('hoje.maxEventsPerDay');
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ max_events_per_day: 4 });
+    expect(window.localStorage.getItem('hoje.maxEventsPerDay')).toBeNull();
+    await waitFor(() => expect(select).toHaveValue('4'));
+  });
+
+  it('shows the value stored on the user', async () => {
+    mockApi({
+      ...base,
+      'GET /api/v1/auth/state': authState({ user: { ...ME, max_events_per_day: 5 } }),
+      'GET /api/v1/me': { ...ME, max_events_per_day: 5 },
+    });
+    renderApp('/settings');
+    expect(await screen.findByLabelText('Events shown per day')).toHaveValue('5');
   });
 });
 

@@ -3,10 +3,12 @@ import { daysInMonth, firstDayRow } from '../../lib/dates';
 import {
   GRID_ROWS,
   compareForLayout,
+  dayMode,
   layoutMonth,
   moveFocusDate,
   rowOfDay,
   rowsUsed,
+  type DayLayout,
   type LayoutInput,
 } from './layout';
 
@@ -188,5 +190,38 @@ describe('moveFocusDate', () => {
     expect(moveFocusDate('2026-01-05', 'ArrowRight')).toBe('2026-02-02');
     expect(moveFocusDate('2026-02-02', 'ArrowLeft')).toBe('2026-01-05');
     expect(moveFocusDate('2026-01-05', 'ArrowLeft')).toBe('2026-01-05');
+  });
+});
+
+describe('dayMode', () => {
+  const days = layoutMonth(
+    [
+      ev('solo', '2026-03-10', '2026-03-10'),
+      ev('a', '2026-03-11', '2026-03-11'),
+      ev('b', '2026-03-11', '2026-03-11'),
+      ev('c', '2026-03-12', '2026-03-12'),
+      ev('d', '2026-03-12', '2026-03-12'),
+      ev('e', '2026-03-12', '2026-03-12'),
+    ],
+    2026,
+    2,
+    2,
+  );
+
+  const at = (i: number) => days[i] as DayLayout;
+
+  it('is empty without events, whatever the overlay', () => {
+    expect(dayMode(at(0), false)).toBe('empty');
+    expect(dayMode(at(0), true)).toBe('empty');
+  });
+
+  it('is full for a lone event and a row once the overlay shares the day', () => {
+    expect(dayMode(at(9), false)).toBe('full');
+    expect(dayMode(at(9), true)).toBe('row');
+  });
+
+  it('is a row for several events, with or without overflow', () => {
+    expect(dayMode(at(10), false)).toBe('row');
+    expect(dayMode(at(11), false)).toBe('row');
   });
 });

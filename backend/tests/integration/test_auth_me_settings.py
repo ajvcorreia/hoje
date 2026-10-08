@@ -20,6 +20,7 @@ async def test_get_me(api):
     user = resp.json()
     assert user["email"] == EMAIL
     assert user["timezone"] == "UTC"
+    assert user["max_events_per_day"] == 2
     assert user["weekend_days"] == [6, 7]
     assert user["totp_enabled"] is False
 
@@ -47,10 +48,33 @@ async def test_patch_me_changes_only_the_given_fields(api):
     assert resp.json()["weekend_days"] == [6, 7]
 
 
+async def test_patch_me_updates_max_events_per_day_persistently(api):
+    await api.register_ok()
+
+    resp = await patch_me(api, {"max_events_per_day": 5})
+
+    assert resp.status_code == 200
+    assert resp.json()["max_events_per_day"] == 5
+    assert resp.json()["timezone"] == "UTC"
+    assert (await api.client.get("/api/v1/me")).json()["max_events_per_day"] == 5
+
+
 @pytest.mark.parametrize(
     "body",
-    [{"timezone": "Mars/Olympus"}, {"weekend_days": [0, 8]}, {"weekend_days": [6, 6, 7]}],
-    ids=["unknown-timezone", "day-out-of-range", "duplicate-days"],
+    [
+        {"timezone": "Mars/Olympus"},
+        {"weekend_days": [0, 8]},
+        {"weekend_days": [6, 6, 7]},
+        {"max_events_per_day": 0},
+        {"max_events_per_day": 7},
+    ],
+    ids=[
+        "unknown-timezone",
+        "day-out-of-range",
+        "duplicate-days",
+        "max-events-zero",
+        "max-events-seven",
+    ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):
     await api.register_ok()
@@ -61,6 +85,7 @@ async def test_patch_me_rejects_invalid_values(api, body):
     unchanged = (await api.client.get("/api/v1/me")).json()
     assert unchanged["timezone"] == "UTC"
     assert unchanged["weekend_days"] == [6, 7]
+    assert unchanged["max_events_per_day"] == 2
 
 
 async def test_me_endpoints_require_authentication(api):

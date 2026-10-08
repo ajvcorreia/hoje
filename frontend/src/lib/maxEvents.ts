@@ -1,10 +1,15 @@
-import { useSyncExternalStore } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, unwrap } from '../api/client';
+import type { components } from '../api/schema';
+import { AUTH_STATE_KEY, useAuthState } from '../app/useAuthState';
+import { ME_KEY } from '../features/settings/api';
 
-export const MAX_EVENTS_KEY = 'hoje.maxEventsPerDay';
 export const MIN_MAX_EVENTS = 1;
 export const MAX_MAX_EVENTS = 6;
 /** Two side-by-side halves, as the month grid always drew them. */
 export const DEFAULT_MAX_EVENTS = 2;
+
+type Me = components['schemas']['Me'];
 
 /** Clamps to the allowed range; anything that is not a number gives the default. */
 export function clampMaxEvents(value: unknown): number {
@@ -13,45 +18,38 @@ export function clampMaxEvents(value: unknown): number {
   return Math.min(MAX_MAX_EVENTS, Math.max(MIN_MAX_EVENTS, Math.round(n)));
 }
 
-/** Used when localStorage is unavailable, so the choice still applies for this session. */
-let fallback = DEFAULT_MAX_EVENTS;
-const listeners = new Set<() => void>();
-
-/** How many events one day of the month grid shows before "+N" (per device). */
-export function readMaxEvents(): number {
-  try {
-    const value = window.localStorage.getItem(MAX_EVENTS_KEY);
-    return value === null ? DEFAULT_MAX_EVENTS : clampMaxEvents(value);
-  } catch {
-    return fallback;
-  }
-}
-
-export function storeMaxEvents(value: number): void {
-  const next = clampMaxEvents(value);
-  fallback = next;
-  try {
-    window.localStorage.setItem(MAX_EVENTS_KEY, String(next));
-  } catch {
-    // Storage may be unavailable; the in-memory fallback keeps the choice for this session.
-  }
-  listeners.forEach((notify) => notify());
-}
-
-function subscribe(notify: () => void): () => void {
-  listeners.add(notify);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key === MAX_EVENTS_KEY) notify();
-  };
-  window.addEventListener('storage', onStorage);
-  return () => {
-    listeners.delete(notify);
-    window.removeEventListener('storage', onStorage);
-  };
-}
-
-/** Current value plus a setter; every consumer re-renders on change (this tab and others). */
+/**
+ * How many events one day of the month grid shows before "+N". Stored on the user, so it follows
+ * them across devices: read from the signed-in user (default 2 while loading), written with an
+ * optimistic PATCH /api/v1/me that is rolled back when the request fails.
+ */
 export function useMaxEvents(): [number, (value: number) => void] {
-  const value = useSyncExternalStore(subscribe, readMaxEvents, () => DEFAULT_MAX_EVENTS);
-  return [value, storeMaxEvents];
+  const qc = useQueryClient();
+  const { data } = useAuthState();
+  const value = clampMaxEvents(data?.user?.max_events_per_day ?? DEFAULT_MAX_EVENTS);
+
+  type AuthData = { user?: Me | null } | undefined;
+  const mutation = useMutation({
+    meta: { protected: true },
+    mutationFn: async (n: number) =>
+      unwrap(await api.PATCH('/api/v1/me', { body: { max_events_per_day: n } })),
+    onMutate: (n) => {
+      const prev = {
+        auth: qc.getQueryData<AuthData>(AUTH_STATE_KEY),
+        me: qc.getQueryData<Me>(ME_KEY),
+      };
+      qc.setQueryData(AUTH_STATE_KEY, (s: AuthData) =>
+        s?.user ? { ...s, user: { ...s.user, max_events_per_day: n } } : s,
+      );
+      qc.setQueryData(ME_KEY, (me: Me | undefined) => (me ? { ...me, max_events_per_day: n } : me));
+      return prev;
+    },
+    onError: (_error, _n, prev) => {
+      if (!prev) return;
+      qc.setQueryData(AUTH_STATE_KEY, prev.auth);
+      qc.setQueryData(ME_KEY, prev.me);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: AUTH_STATE_KEY }),
+  });
+  return [value, (next) => mutation.mutate(clampMaxEvents(next))];
 }

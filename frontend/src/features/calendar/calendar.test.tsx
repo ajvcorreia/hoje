@@ -1,7 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { storeMaxEvents } from '../../lib/maxEvents';
 import { storeStrikePast } from '../../lib/strikePast';
 import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
@@ -179,7 +178,7 @@ describe('month grid', () => {
     expect(cell('2026-02-03')).toHaveFocus();
   });
 
-  it('splits a cell in two halves for two events and adds +1 for a third', async () => {
+  it('lays two events side by side in one row and adds +1 for a third', async () => {
     mockApi(
       baseRoutes([
         makeEvent('e1', 'Alpha', '2026-03-10'),
@@ -193,15 +192,20 @@ describe('month grid', () => {
     renderApp();
     await waitFor(() => expect(within(cell('2026-03-12')).getByText('Solo')).toBeInTheDocument());
 
-    expect(cell('2026-03-10').querySelectorAll('[data-half]')).toHaveLength(2);
+    const lanes = (date: string) =>
+      Array.from(cell(date).querySelectorAll<HTMLElement>('.cal-ev')).map((l) => l.dataset.lane);
+    expect(lanes('2026-03-10')).toEqual(['0', '1']);
     expect(within(cell('2026-03-10')).queryByText(/^\+\d/)).not.toBeInTheDocument();
 
-    expect(cell('2026-03-11').querySelectorAll('[data-half]')).toHaveLength(2);
+    expect(lanes('2026-03-11')).toEqual(['0', '1']);
     expect(within(cell('2026-03-11')).getByText('+1')).toBeInTheDocument();
+    // Both days share the month's tracks, so a lane sits in the same grid column on each.
+    const template = cell('2026-03-10').style.gridTemplateColumns;
+    expect(template).not.toBe('');
+    expect(cell('2026-03-11').style.gridTemplateColumns).toBe(template);
 
-    const solo = cell('2026-03-12').querySelectorAll('.cal-ev');
-    expect(solo).toHaveLength(1);
-    expect(solo[0]).toHaveAttribute('data-lane', 'full');
+    expect(lanes('2026-03-12')).toEqual(['full']);
+    expect(cell('2026-03-12').style.gridTemplateColumns).toBe('');
   });
 
   it('draws a multi-day event as a block with one title per month column', async () => {
@@ -427,6 +431,24 @@ describe('per-event vertical labels', () => {
     expect(within(cell('2026-03-10')).getByText('Other')).toBeInTheDocument();
     expect(within(cell('2026-03-05')).getByText('Solo')).toBeInTheDocument();
   });
+
+  it('rotates labels whatever the max events per day, one lane column each', async () => {
+    mockApi({
+      ...baseRoutes([
+        makeEvent('a', 'Alpha', '2026-03-10', '2026-03-12', vertical),
+        makeEvent('b', 'Beta', '2026-03-10', '2026-03-12', vertical),
+        makeEvent('c', 'Gamma', '2026-03-10', '2026-03-12', vertical),
+      ]),
+      'GET /api/v1/auth/state': authState({
+        user: { ...ME, last_category_id: WORK, max_events_per_day: 4 },
+      }),
+    });
+    renderApp();
+    await waitFor(() => expect(labels()).toHaveLength(3));
+    expect(labels().map((l) => l.dataset.lane)).toEqual(['0', '1', '2']);
+    expect(labels().map((l) => l.textContent)).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(cell('2026-03-10').querySelector('.cal-ev')).toHaveTextContent('');
+  });
 });
 
 describe('vertical label option in the editor', () => {
@@ -584,12 +606,16 @@ describe('strike through past days', () => {
 });
 
 describe('max events per day setting', () => {
-  afterEach(() => storeMaxEvents(2));
+  const withLimit = (n: number, events: ReturnType<typeof makeEvent>[]) => ({
+    ...baseRoutes(events),
+    'GET /api/v1/auth/state': authState({
+      user: { ...ME, last_category_id: WORK, max_events_per_day: n },
+    }),
+  });
 
   it('lays N lanes in two columns and counts only the rest as +N', async () => {
-    storeMaxEvents(3);
     mockApi(
-      baseRoutes([
+      withLimit(3, [
         makeEvent('e1', 'Alpha', '2026-03-10'),
         makeEvent('e2', 'Beta', '2026-03-10'),
         makeEvent('e3', 'Gamma', '2026-03-10'),
@@ -600,14 +626,12 @@ describe('max events per day setting', () => {
     await waitFor(() => expect(within(cell('2026-03-10')).getByText('Delta')).toBeInTheDocument());
     const lanes = Array.from(cell('2026-03-10').querySelectorAll<HTMLElement>('.cal-ev'));
     expect(lanes.map((l) => l.dataset.lane)).toEqual(['0', '1', '2']);
-    expect(lanes.map((l) => l.style.getPropertyValue('--lane-row'))).toEqual(['0', '0', '1']);
     expect(within(cell('2026-03-10')).getByText('+1')).toBeInTheDocument();
   });
 
   it('shows a single event per day as a full-width box with a limit of one', async () => {
-    storeMaxEvents(1);
     mockApi(
-      baseRoutes([makeEvent('e1', 'Alpha', '2026-03-10'), makeEvent('e2', 'Beta', '2026-03-10')]),
+      withLimit(1, [makeEvent('e1', 'Alpha', '2026-03-10'), makeEvent('e2', 'Beta', '2026-03-10')]),
     );
     renderApp();
     await waitFor(() => expect(within(cell('2026-03-10')).getByText('Alpha')).toBeInTheDocument());

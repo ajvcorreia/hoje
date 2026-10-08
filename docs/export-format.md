@@ -26,7 +26,7 @@ are not exported.
   "version": 1,
   "exported_at": "2026-10-05T12:00:00Z",
   "app_version": "1.2.0",
-  "settings": { "timezone": "Europe/Lisbon", "weekend_days": [6, 7] },
+  "settings": { "timezone": "Europe/Lisbon", "weekend_days": [6, 7], "max_events_per_day": 2 },
   "categories": [
     {
       "key": "c1",
@@ -76,7 +76,7 @@ are not exported.
 | `format` | Must be `"hoje-export"`. |
 | `version` | Must be `1`. |
 | `exported_at`, `app_version` | Informational; ignored by the importer. |
-| `settings.timezone` | IANA zone name. `settings.weekend_days`: unique ISO weekdays 1 (Mon) to 7 (Sun). |
+| `settings.timezone` | IANA zone name. `settings.weekend_days`: unique ISO weekdays 1 (Mon) to 7 (Sun). `settings.max_events_per_day`: integer 1 to 6, optional (absent in older files). |
 | `categories[].key` | 1 to 64 characters, unique in the file; referenced by `events[].category`. |
 | `categories[]` | `name` 1 to 40 characters (unique, case-insensitive), `colour` one of the 12 palette keys (`slate red orange amber lime green teal cyan blue indigo violet pink`), `icon` or `null`, `sort_order` >= 0, `is_leave`, `hidden`. |
 | `events[]` | Same bounds as the API: `title` 1 to 200, `notes` <= 5000, dates between 1900-01-01 and 2200-12-31, `end_date` >= `start_date` and at most 366 days after it (defaults to `start_date`), `repeat` is `none`, `monthly` or `yearly`, `repeat_until` >= `start_date`, at most 5 distinct `reminders`. All-day events carry no times; timed events need `start_time` and `end_time` (without a UTC offset; on a single day `end_time` is after `start_time`). `timezone` is an IANA name (defaults to the importing user's, or to `settings.timezone` of the file). |

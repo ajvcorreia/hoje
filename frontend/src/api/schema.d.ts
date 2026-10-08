@@ -621,7 +621,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update time zone and weekend days */
+        /** Update account display settings */
         patch: operations["me_update"];
         trace?: never;
     };
@@ -1331,6 +1331,8 @@ export interface components {
         };
         /** ExportSettings */
         ExportSettings: {
+            /** Max Events Per Day */
+            max_events_per_day?: number | null;
             /** Timezone */
             timezone?: string | null;
             /** Weekend Days */
@@ -1684,6 +1686,8 @@ export interface components {
             id: string;
             /** Last Category Id */
             last_category_id?: string | null;
+            /** Max Events Per Day */
+            max_events_per_day: number;
             /** Timezone */
             timezone: string;
             /** Totp Enabled */
@@ -1693,6 +1697,8 @@ export interface components {
         };
         /** MeUpdate */
         MeUpdate: {
+            /** Max Events Per Day */
+            max_events_per_day?: number | null;
             /** Timezone */
             timezone?: string | null;
             /** Weekend Days */

@@ -212,6 +212,14 @@ def test_settings_are_validated():
     assert paths(invalid(doc(settings={"weekend_days": [0]}))) == ["settings.weekend_days"]
     ok = parse_document(doc(settings={"timezone": "Europe/Lisbon", "weekend_days": [6, 7]}))
     assert ok.settings.weekend_days == [6, 7]
+    assert ok.settings.max_events_per_day is None
+    assert paths(invalid(doc(settings={"max_events_per_day": 0}))) == [
+        "settings.max_events_per_day"
+    ]
+    assert paths(invalid(doc(settings={"max_events_per_day": 7}))) == [
+        "settings.max_events_per_day"
+    ]
+    assert parse_document(doc(settings={"max_events_per_day": 6})).settings.max_events_per_day == 6
 
 
 def test_holiday_calendars_are_validated():

@@ -119,7 +119,11 @@ async def build_export(db: AsyncSession, user: User, *, app_version: str) -> dic
         "version": FORMAT_VERSION,
         "exported_at": clock.now().replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "app_version": app_version,
-        "settings": {"timezone": user.timezone, "weekend_days": list(user.weekend_days)},
+        "settings": {
+            "timezone": user.timezone,
+            "weekend_days": list(user.weekend_days),
+            "max_events_per_day": user.max_events_per_day,
+        },
         "categories": [
             {
                 "key": keys[c.id],
@@ -401,7 +405,10 @@ async def _plan(db: AsyncSession, user: User, doc: ExportDocument, mode: Mode) -
         wk_changes = new.weekend_days is not None and sorted(new.weekend_days) != sorted(
             user.weekend_days
         )
-        plan.settings_update = tz_changes or wk_changes
+        me_changes = (
+            new.max_events_per_day is not None and new.max_events_per_day != user.max_events_per_day
+        )
+        plan.settings_update = tz_changes or wk_changes or me_changes
 
     if replace:
         plan.binned_events = await _count(db, Event, user.id)
@@ -563,6 +570,8 @@ async def _execute(db: AsyncSession, user: User, plan: _Plan, doc: ExportDocumen
             user.timezone = doc.settings.timezone
         if doc.settings.weekend_days is not None:
             user.weekend_days = list(doc.settings.weekend_days)
+        if doc.settings.max_events_per_day is not None:
+            user.max_events_per_day = doc.settings.max_events_per_day
         user.updated_at = now
     if replace and plan.category_rows:
         user.last_category_id = plan.category_rows[0]["id"]

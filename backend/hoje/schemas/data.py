@@ -25,6 +25,7 @@ from hoje.constants import Colour
 from hoje.schemas.common import (
     MAX_EVENT_SPAN_DAYS,
     BoundedDate,
+    MaxEventsPerDay,
     ProblemError,
     Timezone,
     WeekendDays,
@@ -75,6 +76,7 @@ Offset = Annotated[int, Field(ge=0, le=525_600)]  # up to one year, like the API
 class ExportSettings(BaseModel):
     timezone: Timezone | None = None
     weekend_days: WeekendDays | None = None
+    max_events_per_day: MaxEventsPerDay | None = None
 
 
 class ExportCategory(BaseModel):

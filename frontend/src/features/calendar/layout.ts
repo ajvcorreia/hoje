@@ -39,10 +39,22 @@ export interface DayLayout {
   day: number;
   /** Every occurrence touching this day (placed or not). */
   total: number;
-  /** One slot per visible event; slot `l` sits in column `l % 2`, row `floor(l / 2)` of the cell. */
+  /** One slot per visible event; lane `l` is the `l`-th column after the day number. */
   lanes: (Placed | null)[];
   /** Occurrences that did not fit a lane: shown as "+N". */
   overflow: number;
+}
+
+export type DayMode = 'empty' | 'full' | 'row';
+
+/**
+ * How a day cell is laid out: `empty` (no events: blank, or the overlay text alone), `full` (one
+ * event and nothing else: it uses the whole cell) or `row` (day number, overlay text, lanes and
+ * "+N" chip side by side, on the month's shared tracks).
+ */
+export function dayMode(d: DayLayout, hasOverlay: boolean): DayMode {
+  if (d.total === 0) return 'empty';
+  return d.total === 1 && d.overflow === 0 && !hasOverlay ? 'full' : 'row';
 }
 
 const isMultiDay = (e: LayoutInput) => e.end > e.start;
