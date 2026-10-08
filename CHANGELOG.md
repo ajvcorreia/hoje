@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.11] — 2026-10-08
+
+### Added
+
+- Daily summary email (Settings › Email › Daily summary): at a time you choose (default 07:00 in
+  your time zone) Hoje emails the changes made since the previous summary, today's events, today's
+  birthdays and holidays and tomorrow's events. Days with nothing to report send nothing, and a
+  summary is never sent twice. "Send a test summary" sends one immediately.
+- API: `daily_summary_enabled` / `daily_summary_time` on `PATCH /api/v1/me` (and read-only
+  `daily_summary_last_sent_at`), `POST /api/v1/settings/email/daily-summary/test`; both settings
+  are included in export/import. Migration 0009.
+
+### Fixed
+
+- "Recent emails" no longer fails when the log contains security notices.
+
 ## [1.3.10] — 2026-10-08
 
 ### Added
