@@ -11,6 +11,7 @@ import {
   type KeyboardEvent,
   type FocusEvent,
   type MouseEvent,
+  type PointerEvent,
   type WheelEvent,
 } from 'react';
 import { getISOWeek } from 'date-fns';
@@ -46,6 +47,7 @@ import {
   type FitFonts,
   type MonthTracks,
 } from './fitWidth';
+import { centerScrollLeft } from './centerScroll';
 import {
   GRID_ROWS,
   layoutMonth,
@@ -364,6 +366,8 @@ function sameColumnProps(a: MonthColumnProps, b: MonthColumnProps): boolean {
 
 const MonthColumn = memo(MonthColumnImpl, sameColumnProps);
 
+const SCROLL_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
+
 const GUTTER_ROWS = Array.from({ length: GRID_ROWS }, (_, row) => row);
 
 /**
@@ -493,15 +497,74 @@ export function MonthGrid({
     gridRef.current?.querySelector<HTMLElement>(`[data-date="${activeFocus}"]`)?.focus();
   }, [activeFocus]);
 
+  // Centre a month column in the horizontal viewport (smooth unless reduced motion is requested).
+  const centreMonth = useCallback((month: number, smooth: boolean) => {
+    const el = scrollRef.current;
+    const column = gridRef.current?.querySelector<HTMLElement>(`[data-month="${month}"]`);
+    if (!el || !column) return;
+    const left = centerScrollLeft(
+      column.offsetLeft,
+      column.offsetWidth,
+      el.clientWidth,
+      el.scrollWidth,
+    );
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (smooth && !reduced && typeof el.scrollTo === 'function') {
+      el.scrollTo({ left, behavior: 'smooth' });
+    } else {
+      el.scrollLeft = left;
+    }
+  }, []);
+
+  // Month last asked for, and whether the user has scrolled since: until they do, column widths
+  // settling (fonts, measurement) re-centre it; afterwards the user's position is left alone.
+  const requestedMonth = useRef<number | null>(null);
+  const userScrolled = useRef(false);
+  const markUserScrolled = useCallback(() => {
+    userScrolled.current = true;
+  }, []);
+
   // Scroll a month into view on request (initial position, Today, search result).
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || !scrollRequest) return;
-    const column = gridRef.current?.querySelector<HTMLElement>(
-      `[data-month="${scrollRequest.month}"]`,
-    );
-    if (column) el.scrollLeft = Math.max(0, column.offsetLeft - 32);
-  }, [scrollRequest]);
+    if (!scrollRequest) return;
+    userScrolled.current = false;
+    requestedMonth.current = scrollRequest.month;
+    centreMonth(scrollRequest.month, scrollRequest.nonce > 0);
+  }, [scrollRequest, centreMonth]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (!userScrolled.current && requestedMonth.current !== null) {
+        centreMonth(requestedMonth.current, false);
+      }
+    });
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [centreMonth]);
+
+  // Highlight the weekday of the row under the pointer or keyboard focus. Written straight to a
+  // DOM attribute (only when the row changes) so the 12 month columns never re-render for it.
+  const hoverRow = useRef<string | null>(null);
+  const setHoverRow = useCallback((row: string | null) => {
+    if (hoverRow.current === row) return;
+    hoverRow.current = row;
+    const grid = gridRef.current;
+    if (!grid) return;
+    if (row === null) delete grid.dataset.hoverRow;
+    else grid.dataset.hoverRow = row;
+  }, []);
+  const onPointerOver = useCallback(
+    (event: PointerEvent) => {
+      const row = (event.target as HTMLElement).closest('[data-row]');
+      setHoverRow(row?.getAttribute('data-row') ?? null);
+    },
+    [setHoverRow],
+  );
+  const clearHoverRow = useCallback(() => setHoverRow(null), [setHoverRow]);
 
   const onClick = useCallback(
     (event: MouseEvent) => {
@@ -512,6 +575,7 @@ export function MonthGrid({
   );
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
+    if (SCROLL_KEYS.has(event.key)) userScrolled.current = true;
     if (!ARROWS.has(event.key)) return;
     const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-date]');
     if (!cell?.dataset.date) return;
@@ -522,13 +586,21 @@ export function MonthGrid({
     if (next === cell.dataset.date) pendingFocus.current = null;
   }, []);
 
-  const onFocus = useCallback((event: FocusEvent) => {
-    const date = (event.target as HTMLElement).dataset.date;
-    if (date) setFocusDate(date);
-  }, []);
+  const onFocus = useCallback(
+    (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      const date = target.dataset.date;
+      if (date) {
+        setFocusDate(date);
+        setHoverRow(target.getAttribute('data-row'));
+      }
+    },
+    [setHoverRow],
+  );
 
   // The vertical wheel scrolls sideways when there is nothing to scroll vertically.
   const onWheel = useCallback((event: WheelEvent) => {
+    userScrolled.current = true;
     const el = scrollRef.current;
     if (!el || event.shiftKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
     if (el.scrollHeight > el.clientHeight + 1) return;
@@ -564,6 +636,11 @@ export function MonthGrid({
       onKeyDown={onKeyDown}
       onFocus={onFocus}
       onWheel={onWheel}
+      onPointerOver={onPointerOver}
+      onPointerLeave={clearHoverRow}
+      onBlur={clearHoverRow}
+      onPointerDown={markUserScrolled}
+      onTouchStart={markUserScrolled}
     >
       <div
         ref={gridRef}
@@ -578,6 +655,7 @@ export function MonthGrid({
             <div
               key={row}
               className="cal-wd"
+              data-row={row}
               data-weekend={weekendDays.includes(((WEEK_START - 1 + row) % 7) + 1) || undefined}
             >
               {WEEKDAY_LETTERS[(WEEK_START - 1 + row) % 7]}
