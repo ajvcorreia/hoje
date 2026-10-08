@@ -120,15 +120,20 @@ describe('holiday overlays', () => {
     expect(cell('2026-04-25')).toHaveAccessibleName(/holiday: Freedom Day/);
   });
 
-  it('keeps the name as a strip above the events of a day that has events', async () => {
+  it('puts the name before the events of a day that has events, in the same row', async () => {
     mockApi(routes([event('e1', 'Party', '2026-12-25')]));
     renderApp();
     await holidaysDrawn();
     const day = cell('2026-12-25');
-    expect(day.querySelector('.cal-hol')).toHaveAttribute('data-strip');
-    expect(day.querySelector('.cal-hol')).toHaveAttribute('data-cat', 'green');
-    expect(day.querySelector('.cal-hol')?.textContent).not.toBe('');
-    expect(day.querySelector('.cal-ev')).toHaveTextContent('Party');
+    const hol = day.querySelector('.cal-hol');
+    const ev = day.querySelector('.cal-ev');
+    expect(hol).toHaveAttribute('data-cat', 'green');
+    expect(hol?.textContent).not.toBe('');
+    expect(ev).toHaveTextContent('Party');
+    expect(hol?.compareDocumentPosition(ev as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    // Day number, holiday text and the lane are separate tracks of one row.
+    expect(day.style.gridTemplateColumns.split(' minmax')).toHaveLength(3);
+    expect(day).toHaveAccessibleName(/holiday: /);
   });
 
   it('shades non-working holidays like a weekend and leaves working ones alone', async () => {

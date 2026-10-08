@@ -13,7 +13,7 @@ async def me_get(user: CurrentUser) -> Me:
     return Me.model_validate(user)
 
 
-@router.patch("", response_model=Me, summary="Update time zone and weekend days")
+@router.patch("", response_model=Me, summary="Update account display settings")
 async def me_update(body: MeUpdate, user: CurrentUser, db: DbSession) -> Me:
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
     if changes:

@@ -36,6 +36,9 @@ class User(Base):
         default=lambda: [6, 7],
         server_default=text("'{6,7}'::smallint[]"),
     )
+    max_events_per_day: Mapped[int] = mapped_column(
+        SmallInteger, default=2, server_default=text("2")
+    )
     last_category_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "categories.id",
@@ -46,6 +49,10 @@ class User(Base):
     )
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]
+
+    __table_args__ = (
+        CheckConstraint("max_events_per_day between 1 and 6", name="max_events_per_day"),
+    )
 
 
 class Session(Base):

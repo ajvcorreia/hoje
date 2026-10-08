@@ -213,7 +213,9 @@ async def build_rich_account(actor):
         await actor.put("/leave/policies/2026", {"allowance_days": 22.5, "carried_over_days": 3})
     ).status_code == 200
     assert (
-        await actor.patch("/me", {"timezone": "Europe/Paris", "weekend_days": [5, 6]})
+        await actor.patch(
+            "/me", {"timezone": "Europe/Paris", "weekend_days": [5, 6], "max_events_per_day": 4}
+        )
     ).status_code == 200
 
     calendars = {c["code"]: c for c in (await actor.get("/holiday-calendars")).json()}
@@ -279,6 +281,8 @@ async def test_round_trip_export_replace_import_export_is_identical(
     assert "Carnival" not in names and names["Good Friday"]["is_non_working"] is False
     assert names["Freedom Day"]["date"] == "2026-04-24" and names["Company day"]["source"] == "user"
     assert bob.user.timezone == "Europe/Paris" and bob.user.weekend_days == [5, 6]
+    assert bob.user.max_events_per_day == 4
+    assert first["settings"]["max_events_per_day"] == 4
 
 
 async def test_importing_the_same_file_twice_in_merge_mode_is_idempotent(alice, bob):
@@ -358,6 +362,18 @@ async def test_merge_applies_settings_leave_policies_and_calendars(alice):
     assert (await alice.get("/me")).json()["timezone"] == "Asia/Dubai"
     ae = next(c for c in (await alice.get("/holiday-calendars")).json() if c["code"] == "AE")
     assert ae["enabled"] is True and ae["colour"] == "pink"
+
+
+async def test_import_without_max_events_keeps_the_current_value_and_applies_it_when_given(alice):
+    assert (await alice.patch("/me", {"max_events_per_day": 5})).status_code == 200
+    older = small_doc(settings={"timezone": "Asia/Tokyo"})  # an export from before the setting
+    assert (await do_import(alice, older)).status_code == 200
+    assert (await alice.get("/me")).json()["max_events_per_day"] == 5
+
+    newer = small_doc(settings={"max_events_per_day": 3})
+    result = (await do_import(alice, newer)).json()
+    assert result["settings"] == {"update": True}
+    assert (await alice.get("/me")).json()["max_events_per_day"] == 3
 
 
 async def test_event_timezone_defaults_to_the_files_timezone_setting(alice):

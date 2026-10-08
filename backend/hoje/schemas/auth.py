@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from hoje.schemas.common import Timezone, WeekendDays
+from hoje.schemas.common import MaxEventsPerDay, Timezone, WeekendDays
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -19,6 +19,7 @@ class Me(BaseModel):
     email: EmailStr
     timezone: str
     weekend_days: list[int]
+    max_events_per_day: int
     totp_enabled: bool
     last_category_id: uuid.UUID | None = None
     created_at: datetime
@@ -27,6 +28,7 @@ class Me(BaseModel):
 class MeUpdate(BaseModel):
     timezone: Timezone | None = None
     weekend_days: WeekendDays | None = None
+    max_events_per_day: MaxEventsPerDay | None = None
 
 
 class AuthState(BaseModel):

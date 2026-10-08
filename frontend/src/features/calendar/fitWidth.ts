@@ -1,13 +1,15 @@
-import type { DayLayout } from './layout';
+import { dayMode, type DayLayout, type Placed } from './layout';
 
 /** Horizontal padding of an event / holiday box (`padding: 0 4px`). */
 const BOX_PADDING = 8;
-/** Borders between halves and sub-pixel rounding: never let a title land exactly on the edge. */
+/** Borders between lanes and sub-pixel rounding: never let a title land exactly on the edge. */
 const SLACK = 4;
 /** The "+N" chip: 4px padding each side, 1px border each side, 2px from the cell edge. */
 const CHIP_EXTRA = 12;
-/** Font size of the holiday / birthday strip on a day with events, relative to event text. */
-const STRIP_SCALE = 8 / 11;
+/** Width of one rotated label column: the line height of its smallest comfortable text (0.75rem x 1.15). */
+const VLABEL_LANE = 16;
+/** A lane column is never narrower than this, so even a block without a title stays visible. */
+const LANE_MIN = 12;
 
 /** Fonts the grid draws event text with, as canvas `font` strings. */
 export interface FitFonts {
@@ -15,6 +17,13 @@ export interface FitFonts {
   italic: string;
   chip: string;
 }
+
+/** Used until the grid has read the real cell font. */
+export const DEFAULT_FIT_FONTS: FitFonts = {
+  normal: '400 11px sans-serif',
+  italic: 'italic 400 11px sans-serif',
+  chip: '400 9px sans-serif',
+};
 
 export interface TextMeasurer {
   text(value: string): number;
@@ -96,79 +105,79 @@ export function readFitFonts(root: ParentNode | null): FitFonts | null {
   };
 }
 
-/**
- * Width (px) the event area of one month column needs so that no title is truncated:
- * a full-width day needs its title; a split day needs twice its widest column (the last
- * column also carries the "+N" chip when events overflow); a holiday on an empty day needs its name.
- *
- * @param holidays text drawn on days that have no events, by 1-based day of month
- * @param verticalCols columns of lanes (0 when names are never rotated, as with more than two
- *   events a day); with 0 every multi-day title counts as horizontal text
- */
-export function monthFitWidth(
-  layout: readonly DayLayout[],
-  holidays: ReadonlyMap<number, string>,
-  measure: TextMeasurer,
-  verticalCols = 2,
-): number {
-  let fit = 0;
-  for (const d of layout) {
-    const name = holidays.get(d.day);
-    if (d.total === 0) {
-      if (name) fit = Math.max(fit, measure.italic(name) + BOX_PADDING);
-      continue;
-    }
-    // Next to events the name is drawn as a smaller strip along the top of the cell.
-    if (name) fit = Math.max(fit, measure.italic(name) * STRIP_SCALE + BOX_PADDING);
-    // Titles are drawn on the first day of a block, except along a vertical label.
-    const need = (lane: number) => {
-      const p = d.lanes[lane];
-      if (!p || !p.showTitle || (verticalCols > 0 && p.joinNext && p.input.labelVertical)) return 0;
-      return measure.text(p.input.title) + BOX_PADDING;
-    };
-    if (d.total === 1) {
-      fit = Math.max(fit, ...d.lanes.map((_, l) => need(l)));
-      continue;
-    }
-    // Slots sit in one column (a single lane) or two; the chip rides in the last column.
-    const cols = d.lanes.length > 1 ? 2 : 1;
-    const chip = d.overflow > 0 ? measure.chip(`+${d.overflow}`) + CHIP_EXTRA : 0;
-    let widest = 0;
-    for (let col = 0; col < cols; col += 1) {
-      let colNeed = 0;
-      for (let l = col; l < d.lanes.length; l += 2) colNeed = Math.max(colNeed, need(l));
-      widest = Math.max(widest, colNeed + (col === cols - 1 ? chip : 0));
-    }
-    fit = Math.max(fit, cols * widest);
-  }
-  return fit === 0 ? 0 : Math.ceil(fit + SLACK);
+/** Track widths (px) of one month column's event area; see {@link monthTracks}. */
+export interface MonthTracks {
+  /** Holiday / birthday track before the lanes on days with events; 0 when the month has none. */
+  overlay: number;
+  /** One entry per lane column: the widest title (or rotated label) of that lane in the month. */
+  lanes: number[];
+  /** "+N" chip track after the lanes; 0 when no day overflows. */
+  chip: number;
+  /** Minimum width of the whole event area, slack included. */
+  width: number;
+  /** Nothing but rotated labels: the month needs no horizontal-text minimum. */
+  onlyVertical: boolean;
 }
 
-/** Width of one rotated label column: the line height of its smallest comfortable text (0.75rem x 1.15). */
-const VLABEL_LANE = 16;
+/** A block drawn as a rotated label (it spans 2+ days of this month and is flagged). */
+const isVertical = (p: Placed) => !!p.input.labelVertical && (p.joinNext || p.joinPrev);
 
 /**
- * Width (px) the event area needs for rotated multi-day labels alone: one lane column for a
- * full-width label, `verticalCols` for a label that shares days with other events (its box is
- * then one column of the split day). 0 when the month has no rotated label.
+ * Widths one month column needs so that nothing is cut off. A day's content sits in one row:
+ * day number, then the holiday / birthday text, then the lanes side by side, then the "+N" chip.
+ * A day with a single event and no overlay uses the whole cell and needs just that title; an
+ * empty day with an overlay needs the overlay text. Every other day shares the month's tracks, so
+ * lane `i` has the same width and position on all of them (and rotated labels can follow it):
+ * the widest overlay, the widest title per lane and the widest chip of the month. A rotated
+ * label needs one line height per lane it sits in, not its text width.
  *
- * @param verticalCols columns of lanes the grid draws (1 or 2); 0 when names are never rotated
+ * @param overlays holiday / birthday text by 1-based day of month
  */
-export function monthVerticalWidth(layout: readonly DayLayout[], verticalCols: number): number {
-  if (verticalCols <= 0) return 0;
-  let width = 0;
-  for (const [i, d] of layout.entries()) {
-    for (const p of d.lanes) {
-      if (!p || !p.showTitle || !p.joinNext || !p.input.labelVertical) continue;
-      let split = d.total > 1;
-      for (let j = i + 1; !split; j += 1) {
-        const next = layout[j];
-        const q = next?.lanes[p.lane];
-        if (!next || !q || q.input.key !== p.input.key || !q.joinPrev) break;
-        if (next.total > 1) split = true;
-      }
-      width = Math.max(width, (split ? verticalCols : 1) * VLABEL_LANE);
+export function monthTracks(
+  layout: readonly DayLayout[],
+  overlays: ReadonlyMap<number, string>,
+  measure: TextMeasurer,
+): MonthTracks {
+  const titleNeed = (p: Placed) => {
+    if (isVertical(p)) return VLABEL_LANE;
+    return p.showTitle ? measure.text(p.input.title) + BOX_PADDING : 0;
+  };
+  let single = 0;
+  let overlay = 0;
+  let chip = 0;
+  let rows = false;
+  let text = false;
+  const lanes: number[] = [];
+  for (const d of layout) {
+    const name = overlays.get(d.day);
+    const nameWidth = name ? measure.italic(name) + BOX_PADDING : 0;
+    if (name) text = true;
+    const mode = dayMode(d, name !== undefined);
+    if (mode === 'empty') {
+      single = Math.max(single, nameWidth);
+      continue;
     }
+    for (const p of d.lanes) if (p && p.showTitle && !isVertical(p)) text = true;
+    if (mode === 'full') {
+      single = Math.max(single, ...d.lanes.map((p) => (p ? titleNeed(p) : 0)));
+      continue;
+    }
+    rows = true;
+    overlay = Math.max(overlay, nameWidth);
+    d.lanes.forEach((p, l) => {
+      if (p) lanes[l] = Math.max(lanes[l] ?? 0, LANE_MIN, titleNeed(p));
+    });
+    if (d.overflow > 0) chip = Math.max(chip, measure.chip(`+${d.overflow}`) + CHIP_EXTRA);
   }
-  return width;
+  // Lanes nobody uses on a shared-track day but a later lane does keep a minimal column.
+  const filled = Array.from(lanes, (w) => w ?? LANE_MIN);
+  const row = rows ? overlay + filled.reduce((a, b) => a + b, 0) + chip : 0;
+  const widest = Math.max(single, row);
+  return {
+    overlay: rows ? overlay : 0,
+    lanes: rows ? filled : [],
+    chip: rows ? chip : 0,
+    width: text ? Math.ceil(widest + SLACK) : widest,
+    onlyVertical: !text && widest > 0,
+  };
 }

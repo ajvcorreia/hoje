@@ -113,7 +113,7 @@ function isoWeek(date: Date): number {
 test.describe('per-event vertical labels', () => {
   test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
 
-  test('large bold rotated label spans the whole (8-day) block and clicks pass through', async ({
+  test('bold rotated label spans the whole (8-day) block and clicks pass through', async ({
     page,
     account,
     api,
@@ -137,7 +137,7 @@ test.describe('per-event vertical labels', () => {
     const weight = await text.evaluate((el) => Number(getComputedStyle(el).fontWeight));
     expect(weight).toBeGreaterThanOrEqual(700);
     const size = await text.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-    expect(size).toBeGreaterThanOrEqual(18);
+    expect(size).toBeGreaterThanOrEqual(12);
 
     const cellBox = await page.locator(`[data-date="${start}"]`).boundingBox();
     const labelBox = await label.boundingBox();

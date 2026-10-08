@@ -1706,6 +1706,19 @@
       },
       "ExportSettings": {
         "properties": {
+          "max_events_per_day": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Events Per Day"
+          },
           "timezone": {
             "anyOf": [
               {
@@ -2592,6 +2605,10 @@
             ],
             "title": "Last Category Id"
           },
+          "max_events_per_day": {
+            "title": "Max Events Per Day",
+            "type": "integer"
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -2613,6 +2630,7 @@
           "email",
           "timezone",
           "weekend_days",
+          "max_events_per_day",
           "totp_enabled",
           "created_at"
         ],
@@ -2621,6 +2639,19 @@
       },
       "MeUpdate": {
         "properties": {
+          "max_events_per_day": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Events Per Day"
+          },
           "timezone": {
             "anyOf": [
               {
@@ -6875,7 +6906,7 @@
             "description": "Not implemented yet"
           }
         },
-        "summary": "Update time zone and weekend days",
+        "summary": "Update account display settings",
         "tags": [
           "me"
         ]
