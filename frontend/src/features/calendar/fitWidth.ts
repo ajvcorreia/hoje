@@ -159,6 +159,10 @@ export interface MonthTracks {
   onlyVertical: boolean;
   /** `${day}:${lane}` of the blocks drawn as a rotated label (the others use a horizontal title). */
   rotated: ReadonlySet<string>;
+  /** Lane indexes holding a rotated label, ascending: their tracks come first, at a fixed width. */
+  rotatedLanes: number[];
+  /** Width (px) of a rotated label that sits on single-event days, which use the whole cell. */
+  vlabelLane: number;
 }
 
 /** Whether two sets of tracks describe the same geometry (so a column need not re-render). */
@@ -170,6 +174,9 @@ export function sameTracks(a: MonthTracks, b: MonthTracks): boolean {
     a.onlyVertical === b.onlyVertical &&
     a.lanes.length === b.lanes.length &&
     a.lanes.every((w, i) => w === b.lanes[i]) &&
+    a.vlabelLane === b.vlabelLane &&
+    a.rotatedLanes.length === b.rotatedLanes.length &&
+    a.rotatedLanes.every((l, i) => l === b.rotatedLanes[i]) &&
     a.rotated.size === b.rotated.size &&
     Array.from(a.rotated).every((k) => b.rotated.has(k))
   );
@@ -223,11 +230,13 @@ export function monthTracks(
 ): MonthTracks {
   const rotated = new Set<string>();
   const rotatedKeys = new Set<string>();
+  const rotatedLaneSet = new Set<number>();
   layout.forEach((d, i) => {
     for (const p of d.lanes) {
       if (p && isRotated(layout, i, p, measure)) {
         rotated.add(`${d.day}:${p.lane}`);
         rotatedKeys.add(p.input.key);
+        rotatedLaneSet.add(p.lane);
       }
     }
   });
@@ -273,5 +282,7 @@ export function monthTracks(
     width: text ? Math.ceil(widest + SLACK) : widest,
     onlyVertical: !text && widest > 0,
     rotated,
+    rotatedLanes: Array.from(rotatedLaneSet).sort((a, b) => a - b),
+    vlabelLane: measure.lane,
   };
 }
