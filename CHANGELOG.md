@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.8] — 2026-10-08
+
+### Added
+
+- A "Light (high contrast)" theme (Settings › Appearance): pure white surfaces, black text,
+  darker borders and month outlines, a thicker focus ring, outlined events and holidays, and a
+  category palette where every event text/fill pair reaches WCAG AAA (7:1). Light, Dark and System
+  are unchanged.
+- Eight more category colours (rose, fuchsia, purple, sky, emerald, yellow, brown, gray; 20 in
+  total) in the colour picker, in all three themes. Migration 0008 widens the colour constraint;
+  rolling it back turns categories using a new colour into slate.
+
 ## [1.3.7] — 2026-10-08
 
 ### Added
