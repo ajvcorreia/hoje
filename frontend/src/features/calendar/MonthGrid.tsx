@@ -137,24 +137,31 @@ function MonthColumnImpl({
   // Days that put their content in the month's shared tracks (the others use the whole cell).
   const inRow = (n: number) =>
     dayMode(layout[n - 1] as DayLayout, holidays.has(`${prefix}${pad(n)}`)) === 'row';
-  // The month's tracks: day number | overlay? | lane 0..K-1 | chip?. Lane `l` is grid column
-  // `firstLane + l` of a cell; the day number is column 1.
-  const firstLane = tracks.overlay > 0 ? 3 : 2;
+  // The month's tracks: day number | lanes holding a rotated label | overlay? | the other lanes |
+  // chip?. Rotated lanes come first at a fixed width, so their labels sit hard left of the
+  // column. Lane `l` is grid column `laneCol[l]` of a cell; the day number is column 1.
+  const rotatedLanes = tracks.rotatedLanes.filter((l) => l < tracks.lanes.length);
+  const otherLanes = tracks.lanes.map((_, l) => l).filter((l) => !rotatedLanes.includes(l));
+  const overlayCol = 2 + rotatedLanes.length;
+  const laneCol: number[] = [];
+  rotatedLanes.forEach((l, i) => (laneCol[l] = 2 + i));
+  otherLanes.forEach((l, i) => (laneCol[l] = overlayCol + (tracks.overlay > 0 ? 1 : 0) + i));
+  const chipCol = 2 + tracks.lanes.length + (tracks.overlay > 0 ? 1 : 0);
   const rowTemplate = [
     'var(--num-w)',
+    ...rotatedLanes.map((l) => `${tracks.lanes[l] ?? 0}px`),
     ...(tracks.overlay > 0 ? [track(tracks.overlay)] : []),
-    ...tracks.lanes.map(track),
+    ...otherLanes.map((l) => track(tracks.lanes[l] ?? 0)),
     ...(tracks.chip > 0 ? [`${tracks.chip}px`] : []),
   ].join(' ');
-  const trackTotal = tracks.overlay + tracks.lanes.reduce((a, b) => a + b, 0);
-  // Where lane `lane` starts and how much is left after it, as fractions of the shared tracks.
-  const laneFractions = (lane: number) => {
-    const before = tracks.overlay + tracks.lanes.slice(0, lane).reduce((a, b) => a + b, 0);
-    return {
-      '--vl-l': before / trackTotal,
-      '--vl-r': (trackTotal - before - (tracks.lanes[lane] ?? 0)) / trackTotal,
-    };
-  };
+  // Left offset and width (px) of a rotated lane, counted from the end of the day number.
+  const laneBox = (lane: number) =>
+    ({
+      '--vl-x': `${rotatedLanes
+        .slice(0, rotatedLanes.indexOf(lane))
+        .reduce((sum, l) => sum + (tracks.lanes[l] ?? 0), 0)}px`,
+      '--vl-w': `${tracks.lanes[lane] ?? 0}px`,
+    }) as CSSProperties;
 
   // One rotated label per block segment of 2+ days whose event asks for a vertical name and whose
   // name fits the block height (`tracks.rotated`; any other block keeps its horizontal title). It
@@ -270,6 +277,7 @@ function MonthColumnImpl({
             data-cat={dayHolidays[0]?.colour}
             data-holiday=""
             data-birthday={onlyBirthdays}
+            style={shared ? ({ '--c': overlayCol } as CSSProperties) : undefined}
           >
             {holidayText(dayHolidays)}
           </span>
@@ -281,16 +289,13 @@ function MonthColumnImpl({
             data-lane={shared ? String(p.lane) : 'full'}
             data-cat={p.input.colour}
             data-join-next={p.joinNext || undefined}
-            style={shared ? ({ '--c': firstLane + p.lane } as CSSProperties) : undefined}
+            style={shared ? ({ '--c': laneCol[p.lane] } as CSSProperties) : undefined}
           >
             {p.showTitle && !verticalStarts.has(`${day}:${p.lane}`) ? p.input.title : ''}
           </span>
         ))}
         {d.overflow > 0 ? (
-          <span
-            className="cal-more"
-            style={{ '--c': firstLane + tracks.lanes.length } as CSSProperties}
-          >
+          <span className="cal-more" style={{ '--c': chipCol } as CSSProperties}>
             +{d.overflow}
           </span>
         ) : null}
@@ -310,7 +315,6 @@ function MonthColumnImpl({
           '--m-start': offset,
           '--m-len': dim,
           '--col-fit': `${tracks.width}px`,
-          ...(tracks.chip > 0 ? { '--chip-w': `${tracks.chip}px` } : null),
         } as CSSProperties
       }
     >
@@ -330,7 +334,9 @@ function MonthColumnImpl({
           data-past={seg.past || undefined}
           style={
             {
-              ...(seg.split ? laneFractions(seg.lane) : null),
+              ...(seg.split
+                ? laneBox(seg.lane)
+                : ({ '--vl-w': `${tracks.vlabelLane}px` } as CSSProperties)),
               '--seg-row': seg.row,
               '--seg-len': seg.len,
               '--vl-em': verticalLabelEm(seg.title, family),

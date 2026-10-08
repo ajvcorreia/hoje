@@ -265,6 +265,14 @@
   background: var(--ev-fill);
 }
 
+/* A day is one row. Lane columns are not in DOM order (rotated lanes come first), so pin the
+   items to row 1 instead of letting auto-placement start an implicit row after a later column. */
+.cal-cell > .cal-ev,
+.cal-cell > .cal-hol,
+.cal-cell > .cal-more {
+  grid-row: 1;
+}
+
 .cal-ev:not([data-lane='full']) {
   border-right: 1px solid var(--surface);
 }
@@ -293,15 +301,14 @@
    100% - 2 * gap - lead wide. */
 .cal-vlabel[data-lane='full'] {
   left: calc(var(--gap) + var(--lead));
-  right: var(--gap);
+  width: var(--vl-w);
 }
 
 .cal-vlabel:not([data-lane='full']) {
-  /* Follows its lane track: --vl-l / --vl-r are the shares of the shared tracks (overlay and lanes,
-     which split what is left after the fixed chip track) before and after the lane. */
-  --area: calc(100% - 2 * var(--gap) - var(--lead) - var(--chip-w, 0px));
-  left: calc(var(--gap) + var(--lead) + var(--area) * var(--vl-l));
-  right: calc(var(--gap) + var(--chip-w, 0px) + var(--area) * var(--vl-r));
+  /* Rotated lanes are the first tracks of the month at a fixed width: --vl-x is the width of the
+     rotated lanes before this one and --vl-w this lane's width, so the label hugs the left. */
+  left: calc(var(--gap) + var(--lead) + var(--vl-x));
+  width: var(--vl-w);
 }
 
 .cal-vlabel-text {
@@ -408,7 +415,7 @@
 /* A holiday on a day without events fills the event area: hatched, italic name. On a day with
    events it is the track before the lanes. */
 .cal-hol {
-  grid-column: 2;
+  grid-column: var(--c, 2);
   min-width: 0;
   box-sizing: border-box;
   padding: 0 4px;

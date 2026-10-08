@@ -149,6 +149,50 @@ test.describe('per-event vertical labels', () => {
     await expect(page.getByRole('dialog', { name: /^Events on / })).toBeVisible();
   });
 
+  test('rotated labels sit first in the column, hard left, ahead of horizontal events', async ({
+    page,
+    account,
+    api,
+  }) => {
+    void account;
+    const start = dateInCurrentMonth(10);
+    const inside = dateInCurrentMonth(12);
+    await api.createEvent('Conference', start, {
+      end_date: dateInCurrentMonth(17),
+      label_vertical: true,
+    });
+    await api.createEvent('Dentist with a rather long name', inside);
+    await page.goto('/');
+
+    const label = page.locator('.cal-vlabel', { hasText: 'Conference' });
+    await expect(label).toHaveCount(1);
+    const cell = page.locator(`[data-date="${inside}"]`);
+    const num = await cell.locator('.cal-num').boundingBox();
+    const labelBox = await label.boundingBox();
+    const dentist = await cell.locator('.cal-ev', { hasText: 'Dentist' }).boundingBox();
+    expect(num && labelBox && dentist).toBeTruthy();
+    // The label starts right after the day number and ends before the horizontal event.
+    expect(Math.abs((labelBox?.x ?? 0) - ((num?.x ?? 0) + (num?.width ?? 0)))).toBeLessThan(6);
+    expect((labelBox?.x ?? 0) + (labelBox?.width ?? 0)).toBeLessThanOrEqual((dentist?.x ?? 0) + 1);
+  });
+
+  test('a lone rotated label is not centred in a wider column', async ({ page, account, api }) => {
+    void account;
+    const start = dateInCurrentMonth(10);
+    await api.createEvent('Conference', start, {
+      end_date: dateInCurrentMonth(17),
+      label_vertical: true,
+    });
+    await page.goto('/');
+
+    const label = page.locator('.cal-vlabel');
+    await expect(label).toHaveCount(1);
+    const num = await page.locator(`[data-date="${start}"] .cal-num`).boundingBox();
+    const labelBox = await label.boundingBox();
+    expect(num && labelBox).toBeTruthy();
+    expect(Math.abs((labelBox?.x ?? 0) - ((num?.x ?? 0) + (num?.width ?? 0)))).toBeLessThan(6);
+  });
+
   test('a long vertical name shrinks to fit a short block instead of being cut off', async ({
     page,
     account,
