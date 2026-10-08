@@ -191,7 +191,7 @@ test.describe('per-event vertical labels', () => {
     const labelBox = await label.boundingBox();
     expect(num && labelBox).toBeTruthy();
     expect(Math.abs((labelBox?.x ?? 0) - ((num?.x ?? 0) + (num?.width ?? 0)))).toBeLessThan(6);
-    expect(labelBox?.width).toBeLessThanOrEqual(30);
+    expect(labelBox?.width).toBeLessThanOrEqual(17);
   });
 
   test('a long vertical name shrinks to fit a short block instead of being cut off', async ({
@@ -271,7 +271,7 @@ test.describe('week numbers, text size and day-number column', () => {
     const root = () =>
       page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
     const before = await root();
-    await page.getByLabel('Text size').selectOption('large');
+    await page.getByLabel('Text size', { exact: true }).selectOption('large');
     await expect.poll(root).toBeGreaterThan(before);
     expect(await root()).toBeCloseTo(before * 1.125, 1);
   });

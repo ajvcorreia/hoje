@@ -28,6 +28,7 @@ from hoje.schemas.common import (
     MaxEventsPerDay,
     ProblemError,
     Timezone,
+    VerticalTextSize,
     WeekendDays,
 )
 from hoje.schemas.events import MAX_REMINDERS, Repeat
@@ -77,6 +78,7 @@ class ExportSettings(BaseModel):
     timezone: Timezone | None = None
     weekend_days: WeekendDays | None = None
     max_events_per_day: MaxEventsPerDay | None = None
+    vertical_text_size: VerticalTextSize | None = None
 
 
 class ExportCategory(BaseModel):

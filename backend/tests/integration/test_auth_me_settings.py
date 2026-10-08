@@ -21,6 +21,7 @@ async def test_get_me(api):
     assert user["email"] == EMAIL
     assert user["timezone"] == "UTC"
     assert user["max_events_per_day"] == 2
+    assert user["vertical_text_size"] == 12
     assert user["weekend_days"] == [6, 7]
     assert user["totp_enabled"] is False
 
@@ -59,6 +60,17 @@ async def test_patch_me_updates_max_events_per_day_persistently(api):
     assert (await api.client.get("/api/v1/me")).json()["max_events_per_day"] == 5
 
 
+async def test_patch_me_updates_vertical_text_size_persistently(api):
+    await api.register_ok()
+
+    resp = await patch_me(api, {"vertical_text_size": 24})
+
+    assert resp.status_code == 200
+    assert resp.json()["vertical_text_size"] == 24
+    assert resp.json()["max_events_per_day"] == 2
+    assert (await api.client.get("/api/v1/me")).json()["vertical_text_size"] == 24
+
+
 @pytest.mark.parametrize(
     "body",
     [
@@ -67,6 +79,8 @@ async def test_patch_me_updates_max_events_per_day_persistently(api):
         {"weekend_days": [6, 6, 7]},
         {"max_events_per_day": 0},
         {"max_events_per_day": 7},
+        {"vertical_text_size": 7},
+        {"vertical_text_size": 33},
     ],
     ids=[
         "unknown-timezone",
@@ -74,6 +88,8 @@ async def test_patch_me_updates_max_events_per_day_persistently(api):
         "duplicate-days",
         "max-events-zero",
         "max-events-seven",
+        "vertical-size-seven",
+        "vertical-size-33",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):
@@ -86,6 +102,7 @@ async def test_patch_me_rejects_invalid_values(api, body):
     assert unchanged["timezone"] == "UTC"
     assert unchanged["weekend_days"] == [6, 7]
     assert unchanged["max_events_per_day"] == 2
+    assert unchanged["vertical_text_size"] == 12
 
 
 async def test_me_endpoints_require_authentication(api):

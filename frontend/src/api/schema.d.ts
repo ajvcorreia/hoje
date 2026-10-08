@@ -1335,6 +1335,8 @@ export interface components {
             max_events_per_day?: number | null;
             /** Timezone */
             timezone?: string | null;
+            /** Vertical Text Size */
+            vertical_text_size?: number | null;
             /** Weekend Days */
             weekend_days?: number[] | null;
         };
@@ -1692,6 +1694,8 @@ export interface components {
             timezone: string;
             /** Totp Enabled */
             totp_enabled: boolean;
+            /** Vertical Text Size */
+            vertical_text_size: number;
             /** Weekend Days */
             weekend_days: number[];
         };
@@ -1701,6 +1705,8 @@ export interface components {
             max_events_per_day?: number | null;
             /** Timezone */
             timezone?: string | null;
+            /** Vertical Text Size */
+            vertical_text_size?: number | null;
             /** Weekend Days */
             weekend_days?: number[] | null;
         };

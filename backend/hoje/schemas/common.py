@@ -35,6 +35,7 @@ BoundedDate = Annotated[dt.date, Field(ge=MIN_DATE, le=MAX_DATE)]
 Timezone = Annotated[str, Field(min_length=1, max_length=64), AfterValidator(validate_timezone)]
 WeekendDays = Annotated[list[int], Field(max_length=7), AfterValidator(validate_weekend_days)]
 MaxEventsPerDay = Annotated[int, Field(ge=1, le=6)]
+VerticalTextSize = Annotated[int, Field(ge=8, le=32)]
 
 
 class ProblemError(BaseModel):

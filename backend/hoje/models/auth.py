@@ -39,6 +39,9 @@ class User(Base):
     max_events_per_day: Mapped[int] = mapped_column(
         SmallInteger, default=2, server_default=text("2")
     )
+    vertical_text_size: Mapped[int] = mapped_column(
+        SmallInteger, default=12, server_default=text("12")
+    )
     last_category_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "categories.id",
@@ -52,6 +55,7 @@ class User(Base):
 
     __table_args__ = (
         CheckConstraint("max_events_per_day between 1 and 6", name="max_events_per_day"),
+        CheckConstraint("vertical_text_size between 8 and 32", name="vertical_text_size"),
     )
 
 

@@ -3,7 +3,10 @@ import {
   clearMeasureCache,
   monthTracks,
   rotationRule,
+  measurerFor,
   verticalFits,
+  verticalLaneWidth,
+  DEFAULT_FIT_FONTS,
   type TextMeasurer,
 } from './fitWidth';
 import { layoutMonth, type LayoutInput } from './layout';
@@ -270,5 +273,27 @@ describe('verticalFits', () => {
   it('scales the minimum with the root font size (text size setting)', () => {
     expect(verticalFits('Lisbon conference', 8, 17, fonts)).toBe(true);
     expect(verticalFits('Lisbon conference', 8, 17, { ...fonts, rem: 40 })).toBe(false);
+  });
+});
+
+describe('rotated lane width follows the vertical text size', () => {
+  it('is ceil(1.15 x size) + 2 px, and 16px at the default 12px', () => {
+    expect(verticalLaneWidth(12)).toBe(16);
+    expect(verticalLaneWidth(24)).toBe(30);
+    expect(verticalLaneWidth(32)).toBe(39);
+    expect(measurerFor(DEFAULT_FIT_FONTS).lane).toBe(16);
+    expect(measurerFor(DEFAULT_FIT_FONTS, 16, 24).lane).toBe(30);
+  });
+
+  it('scales with the root font size like the text itself', () => {
+    expect(measurerFor({ ...DEFAULT_FIT_FONTS, rem: 20 }, 16, 12).lane).toBe(
+      Math.ceil(1.15 * 12 * (20 / 16)) + 2,
+    );
+  });
+
+  it('reports the lane width in the month tracks', () => {
+    const m = { ...measure, lane: verticalLaneWidth(24) };
+    const layout = march([vertical('a', day(2), day(9))], 2, m);
+    expect(monthTracks(layout, none, m).lane).toBe(30);
   });
 });
