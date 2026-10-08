@@ -194,19 +194,20 @@ describe('month grid', () => {
     await waitFor(() => expect(within(cell('2026-03-12')).getByText('Solo')).toBeInTheDocument());
 
     const lanes = (date: string) =>
-      Array.from(cell(date).querySelectorAll<HTMLElement>('.cal-ev')).map((l) => l.dataset.lane);
+      Array.from(cell(date).querySelectorAll<HTMLElement>('.cal-ev')).map((l) => l.dataset.slot);
     expect(lanes('2026-03-10')).toEqual(['0', '1']);
     expect(within(cell('2026-03-10')).queryByText(/^\+\d/)).not.toBeInTheDocument();
 
     expect(lanes('2026-03-11')).toEqual(['0', '1']);
     expect(within(cell('2026-03-11')).getByText('+1')).toBeInTheDocument();
-    // Both days share the month's tracks, so a lane sits in the same grid column on each.
-    const template = cell('2026-03-10').style.gridTemplateColumns;
-    expect(template).not.toBe('');
-    expect(cell('2026-03-11').style.gridTemplateColumns).toBe(template);
+    // Each day has its own tracks: day number + one per event (the chip is another track).
+    const tracks = (date: string) => cell(date).style.gridTemplateColumns.split(' minmax').length;
+    expect(tracks('2026-03-10')).toBe(3);
+    expect(tracks('2026-03-11')).toBe(3);
 
-    expect(lanes('2026-03-12')).toEqual(['full']);
-    expect(cell('2026-03-12').style.gridTemplateColumns).toBe('');
+    // A lone event is a single track filling the whole area.
+    expect(lanes('2026-03-12')).toEqual(['0']);
+    expect(tracks('2026-03-12')).toBe(2);
   });
 
   it('draws a multi-day event as a block with one title per month column', async () => {
@@ -411,7 +412,7 @@ describe('per-event vertical labels', () => {
     const label = labels()[0] as HTMLElement;
     expect(label).toHaveTextContent('Trip');
     expect(label).toHaveAttribute('aria-hidden', 'true');
-    expect(label).toHaveAttribute('data-lane', 'full');
+    expect(label).toHaveAttribute('data-lane', '0');
     expect(label.style.getPropertyValue('--seg-len')).toBe('4');
     expect(label.style.getPropertyValue('--seg-row')).toBe(
       cell('2026-03-10').getAttribute('data-row'),
@@ -440,7 +441,7 @@ describe('per-event vertical labels', () => {
     ]);
   });
 
-  it('puts the label in the lane of a split block; only flagged events rotate', async () => {
+  it('gives the rotated block its own column ahead of the horizontal events; only flagged events rotate', async () => {
     mockApi(
       baseRoutes([
         makeEvent('trip', 'Trip', '2026-03-10', '2026-03-12', vertical),
@@ -450,7 +451,7 @@ describe('per-event vertical labels', () => {
     );
     renderApp();
     await waitFor(() => expect(labels()).toHaveLength(1));
-    expect(labels()[0]).toHaveAttribute('data-lane', '1');
+    expect(labels()[0]).toHaveAttribute('data-lane', '0');
     expect(labels()[0]).toHaveTextContent('Trip');
     expect(within(cell('2026-03-10')).getByText('Other')).toBeInTheDocument();
     expect(within(cell('2026-03-05')).getByText('Solo')).toBeInTheDocument();
@@ -667,7 +668,7 @@ describe('max events per day setting', () => {
     renderApp();
     await waitFor(() => expect(within(cell('2026-03-10')).getByText('Delta')).toBeInTheDocument());
     const lanes = Array.from(cell('2026-03-10').querySelectorAll<HTMLElement>('.cal-ev'));
-    expect(lanes.map((l) => l.dataset.lane)).toEqual(['0', '1', '2']);
+    expect(lanes.map((l) => l.dataset.slot)).toEqual(['0', '1', '2']);
     expect(within(cell('2026-03-10')).getByText('+1')).toBeInTheDocument();
   });
 

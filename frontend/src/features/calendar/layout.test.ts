@@ -3,12 +3,11 @@ import { daysInMonth, firstDayRow } from '../../lib/dates';
 import {
   GRID_ROWS,
   compareForLayout,
-  dayMode,
   layoutMonth,
   moveFocusDate,
   rowOfDay,
   rowsUsed,
-  type DayLayout,
+  type Placed,
   type LayoutInput,
 } from './layout';
 
@@ -65,34 +64,53 @@ describe('compareForLayout', () => {
   });
 });
 
+const keys = (list: readonly (Placed | null | undefined)[]) =>
+  list.map((p) => p?.input.key ?? null);
+
 describe('layoutMonth', () => {
   it('lays a single event over every day of its span with no overflow', () => {
     const days = layoutMonth([ev('a', '2026-03-10', '2026-03-12')], 2026, 2);
     expect(days).toHaveLength(31);
     for (const d of [10, 11, 12]) {
       expect(days[d - 1]?.total).toBe(1);
-      expect(days[d - 1]?.lanes[0]?.input.key).toBe('a');
-      expect(days[d - 1]?.lanes[1]).toBeNull();
+      expect(keys(days[d - 1]?.items ?? [])).toEqual(['a']);
+      expect(days[d - 1]?.rotated).toEqual([]);
     }
     expect(days[8]?.total).toBe(0);
-    expect(days[9]?.lanes[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
-    expect(days[10]?.lanes[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: true });
-    expect(days[11]?.lanes[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
+    expect(days[9]?.items[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
+    expect(days[10]?.items[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: true });
+    expect(days[11]?.items[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
   });
 
-  it('keeps a multi-day event in the same lane while a single-day event overlaps it', () => {
+  it('packs the events of a day left to right in placement order, multi-day first', () => {
     const days = layoutMonth(
-      [ev('trip', '2026-03-10', '2026-03-14'), ev('lunch', '2026-03-12', '2026-03-12')],
+      [ev('lunch', '2026-03-12', '2026-03-12'), ev('trip', '2026-03-10', '2026-03-14')],
       2026,
       2,
     );
-    for (const d of [10, 11, 12, 13, 14]) expect(days[d - 1]?.lanes[0]?.input.key).toBe('trip');
-    expect(days[11]?.lanes[1]?.input.key).toBe('lunch');
+    expect(keys(days[11]?.items ?? [])).toEqual(['trip', 'lunch']);
+    expect(keys(days[9]?.items ?? [])).toEqual(['trip']);
     expect(days[11]?.total).toBe(2);
     expect(days[11]?.overflow).toBe(0);
   });
 
-  it('puts events that do not fit a lane into the +N count only on the days they cover', () => {
+  it('leaves no gap: a multi-day event moves left when the event before it ends', () => {
+    const days = layoutMonth(
+      [
+        ev('a', '2026-03-10', '2026-03-10'),
+        ev('b', '2026-03-09', '2026-03-12'),
+        ev('c', '2026-03-10', '2026-03-10'),
+      ],
+      2026,
+      2,
+      6,
+    );
+    expect(keys(days[9]?.items ?? [])).toEqual(['b', 'a', 'c']);
+    expect(keys(days[10]?.items ?? [])).toEqual(['b']);
+    expect(days[10]?.items[0]?.lane).toBe(0);
+  });
+
+  it('puts events that do not fit into the +N count only on the days they cover', () => {
     const days = layoutMonth(
       [
         ev('a', '2026-03-10', '2026-03-10'),
@@ -105,7 +123,7 @@ describe('layoutMonth', () => {
     );
     expect(days[9]?.total).toBe(4);
     expect(days[9]?.overflow).toBe(2);
-    expect(days[9]?.lanes.map((l) => l?.input.key)).toEqual(['a', 'b']);
+    expect(keys(days[9]?.items ?? [])).toEqual(['a', 'b']);
     expect(days[8]?.overflow).toBe(0);
   });
 
@@ -122,56 +140,152 @@ describe('layoutMonth', () => {
     expect(days[9]?.overflow).toBe(1);
   });
 
-  it('reuses a freed lane for a later event', () => {
-    const days = layoutMonth(
-      [ev('a', '2026-03-01', '2026-03-02'), ev('b', '2026-03-03', '2026-03-04')],
-      2026,
-      2,
-    );
-    expect(days[0]?.lanes[0]?.input.key).toBe('a');
-    expect(days[2]?.lanes[0]?.input.key).toBe('b');
-  });
-
   it('continues a block into the next month column with the title repeated', () => {
     const trip = ev('trip', '2026-01-30', '2026-02-02');
     const jan = layoutMonth([trip], 2026, 0);
     const feb = layoutMonth([trip], 2026, 1);
-    expect(jan[29]?.lanes[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
-    expect(jan[30]?.lanes[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
-    expect(feb[0]?.lanes[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
-    expect(feb[1]?.lanes[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
+    expect(jan[29]?.items[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
+    expect(jan[30]?.items[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
+    expect(feb[0]?.items[0]).toMatchObject({ showTitle: true, joinPrev: false, joinNext: true });
+    expect(feb[1]?.items[0]).toMatchObject({ showTitle: false, joinPrev: true, joinNext: false });
     expect(feb[2]?.total).toBe(0);
   });
 
-  it('uses laneCount lanes and counts the rest as overflow', () => {
+  it('shows at most laneCount events per day and counts the rest as overflow', () => {
     const four = ['a', 'b', 'c', 'd'].map((k) => ev(k, '2026-03-10', '2026-03-10'));
     const one = layoutMonth(four, 2026, 2, 1);
-    expect(one[9]?.lanes).toHaveLength(1);
+    expect(one[9]?.items).toHaveLength(1);
     expect(one[9]?.overflow).toBe(3);
     const six = layoutMonth([...four, ev('e', '2026-03-10', '2026-03-10')], 2026, 2, 6);
-    expect(six[9]?.lanes.map((l) => l?.input.key)).toEqual(['a', 'b', 'c', 'd', 'e', undefined]);
+    expect(keys(six[9]?.items ?? [])).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(six[9]?.overflow).toBe(0);
     expect(layoutMonth(four, 2026, 2, 3)[9]?.overflow).toBe(1);
-  });
-
-  it('keeps a multi-day event in one lane with many lanes', () => {
-    const days = layoutMonth(
-      [
-        ev('trip', '2026-03-10', '2026-03-12'),
-        ev('x', '2026-03-11', '2026-03-11'),
-        ev('y', '2026-03-11', '2026-03-11'),
-      ],
-      2026,
-      2,
-      4,
-    );
-    for (const d of [10, 11, 12]) expect(days[d - 1]?.lanes[0]?.input.key).toBe('trip');
-    expect(days[10]?.lanes.map((l) => l?.input.key)).toEqual(['trip', 'x', 'y', undefined]);
   });
 
   it('ignores events outside the month', () => {
     const days = layoutMonth([ev('x', '2026-04-01', '2026-04-05')], 2026, 2);
     expect(days.every((d) => d.total === 0)).toBe(true);
+  });
+});
+
+describe('layoutMonth with rotated blocks', () => {
+  const rotates = (input: LayoutInput) => !!input.labelVertical;
+  const vertical = (key: string, start: string, end: string) =>
+    ev(key, start, end, { labelVertical: true });
+
+  it('puts a rotated block in a lane of its own, outside the packed events', () => {
+    const days = layoutMonth(
+      [
+        ev('flight', '2026-03-10', '2026-03-10'),
+        vertical('doha', '2026-03-10', '2026-03-16'),
+        ev('pay', '2026-03-15', '2026-03-15'),
+      ],
+      2026,
+      2,
+      2,
+      rotates,
+    );
+    for (let d = 10; d <= 16; d += 1) expect(days[d - 1]?.rotated[0]?.input.key).toBe('doha');
+    expect(days[9]?.rotated[0]).toMatchObject({
+      rotated: true,
+      lane: 0,
+      blockLen: 7,
+      showTitle: true,
+    });
+    expect(keys(days[9]?.items ?? [])).toEqual(['flight']);
+    // No empty slot ahead of the event on day 15 either.
+    expect(keys(days[14]?.items ?? [])).toEqual(['pay']);
+    expect(days[14]?.items[0]?.lane).toBe(0);
+  });
+
+  it('shares a lane between blocks that do not overlap, separates overlapping ones', () => {
+    const days = layoutMonth(
+      [
+        vertical('a', '2026-03-02', '2026-03-04'),
+        vertical('b', '2026-03-05', '2026-03-07'),
+        vertical('c', '2026-03-06', '2026-03-09'),
+      ],
+      2026,
+      2,
+      4,
+      rotates,
+    );
+    expect(days[2]?.rotated).toHaveLength(2);
+    expect(keys(days[2]?.rotated ?? [])).toEqual(['a', null]);
+    expect(keys(days[4]?.rotated ?? [])).toEqual(['b', null]);
+    expect(keys(days[5]?.rotated ?? [])).toEqual(['b', 'c']);
+    expect(keys(days[8]?.rotated ?? [])).toEqual([null, 'c']);
+  });
+
+  it('does not rotate what the predicate refuses, nor a single day of the month', () => {
+    const refused = layoutMonth(
+      [vertical('a', '2026-03-10', '2026-03-12')],
+      2026,
+      2,
+      2,
+      () => false,
+    );
+    expect(refused[9]?.rotated).toEqual([]);
+    expect(keys(refused[9]?.items ?? [])).toEqual(['a']);
+    const clipped = layoutMonth([vertical('b', '2026-03-31', '2026-04-03')], 2026, 2, 2, rotates);
+    expect(clipped[30]?.rotated).toEqual([]);
+    expect(keys(clipped[30]?.items ?? [])).toEqual(['b']);
+  });
+
+  it('asks the predicate with the number of days inside the month', () => {
+    const seen: number[] = [];
+    layoutMonth([vertical('b', '2026-03-30', '2026-04-03')], 2026, 2, 2, (_, days) => {
+      seen.push(days);
+      return false;
+    });
+    expect(seen).toEqual([2]);
+  });
+
+  it('counts rotated and horizontal events together against the per-day maximum', () => {
+    const days = layoutMonth(
+      [
+        vertical('v1', '2026-03-10', '2026-03-12'),
+        vertical('v2', '2026-03-10', '2026-03-12'),
+        ev('x', '2026-03-11', '2026-03-11'),
+        ev('y', '2026-03-11', '2026-03-11'),
+      ],
+      2026,
+      2,
+      3,
+      rotates,
+    );
+    expect(keys(days[10]?.rotated ?? [])).toEqual(['v1', 'v2']);
+    expect(keys(days[10]?.items ?? [])).toEqual(['x']);
+    expect(days[10]?.overflow).toBe(1);
+    expect(days[10]?.total).toBe(4);
+  });
+
+  it('gives rotated blocks priority over earlier horizontal events', () => {
+    const days = layoutMonth(
+      [ev('h', '2026-03-05', '2026-03-12'), vertical('v', '2026-03-10', '2026-03-12')],
+      2026,
+      2,
+      1,
+      rotates,
+    );
+    expect(keys(days[10]?.rotated ?? [])).toEqual(['v']);
+    expect(days[10]?.items).toEqual([]);
+    expect(days[10]?.overflow).toBe(1);
+    expect(keys(days[5]?.items ?? [])).toEqual(['h']);
+  });
+
+  it('overflows a rotated block as a whole when a day of its span is full', () => {
+    const days = layoutMonth(
+      [vertical('v1', '2026-03-10', '2026-03-12'), vertical('v2', '2026-03-12', '2026-03-14')],
+      2026,
+      2,
+      1,
+      rotates,
+    );
+    expect(keys(days[9]?.rotated ?? [])).toEqual(['v1']);
+    expect(days[12]?.rotated).toEqual([null]);
+    expect(days[12]?.overflow).toBe(1);
+    expect(days[11]?.overflow).toBe(1);
   });
 });
 
@@ -190,38 +304,5 @@ describe('moveFocusDate', () => {
     expect(moveFocusDate('2026-01-05', 'ArrowRight')).toBe('2026-02-02');
     expect(moveFocusDate('2026-02-02', 'ArrowLeft')).toBe('2026-01-05');
     expect(moveFocusDate('2026-01-05', 'ArrowLeft')).toBe('2026-01-05');
-  });
-});
-
-describe('dayMode', () => {
-  const days = layoutMonth(
-    [
-      ev('solo', '2026-03-10', '2026-03-10'),
-      ev('a', '2026-03-11', '2026-03-11'),
-      ev('b', '2026-03-11', '2026-03-11'),
-      ev('c', '2026-03-12', '2026-03-12'),
-      ev('d', '2026-03-12', '2026-03-12'),
-      ev('e', '2026-03-12', '2026-03-12'),
-    ],
-    2026,
-    2,
-    2,
-  );
-
-  const at = (i: number) => days[i] as DayLayout;
-
-  it('is empty without events, whatever the overlay', () => {
-    expect(dayMode(at(0), false)).toBe('empty');
-    expect(dayMode(at(0), true)).toBe('empty');
-  });
-
-  it('is full for a lone event and a row once the overlay shares the day', () => {
-    expect(dayMode(at(9), false)).toBe('full');
-    expect(dayMode(at(9), true)).toBe('row');
-  });
-
-  it('is a row for several events, with or without overflow', () => {
-    expect(dayMode(at(10), false)).toBe('row');
-    expect(dayMode(at(11), false)).toBe('row');
   });
 });

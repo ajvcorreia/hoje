@@ -248,9 +248,9 @@
 }
 
 /*
- * Events live in the grid tracks right of the day-number sub-column. A day with one event uses
- * the whole cell; otherwise MonthColumn gives the cell the month's shared tracks (overlay text,
- * then lane 0..N-1, then the "+N" chip) and each item picks its track with --c. Text is always
+ * Events live in the grid tracks right of the day-number sub-column. MonthColumn gives every day
+ * its own tracks (narrow rotated columns, overlay text, one track per event packed left to right,
+ * the "+N" chip) and each item picks its track with --c. Text is always
  * one horizontal line and never cut or shortened: the month column is made wide enough for it
  * instead (see fitWidth.ts), so there is no overflow or ellipsis here.
  */
@@ -273,7 +273,7 @@
   grid-row: 1;
 }
 
-.cal-ev:not([data-lane='full']) {
+.cal-ev:not([data-edge]) {
   border-right: 1px solid var(--surface);
 }
 
@@ -299,14 +299,10 @@
 
 /* Offsets are from the column's padding box, so add the side gap; the event area is
    100% - 2 * gap - lead wide. */
-.cal-vlabel[data-lane='full'] {
-  left: calc(var(--gap) + var(--lead));
-  width: var(--vl-w);
-}
-
-.cal-vlabel:not([data-lane='full']) {
-  /* Rotated lanes are the first tracks of the month at a fixed width: --vl-x is the width of the
-     rotated lanes before this one and --vl-w this lane's width, so the label hugs the left. */
+.cal-vlabel {
+  /* Rotated lanes are the first tracks of every day at a fixed width: --vl-x is the width of the
+     rotated lanes before this one and --vl-w this lane's width, so the label hugs the left and
+     fills exactly its own narrow column. */
   left: calc(var(--gap) + var(--lead) + var(--vl-x));
   width: var(--vl-w);
 }
