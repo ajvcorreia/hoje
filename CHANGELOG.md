@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] — 2026-10-08
+
+### Added
+
+- Settings › "Vertical event text size" (10–32 px, default 12, stored per user like "Events shown
+  per day", `vertical_text_size` on `PATCH /api/v1/me`, included in export/import; migration 0007).
+  Rotated multi-day labels use that size and shrink only when the name does not fit the event's
+  height; the narrow rotated column widens with the size. A name that cannot fit even at the
+  minimum size is still drawn as a horizontal title.
+
 ## [1.3.6] — 2026-10-08
 
 ### Changed
