@@ -1,5 +1,7 @@
 """Current-user endpoints."""
 
+import datetime as dt
+
 from fastapi import APIRouter
 
 from hoje.api.deps import CurrentUser, DbSession
@@ -18,6 +20,8 @@ async def me_update(body: MeUpdate, user: CurrentUser, db: DbSession) -> Me:
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
     if changes:
         for field, value in changes.items():
+            if field == "daily_summary_time":
+                value = dt.time.fromisoformat(value)
             setattr(user, field, value)
         await db.commit()
         await db.refresh(user)  # updated_at is set by the database

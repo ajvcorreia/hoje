@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
-import { btnSecondary } from '../../components/ui/classes';
+import { btnSecondary, inputClass } from '../../components/ui/classes';
 import { ApiError } from '../../api/client';
+import { isSummaryTime, useDailySummary } from '../../lib/dailySummary';
 import { describeError } from '../../lib/errors';
-import { useEmailLog, useEmailSettings, useSendTestEmail } from './api';
+import { useEmailLog, useEmailSettings, useSendTestDailySummary, useSendTestEmail } from './api';
 import { SettingsSection } from './SettingsSection';
 
 export function EmailSection() {
@@ -44,6 +46,7 @@ export function EmailSection() {
               </p>
             ) : null}
           </div>
+          <DailySummary configured={settings.data.configured} />
         </>
       ) : null}
       <RecentEmails />
@@ -55,6 +58,8 @@ const KIND_LABELS = {
   reminder: 'Reminder',
   password_reset: 'Password reset',
   test: 'Test',
+  security: 'Security',
+  daily_summary: 'Daily summary',
 } as const;
 
 function RecentEmails() {
@@ -108,6 +113,76 @@ function RecentEmails() {
           ))}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+function DailySummary({ configured }: { configured: boolean }) {
+  const summary = useDailySummary();
+  const test = useSendTestDailySummary();
+  // What is being typed; null once a complete time was saved (or the field lost focus).
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <div className="space-y-3 border-t border-border pt-4">
+      <h3 className="text-sm font-semibold">Daily summary</h3>
+      <label className="flex min-h-9 items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={summary.enabled}
+          disabled={!configured && !summary.enabled}
+          onChange={(e) => summary.setEnabled(e.target.checked)}
+          className="size-4"
+        />
+        Send me a daily summary email
+      </label>
+      <div>
+        <label htmlFor="daily-summary-time" className="block text-sm font-medium">
+          Send at
+        </label>
+        <input
+          id="daily-summary-time"
+          type="time"
+          value={draft ?? summary.time}
+          disabled={!summary.enabled}
+          onChange={(e) => {
+            setDraft(isSummaryTime(e.target.value) ? null : e.target.value);
+            summary.setTime(e.target.value);
+          }}
+          onBlur={() => setDraft(null)}
+          className={`${inputClass} mt-2 sm:max-w-40`}
+        />
+        <p className="mt-1 text-xs text-text-muted">Time zone: {summary.timezone}</p>
+      </div>
+      <p className="text-xs text-text-muted">
+        {configured
+          ? 'The email lists what changed in your calendar since the last summary, today’s events, today’s birthdays and holidays, and tomorrow’s events. Days with nothing to report are skipped.'
+          : 'Email is not set up on this server, so daily summaries cannot be sent yet.'}
+      </p>
+      {summary.error ? (
+        <p role="alert" className="text-sm text-danger">
+          {describeError(summary.error)}
+        </p>
+      ) : null}
+      <div className="space-y-2">
+        <button
+          type="button"
+          className={btnSecondary}
+          disabled={!configured || test.isPending}
+          onClick={() => test.mutate()}
+        >
+          Send a test summary
+        </button>
+        <div role="status" className="min-h-5 text-sm text-text-muted">
+          {test.isSuccess ? 'Test summary sent. Check your inbox.' : null}
+        </div>
+        {test.isError ? (
+          <p role="alert" className="text-sm text-danger">
+            {test.error instanceof ApiError && test.error.status === 503
+              ? 'Email is not configured on the server.'
+              : describeError(test.error)}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ME, authState, mockApi, problem, renderApp } from '../../test/utils';
@@ -305,5 +305,118 @@ describe('vertical event text size setting', () => {
     await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
     expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ vertical_text_size: 24 });
     await waitFor(() => expect(select).toHaveValue('24'));
+  });
+});
+
+describe('daily summary email setting', () => {
+  const withSummary = (over: object = {}) => ({
+    ...ME,
+    daily_summary_enabled: false,
+    daily_summary_time: '07:00',
+    ...over,
+  });
+
+  function setup(extra: Record<string, unknown> = {}, emailConfigured = true) {
+    let me = withSummary();
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/settings/email': {
+        configured: emailConfigured,
+        from_address: 'hoje@example.com',
+      },
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+      ...extra,
+    });
+    return api;
+  }
+
+  it('is off by default with the time disabled, the zone shown and the contents explained', async () => {
+    setup();
+    renderApp('/settings');
+    const toggle = await screen.findByRole('checkbox', { name: 'Send me a daily summary email' });
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByLabelText('Send at')).toBeDisabled();
+    expect(screen.getByLabelText('Send at')).toHaveValue('07:00');
+    expect(screen.getByText('Time zone: Europe/Lisbon')).toBeInTheDocument();
+    expect(screen.getByText(/Days with nothing to report are skipped/)).toBeInTheDocument();
+  });
+
+  it('PATCHes the switch and then the time as HH:MM', async () => {
+    const api = setup();
+    renderApp('/settings');
+    const toggle = await screen.findByRole('checkbox', { name: 'Send me a daily summary email' });
+    await userEvent.click(toggle);
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ daily_summary_enabled: true });
+    await waitFor(() => expect(toggle).toBeChecked());
+
+    const time = screen.getByLabelText('Send at');
+    await waitFor(() => expect(time).toBeEnabled());
+    fireEvent.change(time, { target: { value: '18:45' } });
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(2));
+    expect(api.callsTo('PATCH', '/api/v1/me')[1]?.body).toEqual({ daily_summary_time: '18:45' });
+    await waitFor(() => expect(time).toHaveValue('18:45'));
+  });
+
+  it('does not send an incomplete time', async () => {
+    const api = setup();
+    renderApp('/settings');
+    await userEvent.click(
+      await screen.findByRole('checkbox', { name: 'Send me a daily summary email' }),
+    );
+    const time = screen.getByLabelText('Send at');
+    await waitFor(() => expect(time).toBeEnabled());
+    fireEvent.change(time, { target: { value: '' } });
+    expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1);
+  });
+
+  it('sends a test summary and reports it', async () => {
+    const api = setup({
+      'POST /api/v1/settings/email/daily-summary/test': () => Response.json({}, { status: 202 }),
+    });
+    renderApp('/settings');
+    await userEvent.click(await screen.findByRole('button', { name: 'Send a test summary' }));
+    expect(await screen.findByText(/Test summary sent/)).toBeInTheDocument();
+    expect(api.callsTo('POST', '/api/v1/settings/email/daily-summary/test')).toHaveLength(1);
+  });
+
+  it('reports a failed test summary', async () => {
+    setup({
+      'POST /api/v1/settings/email/daily-summary/test': problem(502, 'mail server down'),
+    });
+    renderApp('/settings');
+    await userEvent.click(await screen.findByRole('button', { name: 'Send a test summary' }));
+    expect(await screen.findByText(/Something went wrong on the server/)).toBeInTheDocument();
+  });
+
+  it('is disabled with an explanation when email is not configured on the server', async () => {
+    setup({}, false);
+    renderApp('/settings');
+    const toggle = await screen.findByRole('checkbox', { name: 'Send me a daily summary email' });
+    expect(toggle).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send a test summary' })).toBeDisabled();
+    expect(screen.getByText(/daily summaries cannot be sent yet/)).toBeInTheDocument();
+  });
+
+  it('labels daily summary rows in Recent emails', async () => {
+    setup({
+      'GET /api/v1/settings/email/log': () => [
+        {
+          created_at: '2026-10-08T06:00:00Z',
+          kind: 'daily_summary',
+          subject: 'Hoje — Thursday 8 October: 2 events today',
+          status: 'sent',
+          error: null,
+        },
+      ],
+    });
+    renderApp('/settings');
+    const list = await screen.findByRole('list', { name: 'Recent emails' });
+    expect(within(list).getByText('Daily summary')).toBeVisible();
   });
 });

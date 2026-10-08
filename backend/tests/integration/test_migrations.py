@@ -105,3 +105,36 @@ async def test_categories_colour_check_allows_twenty_colours(db_session: AsyncSe
     for colour in ("violet", "pink", "rose", "fuchsia", "purple", "sky", "emerald", "yellow"):
         assert f"'{colour}'" in definition
     assert "'brown'" in definition and "'gray'" in definition
+
+
+@pytest.mark.asyncio
+async def test_users_daily_summary_columns(db_session: AsyncSession) -> None:
+    """0009 adds the daily summary settings with their defaults."""
+    rows = (
+        await db_session.execute(
+            text(
+                "SELECT column_name, data_type, is_nullable, column_default "
+                "FROM information_schema.columns WHERE table_name = 'users' "
+                "AND column_name LIKE 'daily_summary%' ORDER BY column_name"
+            )
+        )
+    ).all()
+    assert [(r[0], r[1], r[2]) for r in rows] == [
+        ("daily_summary_enabled", "boolean", "NO"),
+        ("daily_summary_last_sent_at", "timestamp with time zone", "YES"),
+        ("daily_summary_time", "time without time zone", "NO"),
+    ]
+    assert rows[0][3] == "false" and rows[2][3].startswith("'07:00")
+
+
+@pytest.mark.asyncio
+async def test_notification_log_kind_allows_daily_summary(db_session: AsyncSession) -> None:
+    definition = (
+        await db_session.execute(
+            text(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                "WHERE conname = 'ck_notification_log_kind'"
+            )
+        )
+    ).scalar_one()
+    assert "'daily_summary'" in definition and "'security'" in definition

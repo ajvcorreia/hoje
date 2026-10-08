@@ -659,6 +659,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/email/daily-summary/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a daily summary email now
+         * @description Builds the summary for today and tomorrow and sends it to the current user, whether or not the daily summary is enabled and even when there is nothing to report.
+         */
+        post: operations["settings_daily_summary_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/email/log": {
         parameters: {
             query?: never;
@@ -959,7 +979,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "reminder" | "password_reset" | "test";
+            kind: "reminder" | "password_reset" | "test" | "security" | "daily_summary";
             /**
              * Status
              * @enum {string}
@@ -1331,6 +1351,10 @@ export interface components {
         };
         /** ExportSettings */
         ExportSettings: {
+            /** Daily Summary Enabled */
+            daily_summary_enabled?: boolean | null;
+            /** Daily Summary Time */
+            daily_summary_time?: string | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
             /** Timezone */
@@ -1676,6 +1700,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Daily Summary Enabled */
+            daily_summary_enabled: boolean;
+            /** Daily Summary Last Sent At */
+            daily_summary_last_sent_at?: string | null;
+            /** Daily Summary Time */
+            daily_summary_time: string;
             /**
              * Email
              * Format: email
@@ -1701,6 +1731,10 @@ export interface components {
         };
         /** MeUpdate */
         MeUpdate: {
+            /** Daily Summary Enabled */
+            daily_summary_enabled?: boolean | null;
+            /** Daily Summary Time */
+            daily_summary_time?: string | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
             /** Timezone */
@@ -5105,6 +5139,89 @@ export interface operations {
             };
             /** @description Not implemented yet */
             501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    settings_daily_summary_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Upstream mail server rejected or failed the request */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Feature not available (for example SMTP not configured) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

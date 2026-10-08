@@ -54,6 +54,17 @@ export function useSendTestEmail() {
   });
 }
 
+export function useSendTestDailySummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { protected: true },
+    mutationFn: async () => {
+      unwrap(await api.POST('/api/v1/settings/email/daily-summary/test'));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: EMAIL_LOG_KEY }),
+  });
+}
+
 export function useChangePassword() {
   return useMutation({
     meta: { protected: true },

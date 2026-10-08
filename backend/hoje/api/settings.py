@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 
 from hoje.api._common import problems
-from hoje.api.deps import CurrentUser, DbSession, get_mailer
+from hoje.api.deps import AppSettings, CurrentUser, DbSession, get_mailer
 from hoje.models import NotificationLog
 from hoje.schemas import EmailLogEntry, EmailSettings
+from hoje.services import daily_summary, throttle
 from hoje.services import mailer as mailer_service
-from hoje.services import throttle
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -42,6 +42,26 @@ async def settings_email_test(mailer: Mail, user: CurrentUser, db: DbSession) ->
         user_id=user.id,
     )
     if not sent:
+        raise HTTPException(status_code=502, detail="The mail server could not deliver the email")
+
+
+@router.post(
+    "/email/daily-summary/test",
+    status_code=202,
+    responses=problems(429, 502, 503),
+    summary="Send a daily summary email now",
+    description=(
+        "Builds the summary for today and tomorrow and sends it to the current user, whether or "
+        "not the daily summary is enabled and even when there is nothing to report."
+    ),
+)
+async def settings_daily_summary_test(
+    mailer: Mail, settings: AppSettings, user: CurrentUser, db: DbSession
+) -> None:
+    if not mailer.configured:
+        raise HTTPException(status_code=503, detail="Email is not configured on this server")
+    await throttle.hit(db, f"daily-summary-test:user:{user.id}")
+    if not await daily_summary.send_test(db, mailer, settings, user):
         raise HTTPException(status_code=502, detail="The mail server could not deliver the email")
 
 

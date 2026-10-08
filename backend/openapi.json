@@ -686,7 +686,9 @@
             "enum": [
               "reminder",
               "password_reset",
-              "test"
+              "test",
+              "security",
+              "daily_summary"
             ],
             "title": "Kind",
             "type": "string"
@@ -1746,6 +1748,29 @@
       },
       "ExportSettings": {
         "properties": {
+          "daily_summary_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Summary Enabled"
+          },
+          "daily_summary_time": {
+            "anyOf": [
+              {
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Summary Time"
+          },
           "max_events_per_day": {
             "anyOf": [
               {
@@ -2652,6 +2677,26 @@
             "title": "Created At",
             "type": "string"
           },
+          "daily_summary_enabled": {
+            "title": "Daily Summary Enabled",
+            "type": "boolean"
+          },
+          "daily_summary_last_sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Summary Last Sent At"
+          },
+          "daily_summary_time": {
+            "title": "Daily Summary Time",
+            "type": "string"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -2705,6 +2750,8 @@
           "weekend_days",
           "max_events_per_day",
           "vertical_text_size",
+          "daily_summary_enabled",
+          "daily_summary_time",
           "totp_enabled",
           "created_at"
         ],
@@ -2713,6 +2760,29 @@
       },
       "MeUpdate": {
         "properties": {
+          "daily_summary_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Summary Enabled"
+          },
+          "daily_summary_time": {
+            "anyOf": [
+              {
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Summary Time"
+          },
           "max_events_per_day": {
             "anyOf": [
               {
@@ -7176,6 +7246,96 @@
           }
         },
         "summary": "Email delivery configuration status",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/email/daily-summary/test": {
+      "post": {
+        "description": "Builds the summary for today and tomorrow and sends it to the current user, whether or not the daily summary is enabled and even when there is nothing to report.",
+        "operationId": "settings_daily_summary_test",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Upstream mail server rejected or failed the request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Feature not available (for example SMTP not configured)"
+          }
+        },
+        "summary": "Send a daily summary email now",
         "tags": [
           "settings"
         ]
