@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.10] — 2026-10-08
+
+### Added
+
+- Hovering (or keyboard-focusing) a day highlights that row's weekday label in the left gutter and
+  tints the same row across all months, so the day of week of the hovered event is easy to read.
+
+### Changed
+
+- The month grid opens horizontally centred on the current month (the Today button and search
+  results centre their month too). It re-centres while column widths settle after load, and stops
+  as soon as you scroll or interact.
+
 ## [1.3.9] — 2026-10-08
 
 ### Changed
