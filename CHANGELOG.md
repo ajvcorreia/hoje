@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] — 2026-10-08
+
+### Changed
+
+- Month grid: events are always packed to the left of the day with no gaps, and the last one
+  fills the cell to the right edge. Rotated multi-day labels use only their own narrow column
+  (first, hard left) instead of spreading across the width of a horizontal event lane, and other
+  events no longer leave an empty slot next to them. Month columns are sized from the widest
+  single day.
+
 ## [1.3.5] — 2026-10-08
 
 ### Changed
