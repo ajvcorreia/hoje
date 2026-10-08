@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] — 2026-10-08
+
+### Added
+
+- Settings › Appearance › "Events shown per day" (1–6, default 2, per device). Events beyond the
+  limit are still counted as "+N".
+
+### Changed
+
+- Birthdays and holidays stay visible on days that also have events, as a text line above the
+  events instead of a small corner mark.
+- A month column holding only rotated (vertical) event labels now shrinks to the width those
+  labels need.
+
+### Fixed
+
+- A calendar tab left open for a long time no longer goes stale: it refetches when the tab becomes
+  visible, regains focus or the browser comes back online (plus a 5-minute safety refetch while
+  visible), and "today" rolls over at midnight without a reload.
+
 ## [1.3.1] — 2026-10-06
 
 ### Fixed
