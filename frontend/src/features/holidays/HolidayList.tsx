@@ -15,7 +15,7 @@ export function HolidayList({ holidays }: { holidays: readonly HolidayDay[] | un
           {plain.map((h) => (
             <li key={h.id} className="flex items-center gap-2 px-2 py-1 text-sm italic">
               <CategorySwatch colour={h.colour} />
-              <span className="min-w-0 flex-1">{holidayLabel(h)}</span>
+              <span className="min-w-0 flex-1 break-words">{holidayLabel(h)}</span>
             </li>
           ))}
         </ul>
@@ -25,7 +25,7 @@ export function HolidayList({ holidays }: { holidays: readonly HolidayDay[] | un
           {birthdays.map((h) => (
             <li key={h.id} className="flex items-center gap-2 px-2 py-1 text-sm">
               <span aria-hidden="true">{CAKE}</span>
-              <span className="min-w-0 flex-1">{birthdayName(h)}</span>
+              <span className="min-w-0 flex-1 break-words">{birthdayName(h)}</span>
             </li>
           ))}
         </ul>

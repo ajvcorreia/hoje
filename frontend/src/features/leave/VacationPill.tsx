@@ -152,8 +152,8 @@ function VacationPanel({
                       className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-surface-muted md:min-h-9"
                     >
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{b.title}</span>
-                        <span className="block truncate text-xs text-text-muted">
+                        <span className="block break-words font-medium">{b.title}</span>
+                        <span className="block break-words text-xs text-text-muted">
                           {b.start_date === b.end_date
                             ? formatShortDate(b.start_date)
                             : `${formatShortDate(b.start_date)} – ${formatShortDate(b.end_date)}`}
