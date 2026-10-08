@@ -343,14 +343,19 @@
   /* Reads bottom-to-top (90° counter-clockwise), like the user's spreadsheet. */
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  /* On this vertical element cqi is the block HEIGHT and cqb its WIDTH. The preferred size is
-     --vl-size (px at a 16px root, the user's setting), shrunk so the whole name fits the height (--vl-em = name length in em). MonthGrid only rotates
-     a name whose size stays >= 0.5625rem (9px); a longer one is a horizontal title instead, so
-     the name is never cut. */
-  font-size: min(calc(var(--vl-size, 12) / 16 * 1rem), calc((100cqi - 6px) / var(--vl-em, 1)));
+  /* Effective size set per label by MonthGrid (--vl-fs, px): the preferred size, shrunk only when the
+     wrapped name needed it. The fallback is the user's preferred size. */
+  font-size: var(--vl-fs, calc(var(--vl-size, 12) / 16 * 1rem));
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* One wrapped line: its own column (lines read left to right, each bottom-to-top), centred. */
+.cal-vline {
+  display: block;
   white-space: nowrap;
   text-align: center;
 }

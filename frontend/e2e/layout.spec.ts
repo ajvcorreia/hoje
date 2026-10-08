@@ -194,7 +194,7 @@ test.describe('per-event vertical labels', () => {
     expect(labelBox?.width).toBeLessThanOrEqual(17);
   });
 
-  test('a long vertical name shrinks to fit a short block instead of being cut off', async ({
+  test('a long vertical name wraps or shrinks to fit a short block instead of being cut off', async ({
     page,
     account,
     api,

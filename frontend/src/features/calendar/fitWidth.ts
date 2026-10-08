@@ -48,10 +48,23 @@ export interface TextMeasurer {
   text(value: string): number;
   italic(value: string): number;
   chip(value: string): number;
-  /** Width in px of one rotated label column. */
+  /** Width in px of one single-line rotated label column at the preferred size. */
   lane: number;
-  /** Whether `title` fits a rotated label spanning `days` rows without going under the minimum size. */
-  fitsVertical(title: string, days: number): boolean;
+  /**
+   * How `title` is drawn rotated along a block of `days` rows (lines, size, column width), or
+   * `null` when it cannot fit even wrapped at the minimum size (it is then a horizontal title).
+   */
+  plan(title: string, days: number): VerticalPlan | null;
+}
+
+/** How one rotated label is set: wrapped lines, the font size they use and the column they need. */
+export interface VerticalPlan {
+  /** 1..3 lines in reading order (each is drawn as its own column, centred). */
+  lines: string[];
+  /** Effective font size in px (the preferred size unless the name had to shrink). */
+  size: number;
+  /** Width in px of the lane column the label needs. */
+  width: number;
 }
 
 let context: CanvasRenderingContext2D | null | undefined;
@@ -103,27 +116,99 @@ export function verticalLabelEm(title: string, family = 'sans-serif'): number {
   return Math.max(0.5, em + VLABEL_TRACKING * title.length);
 }
 
-/**
- * Whether a rotated label of `days` rows of `rowHeight` px can show `title` whole at its minimum
- * font size (9px at the default text size). When it cannot, the event is drawn as a normal
- * horizontal title instead: a name is never ellipsized or cut.
- */
-export function verticalFits(
-  title: string,
-  days: number,
-  rowHeight: number,
-  fonts: Pick<FitFonts, 'rem' | 'family'>,
-): boolean {
-  const em = verticalLabelEm(title, fonts.family) * VLABEL_SAFETY;
-  return (days * rowHeight - VLABEL_RESERVED) / em >= VLABEL_MIN_REM * fonts.rem;
-}
+/** A rotated name is wrapped into at most this many lines. */
+export const VLABEL_MAX_LINES = 3;
 
 /**
  * Width in px of one rotated label column for a preferred font size of `size` px (at a 16px root;
  * it scales with the root font size like the rem it replaces): one line height plus 2px.
+ * `lines` columns of text side by side need that many line heights.
  */
-export function verticalLaneWidth(size: number, rem = 16): number {
-  return Math.ceil(VLABEL_LINE_HEIGHT * size * (rem / 16)) + 2;
+export function verticalLaneWidth(size: number, rem = 16, lines = 1): number {
+  return Math.ceil(VLABEL_LINE_HEIGHT * size * (rem / 16) * lines) + 2;
+}
+
+/** Best split of `words` into `k` contiguous lines: shortest longest line, then most even. */
+function balancedLines(words: string[], k: number, em: (line: string) => number): string[] {
+  const n = words.length;
+  let best: string[] = [words.join(' ')];
+  let bestMax = Infinity;
+  let bestSq = Infinity;
+  const consider = (cuts: number[]) => {
+    const lines: string[] = [];
+    let prev = 0;
+    for (const c of [...cuts, n]) {
+      lines.push(words.slice(prev, c).join(' '));
+      prev = c;
+    }
+    const lens = lines.map(em);
+    const max = Math.max(...lens);
+    const sq = lens.reduce((a, l) => a + l * l, 0);
+    if (max < bestMax - 1e-9 || (Math.abs(max - bestMax) <= 1e-9 && sq < bestSq)) {
+      best = lines;
+      bestMax = max;
+      bestSq = sq;
+    }
+  };
+  if (k === 1) consider([]);
+  else if (k === 2) for (let a = 1; a < n; a += 1) consider([a]);
+  else for (let a = 1; a < n - 1; a += 1) for (let b = a + 1; b < n; b += 1) consider([a, b]);
+  return best;
+}
+
+/**
+ * How a rotated label of `days` rows of `rowHeight` px sets `title`, or `null` when it cannot fit.
+ * In order: one line at the preferred `size` (px at a 16px root); else the fewest lines (2..3,
+ * wrapped at spaces, greedy) whose longest line fits at that size; else three lines at the most
+ * even split, shrunk until the longest line fits, down to the 9px minimum; else `null` and the
+ * event is drawn as a horizontal title. A word is never broken, so a single long word that does
+ * not fit even at the minimum size is the `null` case; a name is never ellipsized or cut.
+ */
+export function verticalPlan(
+  title: string,
+  days: number,
+  rowHeight: number,
+  fonts: Pick<FitFonts, 'rem' | 'family'>,
+  size = DEFAULT_VERTICAL_SIZE,
+): VerticalPlan | null {
+  const words = title.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+  const em = (line: string) => verticalLabelEm(line, fonts.family) * VLABEL_SAFETY;
+  const height = days * rowHeight - VLABEL_RESERVED;
+  const preferred = size * (fonts.rem / 16);
+  const floor = Math.min(VLABEL_MIN_REM * fonts.rem, preferred);
+  const plan = (lines: string[], px: number): VerticalPlan => ({
+    lines,
+    size: px,
+    width: verticalLaneWidth(px, 16, lines.length),
+  });
+
+  const whole = words.join(' ');
+  if (em(whole) * preferred <= height) return plan([whole], preferred);
+
+  // Greedy: the fewest lines that fit the height at the preferred size.
+  const limit = height / preferred;
+  const greedy: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (!current || em(next) <= limit) {
+      current = next;
+    } else {
+      greedy.push(current);
+      current = word;
+    }
+  }
+  greedy.push(current);
+  if (greedy.length <= VLABEL_MAX_LINES && greedy.every((l) => em(l) <= limit)) {
+    return plan(greedy, preferred);
+  }
+
+  // Most even wrap into up to three lines, shrunk until its longest line fits.
+  const lines = balancedLines(words, Math.min(VLABEL_MAX_LINES, words.length), em);
+  const shrunk = Math.min(preferred, height / Math.max(...lines.map(em)));
+  if (shrunk < floor) return null;
+  return plan(lines, Math.floor(shrunk * 100) / 100);
 }
 
 export function measurerFor(
@@ -131,12 +216,18 @@ export function measurerFor(
   rowHeight = DEFAULT_ROW_HEIGHT,
   verticalSize = DEFAULT_VERTICAL_SIZE,
 ): TextMeasurer {
+  const plans = new Map<string, VerticalPlan | null>();
   return {
     text: (value) => measureText(value, fonts.normal),
     italic: (value) => measureText(value, fonts.italic),
     chip: (value) => measureText(value, fonts.chip),
     lane: verticalLaneWidth(verticalSize, fonts.rem),
-    fitsVertical: (title, days) => verticalFits(title, days, rowHeight, fonts),
+    plan: (title, days) => {
+      const key = `${days}\u0000${title}`;
+      if (!plans.has(key))
+        plans.set(key, verticalPlan(title, days, rowHeight, fonts, verticalSize));
+      return plans.get(key) ?? null;
+    },
   };
 }
 
@@ -166,13 +257,15 @@ export function readFitFonts(root: ParentNode | null): FitFonts | null {
  */
 export function rotationRule(measure: TextMeasurer): RotatesFn {
   return (input, days) =>
-    !!input.labelVertical && days >= 2 && measure.fitsVertical(input.title, days);
+    !!input.labelVertical && days >= 2 && measure.plan(input.title, days) !== null;
 }
 
 /** Track widths (px) of one day cell's event area (everything right of the day number). */
 export interface DayTracks {
   /** Rotated columns, 0..h where h is the highest rotated lane covering the day. */
   rotated: number;
+  /** Total width (px) of those rotated columns. */
+  rotatedWidth: number;
   /** Holiday / birthday track, after the rotated columns; 0 when the day has none. */
   overlay: number;
   /** Minimum width of each horizontal event, in packed order. */
@@ -196,20 +289,24 @@ export function dayTracks(
   d: DayLayout,
   name: string | undefined,
   measure: TextMeasurer,
+  lanes: readonly number[] = [],
 ): DayTracks {
   let rotatedCols = 0;
   d.rotated.forEach((p, l) => {
     if (p) rotatedCols = l + 1;
   });
+  let rotatedWidth = 0;
+  for (let l = 0; l < rotatedCols; l += 1) rotatedWidth += lanes[l] ?? measure.lane;
   const overlay = name ? measure.italic(name) + BOX_PADDING : 0;
   const items = d.items.map((p) =>
     p.showTitle ? measure.text(p.input.title) + BOX_PADDING + LANE_BORDER : LANE_MIN,
   );
   const chip = d.overflow > 0 ? measure.chip(`+${d.overflow}`) + CHIP_EXTRA : 0;
   const text = overlay > 0 || d.items.some((p) => p.showTitle);
-  const sum = rotatedCols * measure.lane + overlay + items.reduce((a, b) => a + b, 0) + chip;
+  const sum = rotatedWidth + overlay + items.reduce((a, b) => a + b, 0) + chip;
   return {
     rotated: rotatedCols,
+    rotatedWidth,
     overlay,
     items,
     chip,
@@ -223,8 +320,12 @@ export function dayTracks(
 export interface MonthTracks {
   /** One entry per day (index = day - 1). */
   days: DayTracks[];
-  /** Width (px) of a rotated column. */
+  /** Width (px) of a single-line rotated column at the preferred size. */
   lane: number;
+  /** Width (px) of each rotated lane: the widest label (lines x size) the lane holds this month. */
+  lanes: number[];
+  /** How each rotated label is set, by `${input.key}:${first day}` (see MonthColumn). */
+  labels: Record<string, VerticalPlan>;
   /** Minimum width of the event area: the widest day. */
   width: number;
   /** Nothing but rotated labels: the month needs no horizontal-text minimum. */
@@ -245,11 +346,23 @@ export function monthTracks(
   overlays: ReadonlyMap<number, string>,
   measure: TextMeasurer,
 ): MonthTracks {
-  const days = layout.map((d) => dayTracks(d, overlays.get(d.day), measure));
+  const lanes: number[] = (layout[0]?.rotated ?? []).map(() => 0);
+  const labels: Record<string, VerticalPlan> = {};
+  for (const d of layout) {
+    for (const p of d.rotated) {
+      if (!p?.showTitle) continue;
+      const plan = measure.plan(p.input.title, p.blockLen);
+      if (plan) labels[`${p.input.key}:${d.day}`] = plan;
+      lanes[p.lane] = Math.max(lanes[p.lane] ?? 0, plan?.width ?? measure.lane);
+    }
+  }
+  const days = layout.map((d) => dayTracks(d, overlays.get(d.day), measure, lanes));
   const width = days.reduce((m, t) => Math.max(m, t.need), 0);
   return {
     days,
     lane: measure.lane,
+    lanes,
+    labels,
     width,
     onlyVertical: width > 0 && days.every((t) => !t.horizontal),
   };
