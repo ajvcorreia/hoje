@@ -25,6 +25,7 @@ from hoje.constants import Colour
 from hoje.schemas.common import (
     MAX_EVENT_SPAN_DAYS,
     BoundedDate,
+    DailySummaryTime,
     MaxEventsPerDay,
     ProblemError,
     Timezone,
@@ -79,6 +80,8 @@ class ExportSettings(BaseModel):
     weekend_days: WeekendDays | None = None
     max_events_per_day: MaxEventsPerDay | None = None
     vertical_text_size: VerticalTextSize | None = None
+    daily_summary_enabled: bool | None = None
+    daily_summary_time: DailySummaryTime | None = None
 
 
 class ExportCategory(BaseModel):

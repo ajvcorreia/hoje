@@ -1,5 +1,7 @@
 """Current-user profile and email settings endpoints."""
 
+import datetime as dt
+
 import pytest
 
 from ._auth import EMAIL, TEST_ORIGIN
@@ -155,3 +157,123 @@ async def test_test_email_is_limited_to_five_per_window(api, outbox_mailer):
 
     assert resp.status_code == 429
     assert len(outbox_mailer.outbox) == 5
+
+
+# ------------------------------------------------------------------ daily summary
+
+
+async def test_get_me_reports_the_daily_summary_defaults(api):
+    await api.register_ok()
+
+    user = (await api.client.get("/api/v1/me")).json()
+
+    assert user["daily_summary_enabled"] is False
+    assert user["daily_summary_time"] == "07:00"
+    assert user["daily_summary_last_sent_at"] is None
+
+
+async def test_patch_me_updates_the_daily_summary_settings_persistently(api):
+    await api.register_ok()
+
+    resp = await patch_me(api, {"daily_summary_enabled": True, "daily_summary_time": "18:45"})
+
+    assert resp.status_code == 200
+    assert resp.json()["daily_summary_enabled"] is True
+    assert resp.json()["daily_summary_time"] == "18:45"
+    assert resp.json()["max_events_per_day"] == 2
+    stored = (await api.client.get("/api/v1/me")).json()
+    assert (stored["daily_summary_enabled"], stored["daily_summary_time"]) == (True, "18:45")
+
+    only_time = await patch_me(api, {"daily_summary_time": "00:00"})
+    assert only_time.json()["daily_summary_enabled"] is True
+    assert only_time.json()["daily_summary_time"] == "00:00"
+
+
+@pytest.mark.parametrize(
+    "value", ["7:00", "24:00", "12:60", "12:00:30", "noon", "07:00+01:00", "", 700, True]
+)
+async def test_patch_me_rejects_a_bad_daily_summary_time(api, value):
+    await api.register_ok()
+
+    resp = await patch_me(api, {"daily_summary_time": value})
+
+    assert resp.status_code == 422
+    assert (await api.client.get("/api/v1/me")).json()["daily_summary_time"] == "07:00"
+
+
+async def test_daily_summary_last_sent_at_cannot_be_written_through_the_api(api):
+    await api.register_ok()
+
+    resp = await patch_me(api, {"daily_summary_last_sent_at": "2026-01-01T00:00:00Z"})
+
+    assert resp.status_code == 200
+    assert resp.json()["daily_summary_last_sent_at"] is None
+
+
+async def test_daily_summary_test_email_is_sent_even_when_disabled_and_empty(api, outbox_mailer):
+    await api.register_ok()
+
+    resp = await api.post("/settings/email/daily-summary/test")
+
+    assert resp.status_code == 202
+    [sent] = outbox_mailer.outbox
+    assert (sent.to, sent.kind) == (EMAIL, "daily_summary")
+    assert "Nothing is scheduled today or tomorrow" in sent.text
+    assert "test summary" in sent.text
+    me = (await api.client.get("/api/v1/me")).json()
+    assert me["daily_summary_last_sent_at"] is None  # a test does not count as the day's summary
+
+
+async def test_daily_summary_test_email_lists_todays_and_tomorrows_events(api, outbox_mailer):
+    await api.register_ok()
+    today = api.clock.now.date()
+    tomorrow = today + dt.timedelta(days=1)
+    for title, day in (("Standup <b>x</b>", today), ("Dentist", tomorrow)):
+        assert (
+            await api.post("/events", {"title": title, "start_date": day.isoformat()})
+        ).status_code == 201
+
+    assert (await api.post("/settings/email/daily-summary/test")).status_code == 202
+
+    [sent] = outbox_mailer.outbox
+    assert "Standup <b>x</b>" in sent.text and "Dentist" in sent.text
+    assert "&lt;b&gt;x&lt;/b&gt;" in sent.html and "<b>x</b>" not in sent.html
+    assert "1 event today" in sent.subject
+
+
+async def test_daily_summary_test_email_is_503_when_email_is_not_configured(api, outbox_mailer):
+    outbox_mailer.configured = False
+    await api.register_ok()
+
+    resp = await api.post("/settings/email/daily-summary/test")
+
+    assert resp.status_code == 503
+    assert outbox_mailer.outbox == []
+
+
+async def test_daily_summary_test_email_is_limited_to_five_per_window(api, outbox_mailer):
+    await api.register_ok()
+    for _ in range(5):
+        assert (await api.post("/settings/email/daily-summary/test")).status_code == 202
+
+    resp = await api.post("/settings/email/daily-summary/test")
+
+    assert resp.status_code == 429
+    assert len(outbox_mailer.outbox) == 5
+
+
+async def test_daily_summary_test_email_requires_authentication(api):
+    resp = await api.client.post(
+        "/api/v1/settings/email/daily-summary/test", headers={"Origin": TEST_ORIGIN}
+    )
+
+    assert resp.status_code in (401, 403)
+
+
+async def test_email_log_lists_daily_summary_rows(api, outbox_mailer):
+    await api.register_ok()
+    assert (await api.post("/settings/email/daily-summary/test")).status_code == 202
+
+    rows = (await api.client.get("/api/v1/settings/email/log")).json()
+
+    assert [r["kind"] for r in rows] == ["daily_summary"]

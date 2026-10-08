@@ -31,7 +31,7 @@ SMTP_TIMEOUT_SECONDS = 15
 NOT_CONFIGURED = "SMTP not configured"
 _ERROR_MAX = 500
 
-Kind = Literal["reminder", "password_reset", "test", "security"]
+Kind = Literal["reminder", "password_reset", "test", "security", "daily_summary"]
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"

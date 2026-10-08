@@ -30,7 +30,9 @@ are not exported.
     "timezone": "Europe/Lisbon",
     "weekend_days": [6, 7],
     "max_events_per_day": 2,
-    "vertical_text_size": 12
+    "vertical_text_size": 12,
+    "daily_summary_enabled": false,
+    "daily_summary_time": "07:00"
   },
   "categories": [
     {
@@ -81,7 +83,7 @@ are not exported.
 | `format` | Must be `"hoje-export"`. |
 | `version` | Must be `1`. |
 | `exported_at`, `app_version` | Informational; ignored by the importer. |
-| `settings.timezone` | IANA zone name. `settings.weekend_days`: unique ISO weekdays 1 (Mon) to 7 (Sun). `settings.max_events_per_day`: integer 1 to 6, optional (absent in older files). `settings.vertical_text_size`: integer 8 to 32 (px), optional (absent in older files). |
+| `settings.timezone` | IANA zone name. `settings.weekend_days`: unique ISO weekdays 1 (Mon) to 7 (Sun). `settings.max_events_per_day`: integer 1 to 6, optional (absent in older files). `settings.vertical_text_size`: integer 8 to 32 (px), optional (absent in older files). `settings.daily_summary_enabled`: boolean and `settings.daily_summary_time`: `"HH:MM"` (24 hour, in `settings.timezone`), both optional (absent in older files; an absent value keeps the current one). |
 | `categories[].key` | 1 to 64 characters, unique in the file; referenced by `events[].category`. |
 | `categories[]` | `name` 1 to 40 characters (unique, case-insensitive), `colour` one of the 20 palette keys (`slate red orange amber lime green teal cyan blue indigo violet pink rose fuchsia purple sky emerald yellow brown gray`), `icon` or `null`, `sort_order` >= 0, `is_leave`, `hidden`. |
 | `events[]` | Same bounds as the API: `title` 1 to 200, `notes` <= 5000, dates between 1900-01-01 and 2200-12-31, `end_date` >= `start_date` and at most 366 days after it (defaults to `start_date`), `repeat` is `none`, `monthly` or `yearly`, `repeat_until` >= `start_date`, at most 5 distinct `reminders`. All-day events carry no times; timed events need `start_time` and `end_time` (without a UTC offset; on a single day `end_time` is after `start_time`). `timezone` is an IANA name (defaults to the importing user's, or to `settings.timezone` of the file). |

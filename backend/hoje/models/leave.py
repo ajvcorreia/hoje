@@ -68,7 +68,10 @@ class Holiday(Base):
 class NotificationLog(Base):
     __tablename__ = "notification_log"
     __table_args__ = (
-        CheckConstraint("kind in ('reminder','password_reset','test','security')", name="kind"),
+        CheckConstraint(
+            "kind in ('reminder','password_reset','test','security','daily_summary')",
+            name="kind",
+        ),
         CheckConstraint("status in ('sent','failed')", name="status"),
     )
 

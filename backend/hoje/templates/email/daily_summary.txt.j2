@@ -1,0 +1,55 @@
+Your {{ app_name }} daily summary for {{ heading_date }}
+{% if test %}
+
+This is a test summary, sent because you asked for one.
+{% endif %}
+{% if data.is_empty %}
+
+Nothing is scheduled today or tomorrow, and nothing changed since {{ data.since_label }}.
+{% endif %}
+{% if data.changes %}
+
+CHANGES SINCE {{ data.since_label|upper }}
+{% for change in data.changes %}
+- {{ change.what }}: {{ change.item.title }} ({{ change.item.when }}){% if change.item.category %} [{{ change.item.category }}]{% endif %}
+
+{% endfor %}
+{% if data.changes_more %}
+...and {{ data.changes_more }} more
+{% endif %}
+{% endif %}
+{% if data.today_items %}
+
+TODAY
+{% for item in data.today_items %}
+- {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
+
+{% endfor %}
+{% if data.today_more %}
+...and {{ data.today_more }} more
+{% endif %}
+{% endif %}
+{% if data.birthdays or data.holidays %}
+
+BIRTHDAYS & HOLIDAYS TODAY
+{% for holiday in data.holidays %}
+- {{ holiday.name }} ({{ holiday.calendar }}{% if holiday.non_working %}, non-working day{% endif %})
+{% endfor %}
+{% for birthday in data.birthdays %}
+- {{ birthday.name }}'s birthday{% if birthday.age is not none %} ({{ birthday.age }}){% endif %}
+
+{% endfor %}
+{% endif %}
+{% if data.tomorrow_items %}
+
+TOMORROW ({{ tomorrow_date }})
+{% for item in data.tomorrow_items %}
+- {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
+
+{% endfor %}
+{% if data.tomorrow_more %}
+...and {{ data.tomorrow_more }} more
+{% endif %}
+{% endif %}
+
+Open {{ app_name }}: {{ open_url }}

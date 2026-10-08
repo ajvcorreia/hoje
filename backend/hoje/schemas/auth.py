@@ -1,12 +1,18 @@
 """Auth, account and settings schemas."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from hoje.schemas.common import MaxEventsPerDay, Timezone, VerticalTextSize, WeekendDays
+from hoje.schemas.common import (
+    DailySummaryTime,
+    MaxEventsPerDay,
+    Timezone,
+    VerticalTextSize,
+    WeekendDays,
+)
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -21,9 +27,17 @@ class Me(BaseModel):
     weekend_days: list[int]
     max_events_per_day: int
     vertical_text_size: int
+    daily_summary_enabled: bool
+    daily_summary_time: str  # "HH:MM" in `timezone`
+    daily_summary_last_sent_at: datetime | None = None
     totp_enabled: bool
     last_category_id: uuid.UUID | None = None
     created_at: datetime
+
+    @field_validator("daily_summary_time", mode="before")
+    @classmethod
+    def _time_as_text(cls, value: object) -> object:
+        return value.strftime("%H:%M") if isinstance(value, time) else value
 
 
 class MeUpdate(BaseModel):
@@ -31,6 +45,8 @@ class MeUpdate(BaseModel):
     weekend_days: WeekendDays | None = None
     max_events_per_day: MaxEventsPerDay | None = None
     vertical_text_size: VerticalTextSize | None = None
+    daily_summary_enabled: bool | None = None
+    daily_summary_time: DailySummaryTime | None = None
 
 
 class AuthState(BaseModel):
@@ -113,7 +129,7 @@ class EmailLogEntry(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     created_at: datetime
-    kind: Literal["reminder", "password_reset", "test"]
+    kind: Literal["reminder", "password_reset", "test", "security", "daily_summary"]
     subject: str
     status: Literal["sent", "failed"]
     error: str | None = None

@@ -13,6 +13,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
 - **Birthdays from FelizAnniv**: one-way sync of the birthdays in your [FelizAnniv](#felizanniv-birthdays) app, drawn read-only on the calendar ("🎂 Ana (34)").
 - **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
+- **Daily summary email**: optional, at a time you choose (in your time zone): changes since the last summary, today, today's birthdays and holidays, and tomorrow. Days with nothing to report send nothing.
 - **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
 - **Two-factor authentication**: TOTP-based 2FA with single-use recovery codes and encrypted storage.
 - **Security**: Argon2id password hashing, CSRF protection, progressive brute-force lockouts, trusted-device relief.

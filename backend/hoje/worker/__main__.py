@@ -1,8 +1,9 @@
 """Worker entrypoint: ``python -m hoje.worker``.
 
 Every ``HOJE_WORKER_INTERVAL_SECONDS``: heartbeat, then the reminder cycle (stale ``sending``
-rows -> ``failed``, schedule upcoming deliveries, claim and send), and once a day the
-housekeeping purge. Backups and due FelizAnniv birthday syncs run as background tasks.
+rows -> ``failed``, schedule upcoming deliveries, claim and send), the daily summary emails that
+are due, and once a day the housekeeping purge. Backups and due FelizAnniv birthday syncs run as
+background tasks.
 Safe to run several workers: claims use ``FOR UPDATE SKIP LOCKED`` and scheduling uses
 ``ON CONFLICT DO NOTHING``. SIGTERM finishes the send in progress, then exits.
 """
@@ -19,7 +20,7 @@ from hoje import clock
 from hoje.config import Settings, get_settings
 from hoje.db import dispose_engine, get_sessionmaker
 from hoje.logging import configure_logging, get_logger
-from hoje.services import housekeeping, reminders
+from hoje.services import daily_summary, housekeeping, reminders
 from hoje.services.mailer import Mailer, SmtpMailer
 from hoje.worker import HEARTBEAT_PATH
 from hoje.worker.backup_job import BackupJob
@@ -113,6 +114,18 @@ async def run(
             )
         except Exception as exc:  # a bad cycle must not kill the worker
             log.error("worker_cycle_failed", error=type(exc).__name__, detail=str(exc)[:300])
+        try:
+            digest = await daily_summary.run_due(sm, mailer, settings, stop)
+            if digest.sent or digest.skipped_empty or digest.failed or digest.retry_later:
+                log.info(
+                    "daily_summary_cycle",
+                    sent=digest.sent,
+                    skipped_empty=digest.skipped_empty,
+                    failed=digest.failed,
+                    retry_later=digest.retry_later,
+                )
+        except Exception as exc:
+            log.error("daily_summary_cycle_failed", error=type(exc).__name__, detail=str(exc)[:300])
         await _sleep(stop, interval)
     await backup_job.shutdown()
     await birthday_job.shutdown()

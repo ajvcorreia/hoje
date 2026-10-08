@@ -124,6 +124,8 @@ async def build_export(db: AsyncSession, user: User, *, app_version: str) -> dic
             "weekend_days": list(user.weekend_days),
             "max_events_per_day": user.max_events_per_day,
             "vertical_text_size": user.vertical_text_size,
+            "daily_summary_enabled": user.daily_summary_enabled,
+            "daily_summary_time": user.daily_summary_time.strftime("%H:%M"),
         },
         "categories": [
             {
@@ -412,7 +414,14 @@ async def _plan(db: AsyncSession, user: User, doc: ExportDocument, mode: Mode) -
         vt_changes = (
             new.vertical_text_size is not None and new.vertical_text_size != user.vertical_text_size
         )
-        plan.settings_update = tz_changes or wk_changes or me_changes or vt_changes
+        ds_changes = (
+            new.daily_summary_enabled is not None
+            and new.daily_summary_enabled != user.daily_summary_enabled
+        ) or (
+            new.daily_summary_time is not None
+            and dt.time.fromisoformat(new.daily_summary_time) != user.daily_summary_time
+        )
+        plan.settings_update = tz_changes or wk_changes or me_changes or vt_changes or ds_changes
 
     if replace:
         plan.binned_events = await _count(db, Event, user.id)
@@ -578,6 +587,10 @@ async def _execute(db: AsyncSession, user: User, plan: _Plan, doc: ExportDocumen
             user.max_events_per_day = doc.settings.max_events_per_day
         if doc.settings.vertical_text_size is not None:
             user.vertical_text_size = doc.settings.vertical_text_size
+        if doc.settings.daily_summary_enabled is not None:
+            user.daily_summary_enabled = doc.settings.daily_summary_enabled
+        if doc.settings.daily_summary_time is not None:
+            user.daily_summary_time = dt.time.fromisoformat(doc.settings.daily_summary_time)
         user.updated_at = now
     if replace and plan.category_rows:
         user.last_category_id = plan.category_rows[0]["id"]

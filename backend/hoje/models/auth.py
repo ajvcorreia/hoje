@@ -1,7 +1,7 @@
 """users, sessions, recovery_codes, password_reset_tokens, auth_throttle."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 
 from sqlalchemy import (
     ARRAY,
@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     LargeBinary,
     SmallInteger,
+    Time,
     text,
 )
 from sqlalchemy.dialects.postgresql import CITEXT, INET
@@ -42,6 +43,13 @@ class User(Base):
     vertical_text_size: Mapped[int] = mapped_column(
         SmallInteger, default=12, server_default=text("12")
     )
+    daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # Wall-clock send time in ``timezone``.
+    daily_summary_time: Mapped[time] = mapped_column(
+        Time, default=time(7, 0), server_default=text("'07:00'")
+    )
+    # When the last summary was handled (sent, or skipped because the day was empty).
+    daily_summary_last_sent_at: Mapped[datetime | None]
     last_category_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "categories.id",

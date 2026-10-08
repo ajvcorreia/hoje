@@ -695,3 +695,35 @@ async def test_vertical_text_size_round_trips_and_absent_keeps_the_current_value
     result = (await do_import(alice, newer)).json()
     assert result["settings"] == {"update": True}
     assert (await alice.get("/me")).json()["vertical_text_size"] == 28
+
+
+async def test_daily_summary_settings_round_trip_and_absent_keeps_the_current_values(alice):
+    exported = (await alice.get("/export")).json()
+    assert exported["settings"]["daily_summary_enabled"] is False
+    assert exported["settings"]["daily_summary_time"] == "07:00"
+
+    assert (
+        await alice.patch("/me", {"daily_summary_enabled": True, "daily_summary_time": "19:30"})
+    ).status_code == 200
+    exported = (await alice.get("/export")).json()
+    assert exported["settings"]["daily_summary_enabled"] is True
+    assert exported["settings"]["daily_summary_time"] == "19:30"
+
+    older = small_doc(settings={"timezone": "Asia/Tokyo"})  # an export from before the setting
+    assert (await do_import(alice, older)).status_code == 200
+    me = (await alice.get("/me")).json()
+    assert (me["daily_summary_enabled"], me["daily_summary_time"]) == (True, "19:30")
+
+    newer = small_doc(settings={"daily_summary_enabled": False, "daily_summary_time": "06:15"})
+    result = (await do_import(alice, newer)).json()
+    assert result["settings"] == {"update": True}
+    me = (await alice.get("/me")).json()
+    assert (me["daily_summary_enabled"], me["daily_summary_time"]) == (False, "06:15")
+
+    unchanged = small_doc(settings={"daily_summary_enabled": False, "daily_summary_time": "06:15"})
+    assert (await do_import(alice, unchanged)).json()["settings"] == {"update": False}
+
+
+async def test_import_rejects_a_bad_daily_summary_time(alice):
+    resp = await do_import(alice, small_doc(settings={"daily_summary_time": "25:00"}))
+    assert resp.status_code == 422
