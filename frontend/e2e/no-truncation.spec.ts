@@ -32,10 +32,10 @@ const BUSY: Planned[] = [
   { title: EMOJI, day: 4 },
   { title: 'A', day: 4 },
   { title: 'Go', day: 5 },
-  // Short blocks with long names: the rotated label cannot fit, so it must become horizontal.
+  // Short blocks with long names: the label wraps into up to three lines, or turns horizontal.
   { title: 'Quarterly stakeholder alignment', day: 6, end: 7, vertical: true },
   { title: WIDE, day: 8, end: 9, vertical: true },
-  // Long blocks: the name shrinks (and rotates) to fit.
+  // Long blocks: the name fits on one line, or wraps, or shrinks (and rotates) to fit.
   { title: LONG, day: 11, end: 18, vertical: true },
   { title: 'Conference', day: 11, end: 18 },
   { title: 'Short', day: 13, end: 14, vertical: true },
@@ -75,7 +75,7 @@ async function gridProblems(page: Page): Promise<string[]> {
     };
     const near = (a: number, b: number) => a <= b + 1;
     for (const el of Array.from(
-      document.querySelectorAll<HTMLElement>('.cal-ev, .cal-hol, .cal-vlabel-text'),
+      document.querySelectorAll<HTMLElement>('.cal-ev, .cal-hol, .cal-vlabel-text, .cal-vline'),
     )) {
       const text = (el.textContent ?? '').trim();
       if (!text) continue;

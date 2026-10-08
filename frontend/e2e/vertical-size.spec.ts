@@ -32,7 +32,44 @@ test('a vertical label is drawn at the preferred size and its lane widens with i
   expect(box?.width).toBeLessThan(Math.ceil(1.15 * 24) + 2 + 1);
 });
 
-test('the label shrinks only when its name does not fit the block height', async ({
+test('a single word shrinks (it is never broken) when it does not fit the block height', async ({
+  page,
+  account,
+  api,
+}) => {
+  void account;
+  await api.patchMe({ vertical_text_size: 24 });
+  await api.createEvent('Lisbon', d(3), { end_date: d(5), label_vertical: true });
+  await page.goto('/');
+
+  const text = page.locator('.cal-vlabel', { hasText: 'Lisbon' }).locator('.cal-vlabel-text');
+  await expect(text).toBeVisible();
+  const { size, overflow } = await text.evaluate(fit);
+  expect(size).toBeLessThan(24);
+  expect(size).toBeGreaterThanOrEqual(9);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('a name that cannot fit even wrapped and shrunk stays a horizontal title', async ({
+  page,
+  account,
+  api,
+}) => {
+  void account;
+  await api.patchMe({ vertical_text_size: 32 });
+  await api.createEvent('Supercalifragilisticexpialidocious', d(10), {
+    end_date: d(11),
+    label_vertical: true,
+  });
+  await page.goto('/');
+
+  await expect(
+    page.locator('.cal-ev', { hasText: 'Supercalifragilisticexpialidocious' }).first(),
+  ).toBeVisible();
+  await expect(page.locator('.cal-vlabel')).toHaveCount(0);
+});
+
+test('a name with several words wraps at the preferred size before it shrinks', async ({
   page,
   account,
   api,
@@ -42,29 +79,13 @@ test('the label shrinks only when its name does not fit the block height', async
   await api.createEvent('Erbil trip', d(3), { end_date: d(5), label_vertical: true });
   await page.goto('/');
 
-  const text = page.locator('.cal-vlabel', { hasText: 'Erbil trip' }).locator('.cal-vlabel-text');
-  await expect(text).toBeVisible();
-  const { size, overflow } = await text.evaluate(fit);
-  expect(size).toBeLessThan(24);
-  expect(size).toBeGreaterThanOrEqual(9);
+  const label = page.locator('.cal-vlabel', { hasText: 'Erbil trip' });
+  await expect(label).toHaveCount(1);
+  await expect(label.locator('.cal-vline')).toHaveCount(2);
+  const { size, overflow } = await label.locator('.cal-vlabel-text').evaluate(fit);
+  expect(size).toBeGreaterThan(23.5);
+  expect(size).toBeLessThan(24.5);
   expect(overflow).toBeLessThanOrEqual(1);
-});
-
-test('a name that cannot fit even when shrunk stays a horizontal title', async ({
-  page,
-  account,
-  api,
-}) => {
-  void account;
-  await api.patchMe({ vertical_text_size: 32 });
-  await api.createEvent('Lisbon conference dinner', d(10), {
-    end_date: d(11),
-    label_vertical: true,
-  });
-  await page.goto('/');
-
-  await expect(
-    page.locator('.cal-ev', { hasText: 'Lisbon conference dinner' }).first(),
-  ).toBeVisible();
-  await expect(page.locator('.cal-vlabel')).toHaveCount(0);
+  const box = await label.boundingBox();
+  expect(Math.abs((box?.width ?? 0) - (Math.ceil(1.15 * 24 * 2) + 2))).toBeLessThanOrEqual(1);
 });

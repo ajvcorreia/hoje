@@ -4,7 +4,7 @@ import {
   monthTracks,
   rotationRule,
   measurerFor,
-  verticalFits,
+  verticalPlan,
   verticalLaneWidth,
   DEFAULT_FIT_FONTS,
   type TextMeasurer,
@@ -18,7 +18,8 @@ const measure: TextMeasurer = {
   chip: (v) => v.length * 5,
   lane: 16,
   // A name fits a rotated label when it has at most 4 characters per day of the block.
-  fitsVertical: (title, days) => title.length <= days * 4,
+  plan: (title, days) =>
+    title.length <= days * 4 ? { lines: [title], size: 12, width: 16 } : null,
 };
 
 const ev = (
@@ -127,7 +128,10 @@ describe('monthTracks with rotated labels', () => {
   });
 
   it('is the same for any title length that fits the block height', () => {
-    const fits = { ...measure, fitsVertical: () => true };
+    const fits: TextMeasurer = {
+      ...measure,
+      plan: (title) => ({ lines: [title], size: 12, width: 16 }),
+    };
     const t = monthTracks(
       march([vertical('A very long conference name', day(10), day(12))], 2, fits),
       none,
@@ -228,7 +232,7 @@ describe('monthTracks with rotated labels', () => {
   });
 });
 
-describe('verticalFits', () => {
+describe('verticalPlan', () => {
   const fonts = { rem: 16, family: 'test-sans' };
 
   beforeEach(() => {
@@ -250,29 +254,90 @@ describe('verticalFits', () => {
     clearMeasureCache();
   });
 
-  const daysNeeded = (title: string, rowHeight: number, f = fonts) => {
-    for (let d = 1; d < 80; d += 1) if (verticalFits(title, d, rowHeight, f)) return d;
-    return Infinity;
-  };
+  // Row height 17: a block of d days leaves 17 d - 12 px; one em of text is 0.62 x 1.03 per char.
+  const plan = (title: string, days: number, f = fonts, size = 12) =>
+    verticalPlan(title, days, 17, f, size);
+  const longest = (title: string, days: number) =>
+    Math.max(...(plan(title, days)?.lines.map((l) => l.length) ?? [0]));
 
-  it('needs the name at the 9px minimum to fit the block height', () => {
-    const long = 'Quarterly stakeholder alignment workshop';
-    // (days * 17 - 12) / (em * 1.03) >= 9 with em = 0.62 * characters.
-    expect(daysNeeded('Erbil', 17)).toBe(3);
-    expect(daysNeeded(long, 17)).toBe(15);
-    expect(verticalFits(long, 14, 17, fonts)).toBe(false);
-    expect(verticalFits(long, 15, 17, fonts)).toBe(true);
+  it('keeps one line at the preferred size when it fits, in a 16px lane', () => {
+    expect(plan('Erbil', 3)).toEqual({ lines: ['Erbil'], size: 12, width: 16 });
+    expect(plan('Annual review meeting', 11)).toMatchObject({ size: 12, width: 16 });
+    expect(plan('Annual review meeting', 11)?.lines).toEqual(['Annual review meeting']);
+  });
+
+  it('wraps at word boundaries into the fewest lines that fit at the preferred size', () => {
+    const two = plan('Annual review meeting', 7);
+    expect(two?.lines).toEqual(['Annual review', 'meeting']);
+    expect(two).toMatchObject({ size: 12, width: verticalLaneWidth(12, 16, 2) });
+    expect(two?.width).toBe(30);
+    const three = plan('Quarterly stakeholder alignment', 6);
+    expect(three?.lines).toEqual(['Quarterly', 'stakeholder', 'alignment']);
+    expect(three).toMatchObject({ size: 12, width: 44 });
+  });
+
+  it('never breaks a word and only ever rejoins the original words', () => {
+    for (let d = 3; d < 16; d += 1) {
+      const p = plan('Quarterly stakeholder alignment', d);
+      if (p) expect(p.lines.join(' ')).toBe('Quarterly stakeholder alignment');
+    }
+  });
+
+  it('keeps three lines and shrinks when even three lines do not fit at the preferred size', () => {
+    const p = plan('Quarterly stakeholder alignment', 5);
+    expect(p?.lines).toEqual(['Quarterly', 'stakeholder', 'alignment']);
+    expect(p?.size).toBeGreaterThanOrEqual(9);
+    expect(p?.size).toBeLessThan(12);
+    // The longest line ('stakeholder') fits the 73px height at the shrunk size.
+    expect(11 * 0.62 * 1.03 * (p?.size ?? 99)).toBeLessThanOrEqual(73);
+    expect(p?.width).toBe(Math.ceil(1.15 * (p?.size ?? 0) * 3) + 2);
+  });
+
+  it('balances the lines so the longest one is as short as possible', () => {
+    const p = plan('aa bbbbbbbb cc dddddd', 3);
+    expect(p).toBeNull();
+    const q = verticalPlan('aa bbbbbbbb cc dddddd', 4, 17, fonts, 12);
+    // Of the three-line splits, "aa" / "bbbbbbbb" / "cc dddddd" has the shortest longest line (9).
+    expect(q).not.toBeNull();
+    expect(Math.max(...(q?.lines.map((l) => l.length) ?? [99]))).toBe(9);
+  });
+
+  it('falls back to horizontal (null) when three lines do not fit even at the minimum size', () => {
+    expect(plan('Quarterly stakeholder alignment', 4)).toBeNull();
+    expect(plan('Quarterly stakeholder alignment', 3)).toBeNull();
+    expect(longest('Quarterly stakeholder alignment', 5)).toBe(11);
+  });
+
+  it('never breaks a single long word: it shrinks, then falls back to horizontal', () => {
+    const word = 'Supercalifragilisticexpialidocious';
+    expect(plan(word, 8)).toBeNull();
+    const p = plan(word, 14);
+    expect(p?.lines).toEqual([word]);
+    expect(p?.size).toBeGreaterThanOrEqual(9);
+    expect(p?.size).toBeLessThan(12);
   });
 
   it('is deterministic per row height: taller rows need fewer days', () => {
     const title = 'Quarterly stakeholder alignment workshop';
-    expect(daysNeeded(title, 34)).toBeLessThan(daysNeeded(title, 17));
-    expect(daysNeeded(title, 17)).toBe(daysNeeded(title, 17));
+    const need = (rowHeight: number) => {
+      for (let d = 1; d < 80; d += 1) {
+        if (verticalPlan(title, d, rowHeight, fonts)) return d;
+      }
+      return Infinity;
+    };
+    expect(need(34)).toBeLessThan(need(17));
+    expect(need(17)).toBe(need(17));
   });
 
-  it('scales the minimum with the root font size (text size setting)', () => {
-    expect(verticalFits('Lisbon conference', 8, 17, fonts)).toBe(true);
-    expect(verticalFits('Lisbon conference', 8, 17, { ...fonts, rem: 40 })).toBe(false);
+  it('scales the preferred and minimum size with the root font size (text size setting)', () => {
+    expect(plan('Lisbon conference', 8)).not.toBeNull();
+    expect(plan('Lisbon conference', 8, { ...fonts, rem: 40 })).toBeNull();
+  });
+
+  it('wraps for a larger preferred size too (P=24)', () => {
+    const p = plan('Quarterly stakeholder alignment', 14, fonts, 24);
+    expect(p?.lines.length).toBeGreaterThan(1);
+    expect(p?.size).toBeLessThanOrEqual(24);
   });
 });
 
@@ -295,5 +360,56 @@ describe('rotated lane width follows the vertical text size', () => {
     const m = { ...measure, lane: verticalLaneWidth(24) };
     const layout = march([vertical('a', day(2), day(9))], 2, m);
     expect(monthTracks(layout, none, m).lane).toBe(30);
+  });
+});
+
+describe('rotated lane width follows the number of lines', () => {
+  it('is ceil(1.15 x size x lines) + 2 px', () => {
+    expect(verticalLaneWidth(12, 16, 1)).toBe(16);
+    expect(verticalLaneWidth(12, 16, 2)).toBe(30);
+    expect(verticalLaneWidth(12, 16, 3)).toBe(44);
+    expect(verticalLaneWidth(10, 16, 3)).toBe(Math.ceil(1.15 * 10 * 3) + 2);
+  });
+
+  // 'wrapped' names (more than 8 characters) need two lines and a 30px column.
+  const wrapping: TextMeasurer = {
+    ...measure,
+    plan: (title) =>
+      title.length > 8
+        ? { lines: [title.slice(0, 4), title.slice(4)], size: 12, width: 30 }
+        : { lines: [title], size: 12, width: 16 },
+  };
+
+  it('sizes each rotated lane to the widest label it holds', () => {
+    const layout = march(
+      [vertical('short', day(10), day(14)), vertical('a longer name', day(10), day(14))],
+      4,
+      wrapping,
+    );
+    const t = monthTracks(layout, none, wrapping);
+    // 'a longer name' sorts first (same span, title order) and takes lane 0.
+    expect(t.lanes).toEqual([30, 16]);
+    expect(t.days[9]).toMatchObject({ rotated: 2, rotatedWidth: 46 });
+    expect(t.width).toBe(46);
+    expect(t.labels['a longer name:10']).toMatchObject({ width: 30 });
+    expect(t.labels['short:10']).toMatchObject({ width: 16 });
+  });
+
+  it('makes a shared lane as wide as its widest label for the whole month', () => {
+    const layout = march(
+      [vertical('short', day(2), day(4)), vertical('a longer name', day(5), day(8))],
+      4,
+      wrapping,
+    );
+    const t = monthTracks(layout, none, wrapping);
+    expect(t.lanes).toEqual([30]);
+    expect(t.days[2]?.rotatedWidth).toBe(30);
+  });
+
+  it('keeps 16px lanes when every name fits on one line', () => {
+    const layout = march([vertical('short', day(10), day(14))], 4, wrapping);
+    const t = monthTracks(layout, none, wrapping);
+    expect(t.lanes).toEqual([16]);
+    expect(t.width).toBe(16);
   });
 });

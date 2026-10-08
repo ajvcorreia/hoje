@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -41,7 +42,6 @@ import {
   monthTracks,
   readFitFonts,
   rotationRule,
-  verticalLabelEm,
   type DayTracks,
   type FitFonts,
   type MonthTracks,
@@ -100,8 +100,6 @@ interface MonthColumnProps {
   fit: MonthFit;
   /** This month's holidays by date. */
   holidays: ReadonlyMap<string, HolidayDay[]>;
-  /** Font family of the rotated labels (they size themselves from the name's length in it). */
-  family: string;
   /** Preferred font size (px) of rotated labels: sets `--vl-size`, the label shrinks only to fit. */
   verticalSize: number;
   weekendDays: number[];
@@ -123,7 +121,6 @@ function MonthColumnImpl({
   month,
   fit,
   holidays,
-  family,
   verticalSize,
   weekendDays,
   today,
@@ -220,7 +217,7 @@ function MonthColumnImpl({
     const chipCol = firstItemCol + t.items.length;
     const template = [
       'var(--num-w)',
-      ...Array.from({ length: t.rotated }, () => `${tracks.lane}px`),
+      ...Array.from({ length: t.rotated }, (_, l) => `${tracks.lanes[l] ?? tracks.lane}px`),
       ...(t.overlay > 0 ? [track(t.overlay)] : []),
       ...t.items.map(track),
       ...(t.chip > 0 ? [`${t.chip}px`] : []),
@@ -317,27 +314,41 @@ function MonthColumnImpl({
       <span className="cal-month-outline" aria-hidden="true" />
       {weekCells}
       {cells}
-      {segments.map((seg) => (
-        <span
-          key={seg.key}
-          className="cal-vlabel"
-          aria-hidden="true"
-          data-cat={seg.colour}
-          data-lane={seg.lane}
-          data-past={seg.past || undefined}
-          style={
-            {
-              '--vl-x': `${seg.lane * tracks.lane}px`,
-              '--vl-w': `${tracks.lane}px`,
-              '--seg-row': seg.row,
-              '--seg-len': seg.len,
-              '--vl-em': verticalLabelEm(seg.title, family),
-            } as CSSProperties
-          }
-        >
-          <span className="cal-vlabel-text">{seg.title}</span>
-        </span>
-      ))}
+      {segments.map((seg) => {
+        const plan = tracks.labels[seg.key];
+        const x = tracks.lanes.slice(0, seg.lane).reduce((a, w) => a + w, 0);
+        return (
+          <span
+            key={seg.key}
+            className="cal-vlabel"
+            aria-hidden="true"
+            data-cat={seg.colour}
+            data-lane={seg.lane}
+            data-lines={plan?.lines.length ?? 1}
+            data-past={seg.past || undefined}
+            style={
+              {
+                '--vl-x': `${x}px`,
+                '--vl-w': `${tracks.lanes[seg.lane] ?? tracks.lane}px`,
+                '--seg-row': seg.row,
+                '--seg-len': seg.len,
+                ...(plan ? { '--vl-fs': `${plan.size}px` } : null),
+              } as CSSProperties
+            }
+          >
+            <span className="cal-vlabel-text">
+              {/* Whitespace between the line blocks (it renders nothing) keeps the text content equal
+                  to the name. */}
+              {(plan?.lines ?? [seg.title]).map((line, i) => (
+                <Fragment key={i}>
+                  {i > 0 ? ' ' : null}
+                  <span className="cal-vline">{line}</span>
+                </Fragment>
+              ))}
+            </span>
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -580,7 +591,6 @@ export function MonthGrid({
             month={month}
             fit={fit}
             holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
-            family={fonts?.family ?? DEFAULT_FIT_FONTS.family}
             verticalSize={verticalSize}
             weekendDays={weekendDays}
             today={today}
