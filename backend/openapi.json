@@ -340,7 +340,15 @@
               "blue",
               "indigo",
               "violet",
-              "pink"
+              "pink",
+              "rose",
+              "fuchsia",
+              "purple",
+              "sky",
+              "emerald",
+              "yellow",
+              "brown",
+              "gray"
             ],
             "title": "Colour",
             "type": "string"
@@ -491,7 +499,15 @@
               "blue",
               "indigo",
               "violet",
-              "pink"
+              "pink",
+              "rose",
+              "fuchsia",
+              "purple",
+              "sky",
+              "emerald",
+              "yellow",
+              "brown",
+              "gray"
             ],
             "title": "Colour",
             "type": "string"
@@ -569,7 +585,15 @@
                   "blue",
                   "indigo",
                   "violet",
-                  "pink"
+                  "pink",
+                  "rose",
+                  "fuchsia",
+                  "purple",
+                  "sky",
+                  "emerald",
+                  "yellow",
+                  "brown",
+                  "gray"
                 ],
                 "type": "string"
               },
@@ -1291,7 +1315,15 @@
                   "blue",
                   "indigo",
                   "violet",
-                  "pink"
+                  "pink",
+                  "rose",
+                  "fuchsia",
+                  "purple",
+                  "sky",
+                  "emerald",
+                  "yellow",
+                  "brown",
+                  "gray"
                 ],
                 "type": "string"
               },
@@ -1361,7 +1393,15 @@
               "blue",
               "indigo",
               "violet",
-              "pink"
+              "pink",
+              "rose",
+              "fuchsia",
+              "purple",
+              "sky",
+              "emerald",
+              "yellow",
+              "brown",
+              "gray"
             ],
             "title": "Colour",
             "type": "string"
@@ -1960,7 +2000,15 @@
               "blue",
               "indigo",
               "violet",
-              "pink"
+              "pink",
+              "rose",
+              "fuchsia",
+              "purple",
+              "sky",
+              "emerald",
+              "yellow",
+              "brown",
+              "gray"
             ],
             "title": "Colour",
             "type": "string"
@@ -2011,7 +2059,15 @@
                   "blue",
                   "indigo",
                   "violet",
-                  "pink"
+                  "pink",
+                  "rose",
+                  "fuchsia",
+                  "purple",
+                  "sky",
+                  "emerald",
+                  "yellow",
+                  "brown",
+                  "gray"
                 ],
                 "type": "string"
               },

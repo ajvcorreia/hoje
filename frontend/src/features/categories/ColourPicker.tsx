@@ -11,10 +11,10 @@ interface ColourPickerProps {
   label: string;
 }
 
-/** The 12 palette colours as a radio group; each swatch is labelled with its colour name. */
+/** The palette colours as a radio group; each swatch is labelled with its colour name. */
 export function ColourPicker({ value, onChange, label }: ColourPickerProps) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+    <div role="radiogroup" aria-label={label} className="flex max-w-[21rem] flex-wrap gap-1.5">
       {CATEGORY_KEYS.map((colour) => {
         const selected = colour === value;
         return (

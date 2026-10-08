@@ -15,6 +15,14 @@ Colour = Literal[
     "indigo",
     "violet",
     "pink",
+    "rose",
+    "fuchsia",
+    "purple",
+    "sky",
+    "emerald",
+    "yellow",
+    "brown",
+    "gray",
 ]
 
 COLOURS: tuple[str, ...] = get_args(Colour)

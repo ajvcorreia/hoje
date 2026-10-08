@@ -89,3 +89,19 @@ async def test_events_label_vertical_column(db_session: AsyncSession) -> None:
         )
     ).one()
     assert row == ("boolean", "NO", "false")
+
+
+@pytest.mark.asyncio
+async def test_categories_colour_check_allows_twenty_colours(db_session: AsyncSession) -> None:
+    """0008 widens ck_categories_colour to the 20 palette keys."""
+    definition = (
+        await db_session.execute(
+            text(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                "WHERE conname = 'ck_categories_colour'"
+            )
+        )
+    ).scalar_one()
+    for colour in ("violet", "pink", "rose", "fuchsia", "purple", "sky", "emerald", "yellow"):
+        assert f"'{colour}'" in definition
+    assert "'brown'" in definition and "'gray'" in definition

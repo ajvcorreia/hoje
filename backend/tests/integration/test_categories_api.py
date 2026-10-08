@@ -151,3 +151,28 @@ async def test_delete_resets_last_category(alice):
     ).status_code == 204
     fresh = await alice.post("/events", {"title": "Next", "start_date": "2026-03-11"})
     assert fresh.json()["event"]["category_id"] == first["id"]
+
+
+async def test_all_twenty_colours_are_accepted_on_create_and_update(alice):
+    from hoje.constants import COLOURS
+
+    assert len(COLOURS) == 20
+    assert COLOURS[:12] == tuple(
+        "slate red orange amber lime green teal cyan blue indigo violet pink".split()
+    )
+    for colour in COLOURS:
+        res = await alice.post("/categories", {"name": f"C-{colour}", "colour": colour})
+        assert res.status_code == 201, (colour, res.text)
+        assert res.json()["colour"] == colour
+    cat = await alice.make_category("Recolour", colour="blue")
+    for colour in ("rose", "fuchsia", "purple", "sky", "emerald", "yellow", "brown", "gray"):
+        cat = (
+            await alice.patch(
+                f"/categories/{cat['id']}", {"version": cat["version"], "colour": colour}
+            )
+        ).json()
+        assert cat["colour"] == colour
+    bad = await alice.patch(
+        f"/categories/{cat['id']}", {"version": cat["version"], "colour": "mauve"}
+    )
+    assert bad.status_code == 422

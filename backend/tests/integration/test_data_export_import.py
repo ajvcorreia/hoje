@@ -185,7 +185,7 @@ def _all_keys(node):
 
 async def build_rich_account(actor):
     work = await actor.make_category("Work", colour="teal", is_leave=True)
-    other = await actor.make_category("Home", colour="pink", icon="house", hidden=True)
+    other = await actor.make_category("Home", colour="fuchsia", icon="house", hidden=True)
     await actor.make_event(
         title="Holiday", category_id=work["id"], start_date="2026-08-03", end_date="2026-08-07"
     )
@@ -347,7 +347,7 @@ async def test_merge_applies_settings_leave_policies_and_calendars(alice):
             {"year": 2027, "allowance_days": 24, "carried_over_days": 0},
         ],
         "holiday_calendars": [
-            {"code": "AE", "enabled": True, "colour": "pink"},
+            {"code": "AE", "enabled": True, "colour": "brown"},
             {"code": "XX", "enabled": True},
         ],
     }
@@ -361,7 +361,7 @@ async def test_merge_applies_settings_leave_policies_and_calendars(alice):
     assert (policy["allowance_days"], policy["carried_over_days"], policy["version"]) == (25, 2, 2)
     assert (await alice.get("/me")).json()["timezone"] == "Asia/Dubai"
     ae = next(c for c in (await alice.get("/holiday-calendars")).json() if c["code"] == "AE")
-    assert ae["enabled"] is True and ae["colour"] == "pink"
+    assert ae["enabled"] is True and ae["colour"] == "brown"
 
 
 async def test_import_without_max_events_keeps_the_current_value_and_applies_it_when_given(alice):
