@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] — 2026-10-08
+
+### Changed
+
+- "Events shown per day" is now stored per user in the database (migration 0006,
+  `max_events_per_day` on `PATCH /api/v1/me`, included in export/import) instead of per device, so
+  it follows you to every machine. It starts at 2; set it again in Settings after upgrading.
+- Month grid: events, birthdays and holidays are always horizontal and share one row with the day
+  number; the month column grows wider to fit them instead of rows growing taller, so only
+  horizontal scrolling is needed. Rotated multi-day labels work for any limit (1–6) and their
+  width counts towards the column width.
+
 ## [1.3.2] — 2026-10-08
 
 ### Added
