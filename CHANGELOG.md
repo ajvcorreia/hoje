@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.9] — 2026-10-08
+
+### Changed
+
+- Vertical (rotated) event names that do not fit the event's height on one line now wrap at word
+  boundaries into up to 3 lines at the chosen "Vertical event text size"; only if that is still
+  too long the text shrinks (never below 9 px), and a name that cannot fit even then (for example a
+  single very long word) is shown as a normal horizontal title. Words are never broken. The
+  rotated column widens with the number of lines; names that fit on one line look as before.
+
 ## [1.3.8] — 2026-10-08
 
 ### Added
