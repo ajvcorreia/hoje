@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.15] — 2026-10-09
+
+### Added
+
+- Category icons: each category can have a small glyph, shown in the filter pills, the month grid
+  event titles, the agenda, search results, the day list and the mobile day cards. Pick one in
+  Settings › Categories (24 glyphs, or none). The default categories get one (migration 0012
+  also gives them to existing categories of the same name that have no icon).
+- Settings › Appearance › "Show category icons" switches the glyphs on or off. It is stored on
+  your account (`show_category_icons`, `PATCH /api/v1/me`) and follows you to every machine.
+
 ## [1.3.14] — 2026-10-09
 
 ### Changed
