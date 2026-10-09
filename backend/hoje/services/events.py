@@ -9,7 +9,9 @@ from collections.abc import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import set_committed_value
 
 from hoje import clock
 from hoje.models import Category, Event, Reminder, User
@@ -419,6 +421,7 @@ async def occurrences(
     found.sort(
         key=lambda o: (
             o.occurrence_start,
+            o.event.day_order,
             not o.event.all_day,
             o.event.start_time or dt.time.min,
             o.event.title.casefold(),
@@ -478,3 +481,38 @@ async def search(
         events = events[:limit]
         next_cursor = encode_cursor(events[-1].start_date, events[-1].id)
     return await _to_schemas(db, events), next_cursor
+
+
+async def reorder(db: AsyncSession, user: User, ids: Sequence[uuid.UUID]) -> None:
+    """Give the listed events positions 1..n in list order.
+
+    Deliberately not an edit: ``version`` and ``updated_at`` stay as they are (the explicit
+    ``updated_at`` value overrides the column's ``onupdate``), so a concurrent edit with the old
+    version still applies and the daily summary's "changes" section never lists a reorder. The
+    realtime update carries the unchanged version; clients refetch on any event message.
+    """
+    rows = {
+        event.id: event
+        for event in await db.scalars(
+            select(Event)
+            .where(Event.id.in_(ids), *_owned(user.id), Event.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    }
+    if len(rows) != len(ids):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    for position, event_id in enumerate(ids, start=1):
+        event = rows[event_id]
+        if event.day_order == position:
+            continue
+        await db.execute(
+            sql_update(Event)
+            .where(Event.id == event_id)
+            .values(day_order=position, updated_at=Event.updated_at)
+            .execution_options(synchronize_session=False)
+        )
+        set_committed_value(event, "day_order", position)  # keep the identity map in step
+        await changes.publish(
+            db, user_id=user.id, entity="event", op="update", id=event_id, version=event.version
+        )

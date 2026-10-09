@@ -138,3 +138,26 @@ async def test_notification_log_kind_allows_daily_summary(db_session: AsyncSessi
         )
     ).scalar_one()
     assert "'daily_summary'" in definition and "'security'" in definition
+
+
+@pytest.mark.asyncio
+async def test_events_day_order_column(db_session: AsyncSession) -> None:
+    """0010 adds events.day_order (smallint, default 0) with a 0..32767 check."""
+    row = (
+        await db_session.execute(
+            text(
+                "SELECT data_type, is_nullable, column_default FROM information_schema.columns "
+                "WHERE table_name = 'events' AND column_name = 'day_order'"
+            )
+        )
+    ).one()
+    assert row == ("smallint", "NO", "0")
+    definition = (
+        await db_session.execute(
+            text(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                "WHERE conname = 'ck_events_day_order'"
+            )
+        )
+    ).scalar_one()
+    assert "32767" in definition

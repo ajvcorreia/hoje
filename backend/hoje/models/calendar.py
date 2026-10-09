@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime, time
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, SmallInteger, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hoje.constants import COLOURS
@@ -47,6 +47,7 @@ class Event(Base):
         CheckConstraint("char_length(title) between 1 and 200", name="title_length"),
         CheckConstraint("notes is null or char_length(notes) <= 5000", name="notes_length"),
         CheckConstraint("end_date >= start_date", name="dates_order"),
+        CheckConstraint("day_order between 0 and 32767", name="day_order"),
         CheckConstraint("repeat in ('none','monthly','yearly')", name="repeat"),
         Index(
             "ix_events_user_id_start_date_end_date",
@@ -79,6 +80,8 @@ class Event(Base):
     rrule: Mapped[str | None]  # reserved, unused in v1
     counts_as_leave: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     label_vertical: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # Position among the events of a day (1..n once ordered by the user, 0 = never ordered).
+    day_order: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"))
     version: Mapped[int] = mapped_column(default=1, server_default=text("1"))
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]

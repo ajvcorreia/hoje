@@ -48,6 +48,7 @@ function makeEvent(id: string, title: string, start: string, end = start, extra 
     repeat_until: null,
     counts_as_leave: false,
     label_vertical: false,
+    day_order: 0,
     reminders: [],
     version: 1,
     created_at: '2026-01-01T00:00:00Z',
@@ -353,7 +354,7 @@ describe('category chips', () => {
     });
     renderApp();
     const chips = await screen.findByRole('group', { hidden: true, name: 'Show categories' });
-    const home = await within(chips).findByRole('button', { name: 'Home' });
+    const home = await within(chips).findByRole('button', { name: /^Home/ });
     expect(home).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(home);
     await waitFor(() =>
@@ -707,5 +708,169 @@ describe('max events per day setting', () => {
     await waitFor(() => expect(within(cell('2026-03-10')).getByText('Alpha')).toBeInTheDocument());
     expect(cell('2026-03-10').querySelectorAll('.cal-ev')).toHaveLength(1);
     expect(within(cell('2026-03-10')).getByText('+1')).toBeInTheDocument();
+  });
+});
+
+describe('category chip counts', () => {
+  const chipsOf = async () =>
+    within(await screen.findByRole('group', { hidden: true, name: 'Show categories' }));
+
+  it('count occurrences per category, including repeats, with an accessible name', async () => {
+    const repeating = makeEvent('r', 'Rent', '2026-01-05', '2026-01-05', { repeat: 'monthly' });
+    const occurrences = [
+      occurrence(makeEvent('w1', 'One', '2026-03-10')),
+      occurrence(makeEvent('w2', 'Two', '2026-03-11')),
+      ...[0, 1, 2].map((m) => ({
+        ...occurrence(repeating),
+        occurrence_start: `2026-0${m + 1}-05`,
+        occurrence_end: `2026-0${m + 1}-05`,
+      })),
+      occurrence(makeEvent('h', 'Home thing', '2026-03-12', '2026-03-12', { category_id: HOME })),
+    ];
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/events': { occurrences },
+    });
+    renderApp();
+    const chips = await chipsOf();
+    const work = await chips.findByRole('button', { name: 'Work, 5 events' });
+    expect(within(work).getByTestId('category-count')).toHaveTextContent('5');
+    expect(within(work).getByText('Work')).toBeInTheDocument();
+    expect(chips.getByRole('button', { name: 'Home, 1 event' })).toBeInTheDocument();
+  });
+
+  it('keep counting a hidden category and show 0 for an empty one', async () => {
+    mockApi({
+      ...baseRoutes([
+        makeEvent('h1', 'H1', '2026-03-11', '2026-03-11', { category_id: HOME }),
+        makeEvent('h2', 'H2', '2026-03-12', '2026-03-12', { category_id: HOME }),
+      ]),
+      'GET /api/v1/categories': [CATEGORIES[0], { ...CATEGORIES[1], hidden: true }],
+    });
+    renderApp();
+    const chips = await chipsOf();
+    const home = await chips.findByRole('button', { name: 'Home, 2 events' });
+    expect(home).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('H1')).not.toBeInTheDocument();
+    const work = chips.getByRole('button', { name: 'Work, 0 events' });
+    expect(within(work).getByTestId('category-count')).toHaveTextContent('0');
+  });
+});
+
+describe('reordering the events of a day', () => {
+  const DAY = '2026-03-10';
+  const trio = () => [
+    makeEvent('a', 'Alpha', DAY),
+    makeEvent('b', 'Bravo', DAY),
+    makeEvent('c', 'Charlie', DAY),
+  ];
+  const popoverRows = (popover: HTMLElement) =>
+    within(within(popover).getByRole('list', { name: `Events on ${DAY}` }))
+      .getAllByRole('listitem')
+      .map((li) => /^(Alpha|Bravo|Charlie)/.exec(li.textContent ?? '')?.[1]);
+  const gridOrder = () => {
+    const text = cell(DAY).textContent ?? '';
+    return ['Alpha', 'Bravo', 'Charlie']
+      .map((t) => [t, text.indexOf(t)] as const)
+      .filter(([, i]) => i >= 0)
+      .sort((x, y) => x[1] - y[1])
+      .map(([t]) => t);
+  };
+  const open = async () => {
+    await gridReady();
+    await userEvent.click(cell(DAY));
+    return screen.findByRole('dialog', { hidden: true, name: /Events on/ });
+  };
+
+  it('moves an event up: calls the API with the new id order and updates popover and grid', async () => {
+    // A stateful server: the refetch after the mutation must return what was stored.
+    const stored = new Map<string, number>();
+    const api = mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/events': () => ({
+        occurrences: trio().map((e) => occurrence({ ...e, day_order: stored.get(e.id) ?? 0 })),
+      }),
+      'POST /api/v1/events/reorder': (call) => {
+        for (const [i, id] of (call.body as { ids: string[] }).ids.entries()) stored.set(id, i + 1);
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp();
+    const popover = await open();
+    expect(popoverRows(popover)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+    expect(
+      within(popover).getByText(/Order is shared by all days of a multi-day event/),
+    ).toBeInTheDocument();
+    expect(within(popover).getByRole('button', { name: 'Move Alpha up' })).toBeDisabled();
+    expect(within(popover).getByRole('button', { name: 'Move Charlie down' })).toBeDisabled();
+
+    await userEvent.click(within(popover).getByRole('button', { name: 'Move Charlie up' }));
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/events/reorder')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/v1/events/reorder')[0]?.body).toEqual({
+      ids: ['a', 'c', 'b'],
+    });
+    await waitFor(() => expect(popoverRows(popover)).toEqual(['Alpha', 'Charlie', 'Bravo']));
+    expect(gridOrder()).toEqual(['Alpha', 'Charlie']); // the grid shows 2 per day, in the new order
+    // keyboard focus stays on the moved row's button
+    expect(within(popover).getByRole('button', { name: 'Move Charlie up' })).toHaveFocus();
+
+    await userEvent.click(within(popover).getByRole('button', { name: 'Move Alpha down' }));
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/events/reorder')).toHaveLength(2));
+    expect(api.callsTo('POST', '/api/v1/events/reorder')[1]?.body).toEqual({
+      ids: ['c', 'a', 'b'],
+    });
+  });
+
+  it('shows already ordered events by their day_order', async () => {
+    mockApi({
+      ...baseRoutes([
+        makeEvent('a', 'Alpha', DAY, DAY, { day_order: 3 }),
+        makeEvent('b', 'Bravo', DAY, DAY, { day_order: 1 }),
+        makeEvent('c', 'Charlie', DAY, DAY, { day_order: 2 }),
+      ]),
+    });
+    renderApp();
+    const popover = await open();
+    expect(popoverRows(popover)).toEqual(['Bravo', 'Charlie', 'Alpha']);
+    expect(gridOrder()).toEqual(['Bravo', 'Charlie']); // Alpha is the third: "+1"
+  });
+
+  it('rolls back and says so when the request fails', async () => {
+    mockApi({
+      ...baseRoutes(trio()),
+      'POST /api/v1/events/reorder': () =>
+        new Response(JSON.stringify({ title: 'Boom', status: 500 }), {
+          status: 500,
+          headers: { 'content-type': 'application/problem+json' },
+        }),
+    });
+    renderApp();
+    const popover = await open();
+    await userEvent.click(within(popover).getByRole('button', { name: 'Move Bravo up' }));
+    expect(await screen.findByText('Could not reorder the events')).toBeInTheDocument();
+    await waitFor(() => expect(popoverRows(popover)).toEqual(['Alpha', 'Bravo', 'Charlie']));
+  });
+
+  it('offers no controls when a single event is listed', async () => {
+    mockApi({ ...baseRoutes([makeEvent('a', 'Alpha', DAY)]) });
+    renderApp();
+    const popover = await open();
+    expect(within(popover).queryByRole('button', { name: /^Move / })).not.toBeInTheDocument();
+    expect(within(popover).queryByText(/Order is shared/)).not.toBeInTheDocument();
+  });
+
+  it('orders the agenda by day_order too', async () => {
+    mockApi(
+      baseRoutes([
+        makeEvent('a', 'Alpha', '2026-07-01', '2026-07-01', { day_order: 2 }),
+        makeEvent('b', 'Bravo', '2026-07-01', '2026-07-01', { day_order: 1 }),
+      ]),
+    );
+    renderApp();
+    await gridReady();
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Agenda' }));
+    const alpha = await screen.findByText('Alpha');
+    const bravo = screen.getByText('Bravo');
+    expect(bravo.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

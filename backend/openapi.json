@@ -759,6 +759,11 @@
             "title": "Created At",
             "type": "string"
           },
+          "day_order": {
+            "default": 0,
+            "title": "Day Order",
+            "type": "integer"
+          },
           "end_date": {
             "format": "date",
             "title": "End Date",
@@ -1094,6 +1099,26 @@
           "start_date"
         ],
         "title": "EventCreate",
+        "type": "object"
+      },
+      "EventReorder": {
+        "description": "The events of one day popover in their new order (first = top).",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "EventReorder",
         "type": "object"
       },
       "EventUpdate": {
@@ -1562,6 +1587,13 @@
             "minLength": 1,
             "title": "Category",
             "type": "string"
+          },
+          "day_order": {
+            "default": 0,
+            "maximum": 32767.0,
+            "minimum": 0.0,
+            "title": "Day Order",
+            "type": "integer"
           },
           "end_date": {
             "anyOf": [
@@ -5089,6 +5121,81 @@
           }
         },
         "summary": "Create an event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/reorder": {
+      "post": {
+        "description": "Store positions 1..n for the listed events, in list order (204, no body).\n\nOnly `day_order` changes: `version` and `updated_at` stay (it is not an edit, so concurrent\nedits are never lost and the daily summary does not report it). Each changed event still\nemits a realtime update so other tabs refetch. 404 if any id is not one of your live events.",
+        "operationId": "events_reorder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventReorder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Set the order of events within a day",
         "tags": [
           "events"
         ]

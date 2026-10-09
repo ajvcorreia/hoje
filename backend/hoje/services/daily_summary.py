@@ -221,7 +221,10 @@ def _occurrence_when(event: Any, start: dt.date, end: dt.date, user_tz: str) -> 
 def occurrences_on(
     events: list[Any], categories: Categories, day: dt.date, user_tz: str
 ) -> list[Item]:
-    """Occurrences covering ``day`` (multi-day ones in progress included): all-day first."""
+    """Occurrences covering ``day`` (multi-day ones in progress included): all-day first.
+
+    Ordered by the user's own ``day_order`` first (0 = never ordered), then all-day, time, title.
+    """
     found: list[tuple[Any, str]] = []
     for event in events:
         for start, end in recurrence.expand(
@@ -230,6 +233,7 @@ def occurrences_on(
             found.append((event, _occurrence_when(event, start, end, user_tz)))
     found.sort(
         key=lambda pair: (
+            pair[0].day_order,  # the user's own order first; 0 (never ordered) keeps today's rules
             not pair[0].all_day,
             pair[0].start_time or dt.time.min,
             _clean(pair[0].title).casefold(),

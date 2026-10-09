@@ -20,6 +20,11 @@ export interface LayoutInput {
   colour?: string;
   /** Draw the title rotated along a multi-day block. */
   labelVertical?: boolean;
+  /**
+   * The user's own position among the events of a day (`events.day_order`): 0 = never ordered,
+   * 1..n = ordered. Sorts before every other rule, so unordered events keep today's order.
+   */
+  dayOrder?: number;
 }
 
 /** An occurrence placed in a month column. */
@@ -67,10 +72,14 @@ function spanDays(e: LayoutInput): number {
 }
 
 /**
- * Placement order: multi-day first (earlier start, then longer first), then all-day
+ * Placement order: the user's own order (`dayOrder`, ascending; 0 = never ordered) first, then
+ * multi-day first (earlier start, then longer first), then all-day
  * single-day by title, then timed events by start time, then title.
  */
 export function compareForLayout(a: LayoutInput, b: LayoutInput): number {
+  const oa = a.dayOrder ?? 0;
+  const ob = b.dayOrder ?? 0;
+  if (oa !== ob) return oa - ob;
   const rank = (e: LayoutInput) => (isMultiDay(e) ? 0 : e.allDay ? 1 : 2);
   const ra = rank(a);
   const rb = rank(b);

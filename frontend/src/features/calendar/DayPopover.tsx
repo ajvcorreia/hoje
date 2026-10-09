@@ -1,6 +1,7 @@
 import type { Occurrence } from '../../api/types';
 import { Popover } from '../../components/ui/Popover';
 import { formatDayHeading } from '../../lib/dates';
+import { useReorderEvents } from '../events/api';
 import { DayEventList } from '../events/DayEventList';
 import { QuickAdd } from '../events/QuickAdd';
 import type { HolidayDay } from '../holidays/api';
@@ -34,12 +35,18 @@ export function DayPopover({
   onAddWithDetails,
 }: DayPopoverProps) {
   const heading = formatDayHeading(date);
+  const reorder = useReorderEvents();
   return (
     <Popover anchor={anchor} label={`Events on ${heading}`} onClose={onClose}>
       <h2 className="text-sm font-semibold">{heading}</h2>
       <div className="my-2 max-h-64 overflow-y-auto">
         <HolidayList holidays={holidays} />
-        <DayEventList date={date} occurrences={occurrences} onSelect={onSelectEvent} />
+        <DayEventList
+          date={date}
+          occurrences={occurrences}
+          onSelect={onSelectEvent}
+          onReorder={(ids) => reorder.mutate(ids)}
+        />
       </div>
       <QuickAdd date={date} onCreated={onClose} />
       <button

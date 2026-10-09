@@ -14,6 +14,7 @@ from hoje.schemas import (
     Event,
     EventConflict,
     EventCreate,
+    EventReorder,
     EventUpdate,
     EventWithImpact,
     OccurrenceList,
@@ -59,6 +60,23 @@ async def events_create(body: EventCreate, db: DbSession, user: CurrentUser) -> 
     event = await service.create(db, user, body)
     await db.commit()
     return EventWithImpact(event=event, leave_impact=await leave.event_impact(db, user, event))
+
+
+@router.post(
+    "/reorder",
+    status_code=204,
+    responses=problems(404),
+    summary="Set the order of events within a day",
+)
+async def events_reorder(body: EventReorder, db: DbSession, user: CurrentUser) -> None:
+    """Store positions 1..n for the listed events, in list order (204, no body).
+
+    Only `day_order` changes: `version` and `updated_at` stay (it is not an edit, so concurrent
+    edits are never lost and the daily summary does not report it). Each changed event still
+    emits a realtime update so other tabs refetch. 404 if any id is not one of your live events.
+    """
+    await service.reorder(db, user, body.ids)
+    await db.commit()
 
 
 @router.get("/{event_id}", response_model=Event, summary="Get an event")

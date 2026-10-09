@@ -17,8 +17,11 @@ export function filterVisible(
     : occurrences.filter((o) => !hidden.has(o.event.category_id));
 }
 
-/** All-day first, then by start time, then title. */
+/** The user's own order (`day_order`, 0 = never ordered) first, then all-day, start time, title. */
 export function compareWithinDay(a: Occurrence, b: Occurrence): number {
+  const oa = a.event.day_order ?? 0;
+  const ob = b.event.day_order ?? 0;
+  if (oa !== ob) return oa - ob;
   if (a.event.all_day !== b.event.all_day) return a.event.all_day ? -1 : 1;
   const ta = a.event.start_time ?? '';
   const tb = b.event.start_time ?? '';
@@ -61,6 +64,7 @@ export function toLayoutInput(o: Occurrence, colour?: string): LayoutInput {
     title: o.event.title,
     colour,
     labelVertical: o.event.label_vertical,
+    dayOrder: o.event.day_order ?? 0,
   };
 }
 

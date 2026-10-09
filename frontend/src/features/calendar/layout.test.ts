@@ -306,3 +306,55 @@ describe('moveFocusDate', () => {
     expect(moveFocusDate('2026-01-05', 'ArrowLeft')).toBe('2026-01-05');
   });
 });
+
+describe('day_order (the user own order)', () => {
+  it('sorts before every other rule, ascending; 0 / absent = never ordered', () => {
+    const multi = ev('multi', '2026-03-09', '2026-03-11');
+    const timed = ev('timed', '2026-03-10', '2026-03-10', { allDay: false, startTime: '08:00' });
+    const plain = ev('plain', '2026-03-10', '2026-03-10');
+    // Without day_order: multi-day, all-day, timed (today's behaviour, unchanged).
+    expect([timed, plain, multi].sort(compareForLayout).map((e) => e.key)).toEqual([
+      'multi',
+      'plain',
+      'timed',
+    ]);
+    // Ordered events come after the never-ordered ones, among themselves by position.
+    const ordered = [
+      { ...multi, dayOrder: 3 },
+      { ...timed, dayOrder: 1 },
+      { ...plain, dayOrder: 2 },
+    ];
+    expect(ordered.sort(compareForLayout).map((e) => e.key)).toEqual(['timed', 'plain', 'multi']);
+    expect([{ ...plain, dayOrder: 1 }, timed].sort(compareForLayout).map((e) => e.key)).toEqual([
+      'timed',
+      'plain',
+    ]);
+  });
+
+  it('changes the horizontal packing order inside a day cell', () => {
+    const a = ev('a', '2026-03-10', '2026-03-10');
+    const b = ev('b', '2026-03-10', '2026-03-10');
+    const c = ev('c', '2026-03-10', '2026-03-10');
+    const names = (inputs: LayoutInput[]) =>
+      (layoutMonth(inputs, 2026, 2, 4)[9] as { items: Placed[] }).items.map((p) => p.input.key);
+    expect(names([a, b, c])).toEqual(['a', 'b', 'c']);
+    expect(names([a, b, { ...c, dayOrder: 2 }, { ...a, key: 'a2', dayOrder: 1 }])).toEqual([
+      'a',
+      'b',
+      'a2',
+      'c',
+    ]);
+  });
+
+  it('keeps rotated blocks in their own narrow columns while horizontal events reorder', () => {
+    const trip = ev('trip', '2026-03-09', '2026-03-12', { labelVertical: true });
+    const x = ev('x', '2026-03-10', '2026-03-10');
+    const y = { ...ev('y', '2026-03-10', '2026-03-10'), dayOrder: 1 };
+    const day = layoutMonth([x, y, trip], 2026, 2, 3, (e) => !!e.labelVertical)[9] as {
+      rotated: (Placed | null)[];
+      items: Placed[];
+    };
+    expect(day.rotated.map((p) => p?.input.key)).toEqual(['trip']);
+    expect(day.items.map((p) => p.input.key)).toEqual(['x', 'y']);
+  });
+});

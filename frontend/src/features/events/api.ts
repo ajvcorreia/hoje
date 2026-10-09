@@ -165,6 +165,7 @@ export function useCreateEvent() {
         repeat_until: body.repeat_until ?? null,
         counts_as_leave: false,
         label_vertical: body.label_vertical ?? false,
+        day_order: 0,
         reminders: body.reminders ?? [],
         version: 1,
         created_at: now,
@@ -296,4 +297,38 @@ export function conflictCurrent(error: unknown): HojeEvent | null {
   if (!(error instanceof ApiError) || error.status !== 409) return null;
   const current = (error.body as Partial<EventConflict>).current;
   return current ?? null;
+}
+
+/**
+ * `POST /events/reorder`: the ids of the events listed for one day, in their new order. Each
+ * event gets position 1..n (one position per event, shared by all the days it covers). The
+ * order is applied to every cached occurrences list at once so the grid and the popover follow
+ * immediately; a failure restores the previous lists and says so.
+ */
+export function useReorderEvents() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    meta: { protected: true },
+    mutationFn: async (ids: string[]) => {
+      unwrap(await api.POST('/api/v1/events/reorder', { body: { ids } }));
+    },
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: OCCURRENCES_KEY });
+      const position = new Map(ids.map((id, index) => [id, index + 1]));
+      return {
+        snapshot: patchOccurrenceCaches(qc, (list) =>
+          list.map((o) => {
+            const day_order = position.get(o.event_id);
+            return day_order === undefined ? o : { ...o, event: { ...o.event, day_order } };
+          }),
+        ),
+      };
+    },
+    onError: (_error, _ids, context) => {
+      rollback(qc, context?.snapshot);
+      toast.show({ message: 'Could not reorder the events' });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
+  });
 }

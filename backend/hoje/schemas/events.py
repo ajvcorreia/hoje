@@ -78,6 +78,9 @@ class Event(BaseModel):
     counts_as_leave: bool
     label_vertical: bool = False
     reminders: list[ReminderOut] = []
+    day_order: int = (
+        0  # position among the events of a day; 0 = never ordered; set by /events/reorder
+    )
     version: int
     created_at: dt.datetime
     updated_at: dt.datetime
@@ -183,3 +186,19 @@ class OccurrenceList(BaseModel):
 class SearchResult(BaseModel):
     items: list[Event]
     next_cursor: str | None = None
+
+
+MAX_REORDER = 200
+
+
+class EventReorder(BaseModel):
+    """The events of one day popover in their new order (first = top)."""
+
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_REORDER)
+
+    @field_validator("ids")
+    @classmethod
+    def _unique(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("ids must be unique")
+        return value

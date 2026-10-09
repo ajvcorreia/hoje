@@ -32,6 +32,7 @@ def event(title="Event", start=date(2026, 10, 8), end=None, **extra):
         "start_time": None,
         "end_time": None,
         "timezone": LISBON,
+        "day_order": 0,
         "repeat": "none",
         "repeat_until": None,
         "created_at": LONG_AGO,
