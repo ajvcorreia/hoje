@@ -438,7 +438,31 @@ describe('past days stripe colour setting', () => {
     expect(input).toHaveValue('#9ca3af');
     fireEvent.input(input, { target: { value: '#ff0000' } });
     await waitFor(() =>
-      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ past_stripe_colour: '#ff0000' }),
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({
+        past_stripe_colour: '#ff0000',
+      }),
+    );
+  });
+});
+
+describe('category icons', () => {
+  it('saves the show category icons switch on the user', async () => {
+    let me = { ...ME, show_category_icons: true };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('Show category icons');
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ show_category_icons: false }),
     );
   });
 });

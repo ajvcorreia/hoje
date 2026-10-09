@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { Occurrence } from '../../api/types';
 import { categoryMap, useCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
+import { useCategoryIcon } from '../categories/icons';
 import { formatTimeRange } from './occurrences';
 import { ReminderBell } from './ReminderBell';
 
@@ -50,6 +51,7 @@ const MOVE_BUTTON =
 export function DayEventList({ date, occurrences, onSelect, onReorder }: DayEventListProps) {
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
+  const iconOf = useCategoryIcon();
   const listRef = useRef<HTMLUListElement>(null);
   // The row that was just moved keeps keyboard focus on its button (or the other one at an end).
   const refocus = useRef<{ id: string; dir: 'up' | 'down' } | null>(null);
@@ -92,7 +94,7 @@ export function DayEventList({ date, occurrences, onSelect, onReorder }: DayEven
                 onClick={() => onSelect(o.event_id)}
                 className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-surface-muted md:min-h-9"
               >
-                <CategorySwatch colour={category?.colour} />
+                <CategorySwatch colour={category?.colour} icon={iconOf(category?.id)} />
                 <span className="min-w-0 flex-1">
                   <span className="block break-words font-medium">{o.event.title}</span>
                   <span className="block break-words text-xs text-text-muted">

@@ -6,6 +6,7 @@ import { addMonthsIso, formatShortDate, parseIso } from '../../lib/dates';
 import { btnSecondary } from '../../components/ui/classes';
 import { categoryMap, useCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
+import { useCategoryIcon } from '../categories/icons';
 import { useOccurrences } from '../events/api';
 import { compareWithinDay, filterVisible, formatTimeRange } from '../events/occurrences';
 import { ReminderBell } from '../events/ReminderBell';
@@ -62,6 +63,7 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
   const { data, isPending, isError, error } = useOccurrences(today, to);
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
+  const iconOf = useCategoryIcon();
   const birthdays = useBirthdaysBetween(today, to);
   const groups = useMemo(
     () => groupForAgenda(filterVisible(data, categories), today, birthdays),
@@ -125,7 +127,7 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
                           onClick={() => onSelectEvent(o.event_id)}
                           className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-surface-muted"
                         >
-                          <CategorySwatch colour={category?.colour} />
+                          <CategorySwatch colour={category?.colour} icon={iconOf(category?.id)} />
                           <span className="min-w-0 flex-1 break-words font-medium">
                             {o.event.title}
                           </span>

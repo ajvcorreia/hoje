@@ -26,6 +26,7 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { usePastStripeColour } from '../../lib/pastStripeColour';
+import { useCategoryIcon } from '../categories/icons';
 import { useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { toLayoutInput } from '../events/occurrences';
@@ -399,6 +400,7 @@ export function MonthGrid({
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
   const [pastStripe] = usePastStripeColour();
+  const iconOf = useCategoryIcon();
   const [maxEvents] = useMaxEvents();
   const [verticalSize] = useVerticalTextSize();
   const [fonts, setFonts] = useState<FitFonts | null>(null);
@@ -461,7 +463,11 @@ export function MonthGrid({
     const buckets: LayoutInput[][] = Array.from({ length: 12 }, () => []);
     const prefix = `${String(year).padStart(4, '0')}-`;
     for (const o of occurrences) {
-      const input = toLayoutInput(o, colourOf.get(o.event.category_id));
+      const input = toLayoutInput(
+        o,
+        colourOf.get(o.event.category_id),
+        iconOf(o.event.category_id),
+      );
       const first =
         o.occurrence_start < `${prefix}01-01` ? 0 : Number(o.occurrence_start.slice(5, 7)) - 1;
       const last =
@@ -469,7 +475,7 @@ export function MonthGrid({
       for (let m = first; m <= last; m += 1) buckets[m]?.push(input);
     }
     return buckets;
-  }, [occurrences, categories, year]);
+  }, [occurrences, categories, year, iconOf]);
 
   // Required event-area width per month; memoised on the month inputs, holidays, font and row
   // height (a rotated label only fits a block tall enough for its name).

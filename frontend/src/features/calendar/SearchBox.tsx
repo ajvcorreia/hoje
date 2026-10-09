@@ -4,6 +4,7 @@ import { inputClass } from '../../components/ui/classes';
 import { formatShortDate } from '../../lib/dates';
 import { categoryMap, useCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
+import { useCategoryIcon } from '../categories/icons';
 import { useSearchEvents } from '../events/api';
 
 interface SearchBoxProps {
@@ -19,6 +20,7 @@ export function SearchBox({ onPick }: SearchBoxProps) {
   const [open, setOpen] = useState(false);
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
+  const iconOf = useCategoryIcon();
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTerm(text), 250);
@@ -79,7 +81,7 @@ export function SearchBox({ onPick }: SearchBoxProps) {
                       }}
                       className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-surface-muted"
                     >
-                      <CategorySwatch colour={category?.colour} />
+                      <CategorySwatch colour={category?.colour} icon={iconOf(category?.id)} />
                       <span className="min-w-0 flex-1">
                         <span className="block break-words font-medium">{event.title}</span>
                         <span className="block break-words text-xs text-text-muted">

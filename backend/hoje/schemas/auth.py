@@ -29,6 +29,7 @@ class Me(BaseModel):
     max_events_per_day: int
     vertical_text_size: int
     past_stripe_colour: str
+    show_category_icons: bool
     daily_summary_enabled: bool
     daily_summary_time: str  # "HH:MM" in `timezone`
     daily_summary_last_sent_at: datetime | None = None
@@ -48,6 +49,7 @@ class MeUpdate(BaseModel):
     max_events_per_day: MaxEventsPerDay | None = None
     vertical_text_size: VerticalTextSize | None = None
     past_stripe_colour: PastStripeColour | None = None
+    show_category_icons: bool | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None
 
