@@ -29,9 +29,9 @@ export interface EventFormState {
   labelVertical: boolean;
 }
 
-export function blankForm(date: string): EventFormState {
+export function blankForm(date: string, title = ''): EventFormState {
   return {
-    title: '',
+    title,
     categoryId: '',
     startDate: date,
     endDate: date,

@@ -26,7 +26,8 @@ const VIEWS: { id: View; label: string }[] = [
 
 const DEFAULT_WEEKEND = [6, 7];
 
-type EditorState = { mode: 'create'; date: string } | { mode: 'edit'; eventId: string };
+type EditorState =
+  { mode: 'create'; date: string; title: string } | { mode: 'edit'; eventId: string };
 
 /** The calendar for screens >= 768 px: toolbar, the three views, day popover and editor. */
 export function DesktopCalendar() {
@@ -170,9 +171,9 @@ export function DesktopCalendar() {
             setPopover(null);
             setEditor({ mode: 'edit', eventId });
           }}
-          onAddWithDetails={(date) => {
+          onAddWithDetails={(date, title) => {
             setPopover(null);
-            setEditor({ mode: 'create', date });
+            setEditor({ mode: 'create', date, title });
           }}
         />
       ) : null}
@@ -182,6 +183,7 @@ export function DesktopCalendar() {
           mode={editor.mode}
           eventId={editor.mode === 'edit' ? editor.eventId : undefined}
           initialDate={editor.mode === 'create' ? editor.date : undefined}
+          initialTitle={editor.mode === 'create' ? editor.title : undefined}
           onClose={() => setEditor(null)}
         />
       ) : null}

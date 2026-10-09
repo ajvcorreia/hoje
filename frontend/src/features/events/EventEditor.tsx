@@ -33,6 +33,8 @@ export interface EventEditorProps {
   eventId?: string;
   /** ISO date preselected in `create` mode (defaults to today). */
   initialDate?: string;
+  /** Title prefilled in `create` mode (e.g. what was typed in the quick-add field). */
+  initialTitle?: string;
   /** Called after save, delete or cancel. */
   onClose(): void;
   /** `dialog` (default, centred modal) or `sheet` (full-screen, for phones). */
@@ -49,6 +51,7 @@ export function EventEditor({
   mode,
   eventId,
   initialDate,
+  initialTitle,
   onClose,
   variant = 'dialog',
 }: EventEditorProps) {
@@ -57,7 +60,12 @@ export function EventEditor({
   return (
     <Dialog title={title} onClose={onClose} variant={variant}>
       {mode === 'create' ? (
-        <EditorForm mode="create" initialDate={initialDate ?? todayIso()} onClose={onClose} />
+        <EditorForm
+          mode="create"
+          initialDate={initialDate ?? todayIso()}
+          initialTitle={initialTitle}
+          onClose={onClose}
+        />
       ) : existing.isPending ? (
         <p className="text-sm text-text-muted">Loading...</p>
       ) : existing.isError ? (
@@ -83,7 +91,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PREVIEW_DEBOUNCE_MS = 300;
 
 type FormProps =
-  | { mode: 'create'; initialDate: string; onClose(): void }
+  | { mode: 'create'; initialDate: string; initialTitle?: string; onClose(): void }
   | {
       mode: 'edit';
       event: HojeEvent;
@@ -104,7 +112,9 @@ function EditorForm(props: FormProps) {
   const toast = useToast();
 
   const [form, setForm] = useState<EventFormState>(() =>
-    props.mode === 'edit' ? formFromEvent(props.event) : blankForm(props.initialDate),
+    props.mode === 'edit'
+      ? formFromEvent(props.event)
+      : blankForm(props.initialDate, props.initialTitle),
   );
   const [version, setVersion] = useState(editing?.version ?? 0);
   const [moreOpen, setMoreOpen] = useState(false);
