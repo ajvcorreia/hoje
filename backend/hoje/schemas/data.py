@@ -41,6 +41,7 @@ FORMAT_VERSION = 1
 MAX_CATEGORIES = 100
 MAX_EVENTS = 20_000
 MAX_LEAVE_POLICIES = 200
+MAX_TODOS = 5_000
 MAX_CUSTOM_HOLIDAYS = 2_000
 MAX_BUNDLED_DEVIATIONS = 2_000
 MAX_CALENDARS = 10
@@ -215,6 +216,14 @@ class ExportCalendar(BaseModel):
     edited_bundled: list[ExportHoliday] = Field(default=[], max_length=MAX_BUNDLED_DEVIATIONS)
 
 
+class ExportTodo(BaseModel):
+    title: EventTitle
+    day: BoundedDate
+    due_date: BoundedDate | None = None
+    done: bool = False
+    completed_on: BoundedDate | None = None  # defaults to ``day`` for a done to-do
+
+
 class ExportDocument(BaseModel):
     """A complete export file. ``format`` and ``version`` are checked first by the importer."""
 
@@ -227,6 +236,8 @@ class ExportDocument(BaseModel):
     events: list[ExportEvent] = Field(default=[], max_length=MAX_EVENTS)
     leave_policies: list[ExportLeavePolicy] = Field(default=[], max_length=MAX_LEAVE_POLICIES)
     holiday_calendars: list[ExportCalendar] = Field(default=[], max_length=MAX_CALENDARS)
+    # None = the file predates to-dos: an import leaves the existing ones alone.
+    todos: list[ExportTodo] | None = Field(default=None, max_length=MAX_TODOS)
 
     model_config = ConfigDict(extra="ignore")
 

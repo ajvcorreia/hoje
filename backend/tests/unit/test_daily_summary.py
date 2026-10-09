@@ -428,3 +428,67 @@ def test_a_single_section_has_no_separator():
     message = ds.summary_email(data, "https://hoje.example.com")
     assert "<hr" not in message.html
     assert "-" * 50 not in message.text
+
+
+# ------------------------------------------------------------------ to-dos
+
+
+def todo(title, due, done=False, **extra):
+    fields = {
+        "id": uuid.uuid4(),
+        "title": title,
+        "due_date": due,
+        "done_at": NOW if done else None,
+        "created_at": LONG_AGO,
+    }
+    return SimpleNamespace(**{**fields, **extra})
+
+
+def with_todos(todos):
+    return ds.assemble(
+        now=NOW,
+        user_tz=LISBON,
+        since=None,
+        events=[],
+        changed=[],
+        categories=CATEGORIES,
+        birthdays=[],
+        holidays=[],
+        todos=todos,
+    )
+
+
+def test_todos_due_today_and_overdue_are_listed_most_overdue_first():
+    data = with_todos(
+        [
+            todo("Today", date(2026, 10, 8)),
+            todo("Overdue", date(2026, 10, 5)),
+            todo("Tomorrow", date(2026, 10, 9)),
+            todo("No date", None),
+            todo("Finished", date(2026, 10, 8), done=True),
+        ]
+    )
+    assert [(t.title, t.due, t.overdue) for t in data.todos] == [
+        ("Overdue", "Overdue since Mon 5 Oct", True),
+        ("Today", "Due today", False),
+    ]
+    assert not data.is_empty
+
+
+def test_only_future_or_finished_todos_leave_the_summary_empty():
+    data = with_todos(
+        [todo("Later", date(2026, 10, 9)), todo("Done", date(2026, 10, 1), done=True)]
+    )
+    assert data.todos == [] and data.is_empty
+
+
+def test_subject_mentions_todos_when_nothing_else_is_on():
+    data = with_todos([todo("A", date(2026, 10, 8)), todo("B", date(2026, 10, 7))])
+    assert ds.subject_for(data).endswith("2 to-dos due")
+
+
+def test_summary_email_renders_the_todo_section():
+    data = with_todos([todo("Pay <rent>", date(2026, 10, 5))])
+    message = ds.summary_email(data, "https://hoje.example")
+    assert "TO-DOS DUE" in message.text and "Overdue since Mon 5 Oct: Pay <rent>" in message.text
+    assert "To-dos due" in message.html and "Pay &lt;rent&gt;" in message.html

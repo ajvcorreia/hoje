@@ -8,6 +8,7 @@ import { ReminderBell } from '../../events/ReminderBell';
 import { formatTimeRange, occurrenceKey } from '../../events/occurrences';
 import type { HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
+import { TodoSection } from '../../todos/TodoSection';
 import { dayOfLabel } from './mobileLib';
 
 interface DayViewProps {
@@ -63,6 +64,7 @@ export function DayView({ date, occurrences, loading, holidays, onSelectEvent }:
         </ul>
       )}
       <QuickAdd date={date} inputId={`m-quick-add-${date}`} />
+      <TodoSection date={date} idPrefix="m-todo" />
     </div>
   );
 }

@@ -56,6 +56,7 @@ from hoje.schemas.leave import (
     LeavePolicyUpdate,
     LeavePreviewRequest,
 )
+from hoje.schemas.todos import Todo, TodoCreate, TodoList, TodoUpdate
 
 __all__ = [
     "AuthState",
@@ -103,6 +104,10 @@ __all__ = [
     "ReminderIn",
     "ReminderOut",
     "SearchResult",
+    "Todo",
+    "TodoCreate",
+    "TodoList",
+    "TodoUpdate",
     "TotpConfirmRequest",
     "TotpEnableRequest",
     "TotpSetupRequest",
