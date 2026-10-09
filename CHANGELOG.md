@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.16] — 2026-10-09
+
+### Added
+
+- Choose where the category icons are drawn (Settings › Appearance): "Icons in the calendar and
+  event lists" (switch it off to keep the icons only in the category pills) and "Icons on
+  vertical event labels". Both are stored on your account (`icons_in_calendar`,
+  `icons_on_vertical`, migration 0013) and need "Show category icons" to be on.
+
+### Fixed
+
+- Events within a day no longer sort differently because of their category icon.
+- The e2e suite starts its users with category icons off, so the layout specs measure bare titles.
+
 ## [1.3.15] — 2026-10-09
 
 ### Added
