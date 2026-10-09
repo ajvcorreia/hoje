@@ -727,3 +727,36 @@ async def test_daily_summary_settings_round_trip_and_absent_keeps_the_current_va
 async def test_import_rejects_a_bad_daily_summary_time(alice):
     resp = await do_import(alice, small_doc(settings={"daily_summary_time": "25:00"}))
     assert resp.status_code == 422
+
+
+async def test_todos_round_trip_merge_skips_duplicates_and_replace_swaps(
+    alice, db_session, cheap_argon
+):
+    open_todo = (await alice.post("/todos", {"title": "Open", "due_date": "2026-10-08"})).json()
+    done = (await alice.post("/todos", {"title": "Done", "day": "2026-10-03"})).json()
+    await alice.patch(f"/todos/{done['id']}", {"done": True})
+    document = await export(alice)
+    assert {t["title"]: (t["done"], t["due_date"]) for t in document["todos"]} == {
+        "Open": (False, "2026-10-08"),
+        "Done": (True, None),
+    }
+
+    merged = await do_import(alice, document)
+    assert merged.status_code == 200, merged.text
+    assert any("2 duplicates skipped" in w for w in merged.json()["warnings"])
+    assert len((await export(alice))["todos"]) == 2
+
+    await alice.delete(f"/todos/{open_todo['id']}")
+    await give_password(alice, db_session, cheap_argon)
+    replaced = await do_import(alice, document, mode="replace", password=PASSWORD)
+    assert replaced.status_code == 200, replaced.text
+    assert any("existing to-dos are deleted" in w for w in replaced.json()["warnings"])
+    assert len((await export(alice))["todos"]) == 2
+
+
+async def test_a_file_without_todos_leaves_existing_todos_alone(alice):
+    await alice.post("/todos", {"title": "Keep me"})
+    document = await export(alice)
+    del document["todos"]
+    assert (await do_import(alice, document)).status_code == 200
+    assert [t["title"] for t in (await export(alice))["todos"]] == ["Keep me"]

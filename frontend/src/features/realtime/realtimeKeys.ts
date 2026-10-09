@@ -9,7 +9,8 @@ export type RealtimeEntity =
   | 'user'
   | 'backup_run'
   | 'data'
-  | 'birthday';
+  | 'birthday'
+  | 'todo';
 
 export interface ChangeMessage {
   entity: RealtimeEntity;
@@ -41,6 +42,8 @@ const KEYS: Record<RealtimeEntity, (c: ChangeMessage) => QueryKey[]> = {
   backup_run: () => [['backups']],
   // A FelizAnniv sync or connection change: the overlay and Settings › FelizAnniv birthdays.
   birthday: () => [['birthdays'], ['integrations', 'felizanniv']],
+  // To-dos are checked off and added from several places: refresh every list and the pop-up.
+  todo: () => [['todos']],
   // An import rewrites everything the user has: an empty key prefix invalidates every query.
   data: () => [[]],
 };

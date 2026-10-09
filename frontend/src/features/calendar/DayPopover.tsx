@@ -7,6 +7,7 @@ import { DayEventList } from '../events/DayEventList';
 import { QuickAdd } from '../events/QuickAdd';
 import type { HolidayDay } from '../holidays/api';
 import { HolidayList } from '../holidays/HolidayList';
+import { TodoSection } from '../todos/TodoSection';
 
 interface DayPopoverProps {
   date: string;
@@ -58,6 +59,9 @@ export function DayPopover({
       >
         Add with details
       </button>
+      <div className="mt-2 border-t border-border pt-2">
+        <TodoSection date={date} />
+      </div>
     </Popover>
   );
 }

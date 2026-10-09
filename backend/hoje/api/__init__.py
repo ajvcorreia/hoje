@@ -14,6 +14,7 @@ from hoje.api import (
     me,
     realtime,
     settings,
+    todos,
 )
 from hoje.api._common import PROBLEM_RESPONSES
 from hoje.api.deps import require_csrf, require_user
@@ -34,6 +35,7 @@ for _router in (
     categories.router,
     data.router,
     events.router,
+    todos.router,
     leave.router,
     holidays.calendars_router,
     holidays.holidays_router,

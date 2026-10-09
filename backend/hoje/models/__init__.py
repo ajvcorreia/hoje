@@ -6,6 +6,7 @@ from hoje.models.backup import BackupRun
 from hoje.models.calendar import Category, Event, Reminder, ReminderDelivery
 from hoje.models.integration import Birthday, FelizAnnivIntegration
 from hoje.models.leave import Holiday, HolidayCalendar, LeavePolicy, NotificationLog
+from hoje.models.todo import Todo
 
 __all__ = [
     "AuthThrottle",
@@ -24,5 +25,6 @@ __all__ = [
     "Reminder",
     "ReminderDelivery",
     "Session",
+    "Todo",
     "User",
 ]

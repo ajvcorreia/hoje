@@ -22,7 +22,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hoje import clock
 from hoje.logging import get_logger
-from hoje.models import Category, Event, Holiday, HolidayCalendar, LeavePolicy, Reminder, User
+from hoje.models import (
+    Category,
+    Event,
+    Holiday,
+    HolidayCalendar,
+    LeavePolicy,
+    Reminder,
+    Todo,
+    User,
+)
 from hoje.schemas.common import ProblemError
 from hoje.schemas.data import (
     FORMAT_NAME,
@@ -150,7 +159,24 @@ async def build_export(db: AsyncSession, user: User, *, app_version: str) -> dic
             for p in policies
         ],
         "holiday_calendars": await _export_calendars(db, user),
+        "todos": await _export_todos(db, user),
     }
+
+
+async def _export_todos(db: AsyncSession, user: User) -> list[dict[str, Any]]:
+    rows = await db.scalars(select(Todo).where(Todo.user_id == user.id))
+    todos = [
+        {
+            "title": t.title,
+            "day": t.day.isoformat(),
+            "due_date": _iso(t.due_date),
+            "done": t.done_at is not None,
+            "completed_on": _iso(t.completed_on),
+        }
+        for t in rows
+    ]
+    todos.sort(key=lambda t: (t["day"], t["title"], t["due_date"] or "", repr(t)))
+    return todos
 
 
 async def _export_calendars(db: AsyncSession, user: User) -> list[dict[str, Any]]:
@@ -223,6 +249,9 @@ class _Plan:
     calendars: list[ExportCalendar] = field(default_factory=list)
     calendars_updated: int = 0
     settings_update: bool = False
+    todo_rows: list[dict[str, Any]] = field(default_factory=list)
+    todos_skipped: int = 0
+    todos_replaced: int | None = None  # set when a replace swaps the to-dos (count removed)
     binned_events: int = 0
     binned_categories: int = 0
     warnings: list[str] = field(default_factory=list)
@@ -425,6 +454,47 @@ async def _plan(db: AsyncSession, user: User, doc: ExportDocument, mode: Mode) -
         )
         plan.settings_update = tz_changes or wk_changes or me_changes or vt_changes or ds_changes
 
+    # ---- to-dos (a file without the key leaves the existing ones alone)
+    if doc.todos is not None:
+        existing: set[tuple[Any, ...]] = set()
+        if replace:
+            plan.todos_replaced = (
+                await db.scalar(select(func.count()).where(Todo.user_id == user.id)) or 0
+            )
+        else:
+            existing = {
+                (t.title, t.day, t.due_date, t.done_at is not None)
+                for t in await db.scalars(select(Todo).where(Todo.user_id == user.id))
+            }
+        now = clock.now()
+        for todo in doc.todos:
+            identity = (todo.title, todo.day, todo.due_date, todo.done)
+            if identity in existing:
+                plan.todos_skipped += 1
+                continue
+            existing.add(identity)
+            plan.todo_rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "user_id": user.id,
+                    "title": todo.title,
+                    "day": todo.day,
+                    "due_date": todo.due_date,
+                    "done_at": now if todo.done else None,
+                    "completed_on": (todo.completed_on or todo.day) if todo.done else None,
+                }
+            )
+        if plan.todo_rows or plan.todos_skipped or plan.todos_replaced:
+            plan.warn(
+                f"{len(plan.todo_rows)} to-dos will be imported"
+                + (f", {plan.todos_skipped} duplicates skipped" if plan.todos_skipped else "")
+                + (
+                    f"; your {plan.todos_replaced} existing to-dos are deleted."
+                    if plan.todos_replaced
+                    else "."
+                )
+            )
+
     if replace:
         plan.binned_events = await _count(db, Event, user.id)
         plan.binned_categories = await _count(db, Category, user.id)
@@ -559,6 +629,9 @@ async def _execute(db: AsyncSession, user: User, plan: _Plan, doc: ExportDocumen
                 .execution_options(synchronize_session=False)
             )
         await db.execute(delete(LeavePolicy).where(LeavePolicy.user_id == user.id))
+    if plan.todos_replaced is not None:
+        await db.execute(delete(Todo).where(Todo.user_id == user.id))
+    await _insert_chunks(db, Todo, plan.todo_rows, 500)
 
     await _insert_chunks(db, Category, plan.category_rows, 200)
     await _insert_chunks(db, Event, plan.event_rows, EVENT_CHUNK)

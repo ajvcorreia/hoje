@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { ToastProvider } from '../components/ui/Toast';
 import { VacationPill } from '../features/leave/VacationPill';
+import { DueTodosDialog } from '../features/todos/DueTodosDialog';
 import { RealtimeStatus } from '../features/realtime/RealtimeStatus';
 import { useRealtime } from '../features/realtime/useRealtime';
 import { CalendarIcon, SettingsIcon } from './icons';
@@ -108,6 +109,7 @@ function Shell({ isCalendar }: { isCalendar: boolean }) {
         </div>
       </header>
       <ApiNotice />
+      <DueTodosDialog />
       <main
         id="main"
         tabIndex={-1}

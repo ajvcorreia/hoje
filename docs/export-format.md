@@ -64,6 +64,9 @@ are not exported.
     }
   ],
   "leave_policies": [{ "year": 2026, "allowance_days": 22.0, "carried_over_days": 3.0 }],
+  "todos": [
+    { "title": "Pay rent", "day": "2026-10-03", "due_date": "2026-10-08", "done": false, "completed_on": null }
+  ],
   "holiday_calendars": [
     {
       "code": "PT",
@@ -89,6 +92,7 @@ are not exported.
 | `categories[]` | `name` 1 to 40 characters (unique, case-insensitive), `colour` one of the 20 palette keys (`slate red orange amber lime green teal cyan blue indigo violet pink rose fuchsia purple sky emerald yellow brown gray`), `icon` or `null`, `sort_order` >= 0, `is_leave`, `hidden`. |
 | `events[]` | Same bounds as the API: `title` 1 to 200, `notes` <= 5000, dates between 1900-01-01 and 2200-12-31, `end_date` >= `start_date` and at most 366 days after it (defaults to `start_date`), `repeat` is `none`, `monthly` or `yearly`, `repeat_until` >= `start_date`, at most 5 distinct `reminders`. `day_order` is an integer 0 to 32767, optional (absent = 0): the user's own position of the event among those of a day (0 = never ordered; events sort by it first, then by the usual rules, so ordered events come after unordered ones). All-day events carry no times; timed events need `start_time` and `end_time` (without a UTC offset; on a single day `end_time` is after `start_time`). `timezone` is an IANA name (defaults to the importing user's, or to `settings.timezone` of the file). |
 | `leave_policies[]` | `year` 2000 to 2100 (unique), `allowance_days` and `carried_over_days` between 0 and 366 with one decimal. |
+| `todos[]` | Optional (absent = the file predates to-dos and the existing ones are left alone). `title` 1 to 200, `day` and optional `due_date` between 1900-01-01 and 2200-12-31, `done`, `completed_on` (defaults to `day` when done). Merge skips an identical to-do already there; replace deletes the existing to-dos first. At most 5 000. |
 | `holiday_calendars[]` | `code` (`PT`, `AE`; unknown codes are skipped with a warning), `enabled`, `colour`, and the deviations below. |
 
 Global caps: at most 100 categories, 20 000 events, 200 leave policies, 10 holiday calendars and

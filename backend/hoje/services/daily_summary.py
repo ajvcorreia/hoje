@@ -42,6 +42,7 @@ from hoje.models import (
     User,
 )
 from hoje.services import recurrence
+from hoje.services import todos as todos_service
 from hoje.services.mailer import APP_NAME, Mailer, RenderedEmail, SessionFactory, render
 from hoje.services.reminders import _zone, local_to_utc
 
@@ -168,6 +169,13 @@ class HolidayItem:
     non_working: bool
 
 
+@dataclass(frozen=True, slots=True)
+class TodoItem:
+    title: str
+    due: str  # "Due today" or "Overdue since Mon 5 Oct"
+    overdue: bool
+
+
 @dataclass(slots=True)
 class SummaryData:
     today: dt.date
@@ -182,11 +190,14 @@ class SummaryData:
     holidays: list[HolidayItem] = field(default_factory=list)
     tomorrow_items: list[Item] = field(default_factory=list)
     tomorrow_more: int = 0
+    todos: list[TodoItem] = field(default_factory=list)
+    todos_more: int = 0
 
     @property
     def is_empty(self) -> bool:
         return not (
             self.changes
+            or self.todos
             or self.today_items
             or self.birthdays
             or self.holidays
@@ -309,6 +320,20 @@ def birthdays_on(birthdays: list[Any], day: dt.date) -> list[BirthdayItem]:
     return found
 
 
+def todos_due(todos: list[Any], today: dt.date) -> list[TodoItem]:
+    """Open to-dos due ``today`` or earlier, most overdue first."""
+    due = [t for t in todos if t.done_at is None and t.due_date is not None and t.due_date <= today]
+    due.sort(key=lambda t: (t.due_date, t.created_at, str(t.id)))
+    return [
+        TodoItem(
+            _clean(t.title),
+            "Due today" if t.due_date == today else f"Overdue since {_short(t.due_date)}",
+            t.due_date < today,
+        )
+        for t in due
+    ]
+
+
 def assemble(
     *,
     now: dt.datetime,
@@ -319,6 +344,7 @@ def assemble(
     categories: Categories,
     birthdays: list[Any],
     holidays: list[tuple[Any, str]],
+    todos: list[Any] | None = None,
 ) -> SummaryData:
     """Build the summary from already loaded rows (no database access)."""
     zone = _zone(user_tz, ZoneInfo("UTC"))
@@ -342,6 +368,10 @@ def assemble(
     data.tomorrow_items = tomorrows[:MAX_EVENTS_PER_DAY]
     data.tomorrow_more = max(0, len(tomorrows) - MAX_EVENTS_PER_DAY)
 
+    due = todos_due(todos or [], today)
+    data.todos = due[:MAX_EVENTS_PER_DAY]
+    data.todos_more = max(0, len(due) - MAX_EVENTS_PER_DAY)
+
     data.birthdays = birthdays_on(birthdays, today)
     data.holidays = sorted(
         (
@@ -364,6 +394,8 @@ def subject_for(data: SummaryData) -> str:
         headline = f"{_count(len(data.today_items) + data.today_more, 'event')} today"
     elif data.birthdays or data.holidays:
         headline = "birthdays and holidays today"
+    elif data.todos:
+        headline = f"{_count(len(data.todos) + data.todos_more, 'to-do')} due"
     elif data.tomorrow_items:
         headline = f"{_count(len(data.tomorrow_items) + data.tomorrow_more, 'event')} tomorrow"
     elif data.changes:
@@ -436,6 +468,7 @@ async def gather(
         ).all()
     }
     birthdays = list((await db.scalars(select(Birthday).where(Birthday.user_id == user.id))).all())
+    todos = await todos_service.due_rows(db, user, today)
     holidays = [
         (holiday, calendar_name)
         for holiday, calendar_name in (
@@ -459,6 +492,7 @@ async def gather(
         categories=categories,
         birthdays=birthdays,
         holidays=holidays,
+        todos=todos,
     )
 
 

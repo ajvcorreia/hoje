@@ -23,3 +23,6 @@ export type HolidayCalendar = Schemas['HolidayCalendar'];
 export type Problem = Schemas['Problem'];
 export type BirthdayOccurrence = Schemas['BirthdayOccurrence'];
 export type FelizAnnivStatus = Schemas['FelizAnnivStatus'];
+export type Todo = Schemas['Todo'];
+export type TodoCreate = Schemas['TodoCreate'];
+export type TodoUpdate = Schemas['TodoUpdate'];

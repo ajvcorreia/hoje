@@ -8,6 +8,18 @@ This is a test summary, sent because you asked for one.
 
 Nothing is scheduled today or tomorrow, and nothing changed since {{ data.since_label }}.
 {% endif %}
+{% if data.todos %}
+{% set ns.n = ns.n + 1 %}
+
+TO-DOS DUE
+==========
+{% for todo in data.todos %}
+- {{ todo.due }}: {{ todo.title }}
+{% endfor %}
+{% if data.todos_more %}
+...and {{ data.todos_more }} more
+{% endif %}
+{% endif %}
 {% if data.today_items %}
 {% if ns.n %}
 
