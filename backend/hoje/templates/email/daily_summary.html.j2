@@ -15,7 +15,11 @@
                 <p style="margin:0 0 8px;color:#57534e;">...and {{ more }} more</p>
 {% endif %}
 {% endmacro %}
+{% macro section_title(text) %}
+                <h2 style="margin:0 0 10px;font-size:16px;font-weight:700;text-decoration:underline;">{{ text }}</h2>
+{% endmacro %}
 {% block content %}
+{% set ns = namespace(n=0) %}
                 <p style="margin:0 0 16px;font-size:18px;font-weight:600;">Daily summary for {{ heading_date }}</p>
 {% if test %}
                 <p style="margin:0 0 16px;color:#57534e;">This is a test summary, sent because you asked for one.</p>
@@ -23,8 +27,44 @@
 {% if data.is_empty %}
                 <p style="margin:0 0 16px;">Nothing is scheduled today or tomorrow, and nothing changed since {{ data.since_label }}.</p>
 {% endif %}
+{% if data.today_items %}
+{% if ns.n %}
+                <hr style="border:0;border-top:1px solid #d6d3d1;margin:20px 0;">
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+{{ section_title('Today') }}
+{{ event_list(data.today_items, data.today_more) }}
+{% endif %}
+{% if data.birthdays or data.holidays %}
+{% if ns.n %}
+                <hr style="border:0;border-top:1px solid #d6d3d1;margin:20px 0;">
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+{{ section_title('Birthdays & holidays today') }}
+                <ul style="margin:0 0 8px;padding:0;list-style:none;">
+{% for holiday in data.holidays %}
+                  <li style="margin:0 0 8px;"><strong>{{ holiday.name }}</strong> <span style="color:#57534e;">({{ holiday.calendar }}{% if holiday.non_working %}, non-working day{% endif %})</span></li>
+{% endfor %}
+{% for birthday in data.birthdays %}
+                  <li style="margin:0 0 8px;"><strong>{{ birthday.name }}</strong>'s birthday{% if birthday.age is not none %} <span style="color:#57534e;">({{ birthday.age }})</span>{% endif %}</li>
+{% endfor %}
+                </ul>
+{% endif %}
+{% if data.tomorrow_items %}
+{% if ns.n %}
+                <hr style="border:0;border-top:1px solid #d6d3d1;margin:20px 0;">
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+{{ section_title('Tomorrow') }}
+                <p style="margin:0 0 8px;color:#57534e;">{{ tomorrow_date }}</p>
+{{ event_list(data.tomorrow_items, data.tomorrow_more) }}
+{% endif %}
 {% if data.changes %}
-                <h2 style="margin:16px 0 8px;font-size:16px;">Changes since {{ data.since_label }}</h2>
+{% if ns.n %}
+                <hr style="border:0;border-top:1px solid #d6d3d1;margin:20px 0;">
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+{{ section_title('Changes since ' ~ data.since_label) }}
                 <ul style="margin:0 0 8px;padding:0;list-style:none;">
 {% for change in data.changes %}
                   <li style="margin:0 0 8px;">
@@ -40,25 +80,5 @@
                 <p style="margin:0 0 8px;color:#57534e;">...and {{ data.changes_more }} more</p>
 {% endif %}
 {% endif %}
-{% if data.today_items %}
-                <h2 style="margin:16px 0 8px;font-size:16px;">Today</h2>
-{{ event_list(data.today_items, data.today_more) }}
-{% endif %}
-{% if data.birthdays or data.holidays %}
-                <h2 style="margin:16px 0 8px;font-size:16px;">Birthdays &amp; holidays today</h2>
-                <ul style="margin:0 0 8px;padding:0;list-style:none;">
-{% for holiday in data.holidays %}
-                  <li style="margin:0 0 8px;"><strong>{{ holiday.name }}</strong> <span style="color:#57534e;">({{ holiday.calendar }}{% if holiday.non_working %}, non-working day{% endif %})</span></li>
-{% endfor %}
-{% for birthday in data.birthdays %}
-                  <li style="margin:0 0 8px;"><strong>{{ birthday.name }}</strong>'s birthday{% if birthday.age is not none %} <span style="color:#57534e;">({{ birthday.age }})</span>{% endif %}</li>
-{% endfor %}
-                </ul>
-{% endif %}
-{% if data.tomorrow_items %}
-                <h2 style="margin:16px 0 8px;font-size:16px;">Tomorrow</h2>
-                <p style="margin:0 0 8px;color:#57534e;">{{ tomorrow_date }}</p>
-{{ event_list(data.tomorrow_items, data.tomorrow_more) }}
-{% endif %}
-                <p style="margin:16px 0 0;"><a href="{{ open_url }}" style="display:inline-block;padding:10px 18px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;">Open Hoje</a></p>
+                <p style="margin:24px 0 0;"><a href="{{ open_url }}" style="display:inline-block;padding:10px 18px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;">Open Hoje</a></p>
 {% endblock %}

@@ -389,3 +389,41 @@ def test_zone_objects_are_accepted_like_names():
 @pytest.mark.parametrize("tz", ["Mars/Olympus", ""])
 def test_unknown_zone_falls_back_to_utc(tz):
     assert ds.is_due(utc(2026, 10, 8, 7, 0), tz, time(7, 0), None)
+
+
+def test_sections_come_in_order_with_separators_and_styled_titles():
+    data = build(
+        [event("Planning"), event("Dentist", start=date(2026, 10, 9))],
+        changed=[event("Planning", created_at=NOW - timedelta(hours=2))],
+        birthdays=[person("Bea", 10, 8, 1990)],
+        holidays=[],
+    )
+    message = ds.summary_email(data, "https://hoje.example.com")
+
+    text = message.text
+    order = [
+        text.index("TODAY\n====="),
+        text.index("BIRTHDAYS & HOLIDAYS TODAY\n=========="),
+        text.index("TOMORROW ("),
+        text.index("CHANGES SINCE"),
+    ]
+    assert order == sorted(order)
+    assert text.count("-" * 50) == 3  # one separator between each pair of sections
+
+    html = message.html
+    positions = [
+        html.index(">Today</h2>"),
+        html.index(">Birthdays &amp; holidays today</h2>"),
+        html.index(">Tomorrow</h2>"),
+        html.index(">Changes since"),
+    ]
+    assert positions == sorted(positions)
+    assert html.count("<hr") == 3
+    assert html.count("font-weight:700;text-decoration:underline") == 4
+
+
+def test_a_single_section_has_no_separator():
+    data = build([event("Planning")], changed=[], birthdays=[], holidays=[])
+    message = ds.summary_email(data, "https://hoje.example.com")
+    assert "<hr" not in message.html
+    assert "-" * 50 not in message.text

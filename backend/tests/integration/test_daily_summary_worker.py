@@ -227,7 +227,7 @@ async def test_next_day_sends_again_with_only_the_changes_since_the_last_summary
     frozen_clock.now = SEND
     await live.run(mailer)
     assert "Old news" in mailer.outbox[0].text  # first summary: Today section
-    assert "Old news" not in mailer.outbox[0].text.split("TODAY")[0]  # not under "changes"
+    assert "CHANGES SINCE" not in mailer.outbox[0].text  # nothing changed yet: no changes section
 
     await live.make_event(user, "Fresh", start=dt.date(2026, 10, 9), stamp=at(9, 0))
     async with live.sm() as db:

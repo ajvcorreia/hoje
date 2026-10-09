@@ -1,4 +1,5 @@
 Your {{ app_name }} daily summary for {{ heading_date }}
+{% set ns = namespace(n=0) %}
 {% if test %}
 
 This is a test summary, sent because you asked for one.
@@ -7,20 +8,15 @@ This is a test summary, sent because you asked for one.
 
 Nothing is scheduled today or tomorrow, and nothing changed since {{ data.since_label }}.
 {% endif %}
-{% if data.changes %}
-
-CHANGES SINCE {{ data.since_label|upper }}
-{% for change in data.changes %}
-- {{ change.what }}: {{ change.item.title }} ({{ change.item.when }}){% if change.item.category %} [{{ change.item.category }}]{% endif %}
-
-{% endfor %}
-{% if data.changes_more %}
-...and {{ data.changes_more }} more
-{% endif %}
-{% endif %}
 {% if data.today_items %}
+{% if ns.n %}
+
+--------------------------------------------------
+{% endif %}
+{% set ns.n = ns.n + 1 %}
 
 TODAY
+=====
 {% for item in data.today_items %}
 - {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
 
@@ -30,8 +26,14 @@ TODAY
 {% endif %}
 {% endif %}
 {% if data.birthdays or data.holidays %}
+{% if ns.n %}
+
+--------------------------------------------------
+{% endif %}
+{% set ns.n = ns.n + 1 %}
 
 BIRTHDAYS & HOLIDAYS TODAY
+==========================
 {% for holiday in data.holidays %}
 - {{ holiday.name }} ({{ holiday.calendar }}{% if holiday.non_working %}, non-working day{% endif %})
 {% endfor %}
@@ -41,14 +43,39 @@ BIRTHDAYS & HOLIDAYS TODAY
 {% endfor %}
 {% endif %}
 {% if data.tomorrow_items %}
+{% if ns.n %}
 
-TOMORROW ({{ tomorrow_date }})
+--------------------------------------------------
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+
+{% set title = 'TOMORROW (' ~ tomorrow_date ~ ')' %}
+{{ title }}
+{{ '=' * (title|length) }}
 {% for item in data.tomorrow_items %}
 - {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
 
 {% endfor %}
 {% if data.tomorrow_more %}
 ...and {{ data.tomorrow_more }} more
+{% endif %}
+{% endif %}
+{% if data.changes %}
+{% if ns.n %}
+
+--------------------------------------------------
+{% endif %}
+{% set ns.n = ns.n + 1 %}
+
+{% set title = 'CHANGES SINCE ' ~ (data.since_label|upper) %}
+{{ title }}
+{{ '=' * (title|length) }}
+{% for change in data.changes %}
+- {{ change.what }}: {{ change.item.title }} ({{ change.item.when }}){% if change.item.category %} [{{ change.item.category }}]{% endif %}
+
+{% endfor %}
+{% if data.changes_more %}
+...and {{ data.changes_more }} more
 {% endif %}
 {% endif %}
 
