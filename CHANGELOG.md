@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.14] — 2026-10-09
+
+### Changed
+
+- Past days (the "Strike through past days" option) are now marked with diagonal stripes over the
+  whole day, like the holiday hatching, instead of a thin strike-through. Fully past vertical
+  labels keep their line-through.
+
+### Added
+
+- Past days stripe colour: Settings › Appearance has a colour picker (grey by default, with a
+  Reset button). It is stored on your account (`past_stripe_colour`, migration 0011,
+  `PATCH /api/v1/me`) and follows you to every machine.
+
 ## [1.3.13] — 2026-10-09
 
 ### Added
