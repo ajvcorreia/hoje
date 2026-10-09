@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from hoje.schemas.common import (
     DailySummaryTime,
     MaxEventsPerDay,
+    PastStripeColour,
     Timezone,
     VerticalTextSize,
     WeekendDays,
@@ -27,6 +28,7 @@ class Me(BaseModel):
     weekend_days: list[int]
     max_events_per_day: int
     vertical_text_size: int
+    past_stripe_colour: str
     daily_summary_enabled: bool
     daily_summary_time: str  # "HH:MM" in `timezone`
     daily_summary_last_sent_at: datetime | None = None
@@ -45,6 +47,7 @@ class MeUpdate(BaseModel):
     weekend_days: WeekendDays | None = None
     max_events_per_day: MaxEventsPerDay | None = None
     vertical_text_size: VerticalTextSize | None = None
+    past_stripe_colour: PastStripeColour | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None
 

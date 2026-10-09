@@ -1762,6 +1762,8 @@ export interface components {
             last_category_id?: string | null;
             /** Max Events Per Day */
             max_events_per_day: number;
+            /** Past Stripe Colour */
+            past_stripe_colour: string;
             /** Timezone */
             timezone: string;
             /** Totp Enabled */
@@ -1779,6 +1781,8 @@ export interface components {
             daily_summary_time?: string | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
+            /** Past Stripe Colour */
+            past_stripe_colour?: string | null;
             /** Timezone */
             timezone?: string | null;
             /** Vertical Text Size */

@@ -25,6 +25,7 @@ import {
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { usePastStripeColour } from '../../lib/pastStripeColour';
 import { useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { toLayoutInput } from '../events/occurrences';
@@ -397,6 +398,7 @@ export function MonthGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
+  const [pastStripe] = usePastStripeColour();
   const [maxEvents] = useMaxEvents();
   const [verticalSize] = useVerticalTextSize();
   const [fonts, setFonts] = useState<FitFonts | null>(null);
@@ -619,6 +621,7 @@ export function MonthGrid({
   const style = {
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
+    '--past-stripe': pastStripe,
     gridTemplateColumns: `var(--gutter-w) ${fits.map((f) => `minmax(${columnMin(f)}, 1fr)`).join(' ')}`,
     width: `max(100%, calc(var(--gutter-w) + ${fits.map(columnMin).join(' + ')}))`,
   } as CSSProperties;

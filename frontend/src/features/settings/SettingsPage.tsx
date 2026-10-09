@@ -4,6 +4,7 @@ import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { useTheme } from '../../app/useTheme';
@@ -44,6 +45,7 @@ export function SettingsPage() {
   const [textSize, setTextSize] = useTextSize();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
+  const [pastStripe, setPastStripe] = usePastStripeColour();
   const [maxEvents, setMaxEvents] = useMaxEvents();
   const [verticalSize, setVerticalSize] = useVerticalTextSize();
   // Links like /settings#vacation: scroll to the section once the page is there.
@@ -110,6 +112,25 @@ export function SettingsPage() {
             />
             Strike through past days
           </label>
+          <div className="mt-2 flex min-h-9 items-center gap-2 pl-6 text-sm">
+            <label htmlFor="past-stripe-colour" className="font-medium">
+              Past days stripe colour
+            </label>
+            <input
+              id="past-stripe-colour"
+              type="color"
+              value={pastStripe}
+              onChange={(e) => setPastStripe(e.target.value)}
+              className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5"
+            />
+            <button
+              type="button"
+              className="text-xs text-text-muted underline"
+              onClick={() => setPastStripe(DEFAULT_PAST_STRIPE_COLOUR)}
+            >
+              Reset
+            </button>
+          </div>
           <div className="mt-4">
             <label htmlFor="max-events" className="block text-sm font-medium">
               Events shown per day
