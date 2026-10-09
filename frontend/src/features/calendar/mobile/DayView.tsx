@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { parseIso } from '../../../lib/dates';
 import { categoryMap, useCategories } from '../../categories/api';
+import { useCategoryIcon, withIcon } from '../../categories/icons';
 import { QuickAdd } from '../../events/QuickAdd';
 import { ReminderBell } from '../../events/ReminderBell';
 import { formatTimeRange, occurrenceKey } from '../../events/occurrences';
@@ -23,6 +24,7 @@ interface DayViewProps {
 export function DayView({ date, occurrences, loading, holidays, onSelectEvent }: DayViewProps) {
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
+  const iconOf = useCategoryIcon();
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold">{format(parseIso(date), 'EEEE, d MMMM')}</h2>
@@ -45,7 +47,7 @@ export function DayView({ date, occurrences, loading, holidays, onSelectEvent }:
                 >
                   <span className="flex w-full items-start gap-1.5">
                     <span className="min-w-0 flex-1 break-words text-sm font-medium">
-                      {o.event.title}
+                      {withIcon(iconOf(o.event.category_id), o.event.title)}
                     </span>
                     <ReminderBell event={o.event} />
                   </span>

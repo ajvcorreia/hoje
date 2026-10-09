@@ -6,6 +6,7 @@ import { useFelizAnnivStatus } from '../birthdays/api';
 import { CAKE, calendarColour, useHolidayCalendars } from '../holidays/api';
 import { useCategories, useUpdateCategory } from './api';
 import { CategorySwatch } from './CategorySwatch';
+import { useCategoryIcon } from './icons';
 import { countByCategory, formatCount, fullFormat } from './counts';
 
 /**
@@ -38,6 +39,7 @@ export function CategoryChips({
   const [showHolidays, setShowHolidays] = useShowHolidays();
   const [showBirthdays, setShowBirthdays] = useShowBirthdays();
   const { data: felizanniv } = useFelizAnnivStatus();
+  const iconOf = useCategoryIcon();
   const enabledCalendar = calendars?.find((c) => c.enabled);
   const counts = useMemo(() => countByCategory(occurrences), [occurrences]);
   const hasBirthdays = !!felizanniv?.configured && felizanniv.count > 0;
@@ -65,7 +67,11 @@ export function CategoryChips({
               shown ? 'bg-surface text-text' : 'bg-transparent text-text-muted'
             }`}
           >
-            <CategorySwatch colour={category.colour} className={shown ? '' : 'opacity-40'} />
+            <CategorySwatch
+              colour={category.colour}
+              icon={iconOf(category.id)}
+              className={shown ? '' : 'opacity-40'}
+            />
             <span className={shown ? '' : 'line-through'}>{category.name}</span>
             <span
               aria-hidden="true"

@@ -1764,6 +1764,8 @@ export interface components {
             max_events_per_day: number;
             /** Past Stripe Colour */
             past_stripe_colour: string;
+            /** Show Category Icons */
+            show_category_icons: boolean;
             /** Timezone */
             timezone: string;
             /** Totp Enabled */
@@ -1783,6 +1785,8 @@ export interface components {
             max_events_per_day?: number | null;
             /** Past Stripe Colour */
             past_stripe_colour?: string | null;
+            /** Show Category Icons */
+            show_category_icons?: boolean | null;
             /** Timezone */
             timezone?: string | null;
             /** Vertical Text Size */

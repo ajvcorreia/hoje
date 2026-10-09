@@ -54,14 +54,14 @@ export function groupByDay(
 }
 
 /** Adapter from API occurrences to the grid layout input. */
-export function toLayoutInput(o: Occurrence, colour?: string): LayoutInput {
+export function toLayoutInput(o: Occurrence, colour?: string, icon?: string): LayoutInput {
   return {
     key: occurrenceKey(o),
     start: o.occurrence_start,
     end: o.occurrence_end,
     allDay: o.event.all_day,
     startTime: o.event.start_time,
-    title: o.event.title,
+    title: icon ? `${icon} ${o.event.title}` : o.event.title,
     colour,
     labelVertical: o.event.label_vertical,
     dayOrder: o.event.day_order ?? 0,

@@ -52,6 +52,7 @@ export function useCreateCategory() {
 export interface CategoryPatch {
   name?: string;
   colour?: Category['colour'];
+  icon?: string | null;
   is_leave?: boolean;
   hidden?: boolean;
 }

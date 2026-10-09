@@ -13,6 +13,7 @@ import {
   useUpdateCategory,
 } from '../categories/api';
 import { ColourPicker } from '../categories/ColourPicker';
+import { CATEGORY_ICONS } from '../categories/icons';
 import { SettingsSection } from './SettingsSection';
 
 /** Settings › Categories: rename, recolour, vacation and hide toggles, reorder, add, delete. */
@@ -85,6 +86,7 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
   const update = useUpdateCategory();
   const [name, setName] = useState(category.name);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [iconsOpen, setIconsOpen] = useState(false);
 
   const commitName = () => {
     const trimmed = name.trim();
@@ -106,6 +108,15 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
           onClick={() => setPickerOpen((open) => !open)}
           className="cat-swatch size-9 shrink-0 rounded-md md:size-8"
         />
+        <button
+          type="button"
+          aria-label={`Icon of ${category.name}${category.icon ? `: ${category.icon}` : ': none'}`}
+          aria-expanded={iconsOpen}
+          onClick={() => setIconsOpen((open) => !open)}
+          className={`${btnSecondary} size-9 shrink-0 px-0 text-base leading-none md:size-8`}
+        >
+          {category.icon ?? '☺'}
+        </button>
         <input
           aria-label={`Name of ${category.name}`}
           value={name}
@@ -147,6 +158,32 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
           value={category.colour}
           onChange={(colour) => update.mutate({ category, patch: { colour } })}
         />
+      ) : null}
+      {iconsOpen ? (
+        <div role="group" aria-label={`Icon for ${category.name}`} className="flex flex-wrap gap-1">
+          {CATEGORY_ICONS.map((icon) => (
+            <button
+              key={icon}
+              type="button"
+              aria-label={icon}
+              aria-pressed={category.icon === icon}
+              onClick={() => update.mutate({ category, patch: { icon } })}
+              className={`${btnSecondary} size-9 px-0 text-base leading-none md:size-8 ${
+                category.icon === icon ? 'border-text' : ''
+              }`}
+            >
+              {icon}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`${btnSecondary} h-9 px-2 text-xs md:h-8`}
+            disabled={!category.icon}
+            onClick={() => update.mutate({ category, patch: { icon: null } })}
+          >
+            No icon
+          </button>
+        </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <label className="flex min-h-9 items-center gap-2 text-sm">

@@ -4,6 +4,7 @@ import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
+import { useShowCategoryIcons } from '../../lib/showCategoryIcons';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -46,6 +47,7 @@ export function SettingsPage() {
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
+  const [showIcons, setShowIcons] = useShowCategoryIcons();
   const [maxEvents, setMaxEvents] = useMaxEvents();
   const [verticalSize, setVerticalSize] = useVerticalTextSize();
   // Links like /settings#vacation: scroll to the section once the page is there.
@@ -131,6 +133,15 @@ export function SettingsPage() {
               Reset
             </button>
           </div>
+          <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={showIcons}
+              onChange={(e) => setShowIcons(e.target.checked)}
+              className="size-4"
+            />
+            Show category icons
+          </label>
           <div className="mt-4">
             <label htmlFor="max-events" className="block text-sm font-medium">
               Events shown per day

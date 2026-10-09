@@ -2759,6 +2759,10 @@
             "title": "Past Stripe Colour",
             "type": "string"
           },
+          "show_category_icons": {
+            "title": "Show Category Icons",
+            "type": "boolean"
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -2787,6 +2791,7 @@
           "max_events_per_day",
           "vertical_text_size",
           "past_stripe_colour",
+          "show_category_icons",
           "daily_summary_enabled",
           "daily_summary_time",
           "totp_enabled",
@@ -2844,6 +2849,17 @@
               }
             ],
             "title": "Past Stripe Colour"
+          },
+          "show_category_icons": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Category Icons"
           },
           "timezone": {
             "anyOf": [

@@ -32,6 +32,7 @@ async def seed_user(db: AsyncSession, user: User) -> None:
             user_id=user.id,
             name=spec["name"],
             colour=spec["colour"],
+            icon=spec.get("icon"),
             is_leave=spec["is_leave"],
             sort_order=spec["sort_order"],
         )
