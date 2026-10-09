@@ -1,4 +1,4 @@
-import type { DayLayout, RotatesFn } from './layout';
+import { horizontalTitle, verticalTitle, type DayLayout, type RotatesFn } from './layout';
 
 /** Horizontal padding of an event / holiday box (`padding: 0 4px`). */
 const BOX_PADDING = 8;
@@ -257,7 +257,7 @@ export function readFitFonts(root: ParentNode | null): FitFonts | null {
  */
 export function rotationRule(measure: TextMeasurer): RotatesFn {
   return (input, days) =>
-    !!input.labelVertical && days >= 2 && measure.plan(input.title, days) !== null;
+    !!input.labelVertical && days >= 2 && measure.plan(verticalTitle(input), days) !== null;
 }
 
 /** Track widths (px) of one day cell's event area (everything right of the day number). */
@@ -299,7 +299,7 @@ export function dayTracks(
   for (let l = 0; l < rotatedCols; l += 1) rotatedWidth += lanes[l] ?? measure.lane;
   const overlay = name ? measure.italic(name) + BOX_PADDING : 0;
   const items = d.items.map((p) =>
-    p.showTitle ? measure.text(p.input.title) + BOX_PADDING + LANE_BORDER : LANE_MIN,
+    p.showTitle ? measure.text(horizontalTitle(p.input)) + BOX_PADDING + LANE_BORDER : LANE_MIN,
   );
   const chip = d.overflow > 0 ? measure.chip(`+${d.overflow}`) + CHIP_EXTRA : 0;
   const text = overlay > 0 || d.items.some((p) => p.showTitle);
@@ -351,7 +351,7 @@ export function monthTracks(
   for (const d of layout) {
     for (const p of d.rotated) {
       if (!p?.showTitle) continue;
-      const plan = measure.plan(p.input.title, p.blockLen);
+      const plan = measure.plan(verticalTitle(p.input), p.blockLen);
       if (plan) labels[`${p.input.key}:${d.day}`] = plan;
       lanes[p.lane] = Math.max(lanes[p.lane] ?? 0, plan?.width ?? measure.lane);
     }

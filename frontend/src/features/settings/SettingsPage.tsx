@@ -4,7 +4,11 @@ import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
-import { useShowCategoryIcons } from '../../lib/showCategoryIcons';
+import {
+  useIconsInCalendar,
+  useIconsOnVertical,
+  useShowCategoryIcons,
+} from '../../lib/showCategoryIcons';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -48,6 +52,8 @@ export function SettingsPage() {
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
   const [showIcons, setShowIcons] = useShowCategoryIcons();
+  const [iconsInCalendar, setIconsInCalendar] = useIconsInCalendar();
+  const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
   const [maxEvents, setMaxEvents] = useMaxEvents();
   const [verticalSize, setVerticalSize] = useVerticalTextSize();
   // Links like /settings#vacation: scroll to the section once the page is there.
@@ -142,6 +148,29 @@ export function SettingsPage() {
             />
             Show category icons
           </label>
+          <label className="flex min-h-9 items-center gap-2 pl-6 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={iconsInCalendar}
+              disabled={!showIcons}
+              onChange={(e) => setIconsInCalendar(e.target.checked)}
+              className="size-4"
+            />
+            Icons in the calendar and event lists
+          </label>
+          <label className="flex min-h-9 items-center gap-2 pl-12 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={iconsOnVertical}
+              disabled={!showIcons || !iconsInCalendar}
+              onChange={(e) => setIconsOnVertical(e.target.checked)}
+              className="size-4"
+            />
+            Icons on vertical event labels
+          </label>
+          <p className="pl-6 text-xs text-text-muted">
+            Turn off “in the calendar” to keep the icons only in the category pills.
+          </p>
           <div className="mt-4">
             <label htmlFor="max-events" className="block text-sm font-medium">
               Events shown per day

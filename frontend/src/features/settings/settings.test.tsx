@@ -466,3 +466,33 @@ describe('category icons', () => {
     );
   });
 });
+
+describe('category icon scope settings', () => {
+  it('saves where the icons are drawn and greys the sub-options out with the master switch', async () => {
+    let me = {
+      ...ME,
+      show_category_icons: true,
+      icons_in_calendar: true,
+      icons_on_vertical: true,
+    };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const vertical = await screen.findByLabelText('Icons on vertical event labels');
+    const calendar = screen.getByLabelText('Icons in the calendar and event lists');
+    expect(vertical).toBeEnabled();
+    await userEvent.click(vertical);
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ icons_on_vertical: false }),
+    );
+    await userEvent.click(calendar);
+    await waitFor(() => expect(vertical).toBeDisabled());
+  });
+});

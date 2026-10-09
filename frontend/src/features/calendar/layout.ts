@@ -16,6 +16,10 @@ export interface LayoutInput {
   /** `HH:mm` (or `HH:mm:ss`) for timed events. */
   startTime?: string | null;
   title: string;
+  /** The category glyph drawn before the title of a horizontal event; none when icons are off. */
+  icon?: string;
+  /** Same, for the title of a vertical (rotated) label; none when icons are off there. */
+  verticalIcon?: string;
   /** Palette key; opaque to the layout, carried through for rendering. */
   colour?: string;
   /** Draw the title rotated along a multi-day block. */
@@ -237,4 +241,14 @@ export function moveFocusDate(iso: string, key: ArrowKey, weekStart = 1): string
       return make(target, Math.min(daysInMonth(year, target), Math.max(1, targetDay)));
     }
   }
+}
+
+/** Text of an event drawn horizontally: glyph (if any) then title. */
+export function horizontalTitle(input: Pick<LayoutInput, 'title' | 'icon'>): string {
+  return input.icon ? `${input.icon} ${input.title}` : input.title;
+}
+
+/** Text of a rotated label: glyph (if any) then title. */
+export function verticalTitle(input: Pick<LayoutInput, 'title' | 'verticalIcon'>): string {
+  return input.verticalIcon ? `${input.verticalIcon} ${input.title}` : input.title;
 }

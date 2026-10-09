@@ -2734,6 +2734,14 @@
             "title": "Email",
             "type": "string"
           },
+          "icons_in_calendar": {
+            "title": "Icons In Calendar",
+            "type": "boolean"
+          },
+          "icons_on_vertical": {
+            "title": "Icons On Vertical",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2792,6 +2800,8 @@
           "vertical_text_size",
           "past_stripe_colour",
           "show_category_icons",
+          "icons_in_calendar",
+          "icons_on_vertical",
           "daily_summary_enabled",
           "daily_summary_time",
           "totp_enabled",
@@ -2824,6 +2834,28 @@
               }
             ],
             "title": "Daily Summary Time"
+          },
+          "icons_in_calendar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icons In Calendar"
+          },
+          "icons_on_vertical": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icons On Vertical"
           },
           "max_events_per_day": {
             "anyOf": [

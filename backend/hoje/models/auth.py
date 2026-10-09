@@ -48,6 +48,8 @@ class User(Base):
         String(7), default="#9ca3af", server_default=text("'#9ca3af'")
     )
     show_category_icons: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
+    icons_in_calendar: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
+    icons_on_vertical: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Wall-clock send time in ``timezone``.
     daily_summary_time: Mapped[time] = mapped_column(

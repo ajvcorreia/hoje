@@ -24,7 +24,7 @@ interface DayViewProps {
 export function DayView({ date, occurrences, loading, holidays, onSelectEvent }: DayViewProps) {
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('calendar');
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold">{format(parseIso(date), 'EEEE, d MMMM')}</h2>
