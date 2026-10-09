@@ -121,7 +121,7 @@ export function DesktopCalendar() {
           </button>
         </div>
 
-        <CategoryChips className="min-w-0 flex-1" />
+        <CategoryChips className="min-w-0 flex-1" occurrences={occurrences.data} />
         <SearchBox onPick={pickSearchResult} />
       </div>
 

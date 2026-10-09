@@ -61,6 +61,6 @@ test('three events show two halves and a +1 chip; the popover lists all three', 
   const list = popover.getByRole('list', { name: `Events on ${date}` });
   await expect(list.getByRole('listitem')).toHaveCount(3);
   for (const title of ['Alpha', 'Bravo', 'Charlie']) {
-    await expect(list.getByRole('button', { name: new RegExp(title) })).toBeVisible();
+    await expect(list.getByRole('button', { name: new RegExp(`^${title}`) })).toBeVisible();
   }
 });

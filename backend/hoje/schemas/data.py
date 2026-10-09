@@ -111,6 +111,7 @@ class ExportEvent(BaseModel):
     repeat: Repeat = "none"
     repeat_until: BoundedDate | None = None
     label_vertical: bool = False
+    day_order: int = Field(default=0, ge=0, le=32767)
     reminders: list[ExportReminder] = Field(default=[], max_length=MAX_REMINDERS)
 
     @field_validator("end_date")

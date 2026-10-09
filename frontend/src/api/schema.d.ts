@@ -314,6 +314,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set the order of events within a day
+         * @description Store positions 1..n for the listed events, in list order (204, no body).
+         *
+         *     Only `day_order` changes: `version` and `updated_at` stay (it is not an edit, so concurrent
+         *     edits are never lost and the daily summary does not report it). Each changed event still
+         *     emits a realtime update so other tabs refetch. 404 if any id is not one of your live events.
+         */
+        post: operations["events_reorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/search": {
         parameters: {
             query?: never;
@@ -1012,6 +1036,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Day Order
+             * @default 0
+             */
+            day_order: number;
+            /**
              * End Date
              * Format: date
              */
@@ -1137,6 +1166,14 @@ export interface components {
             timezone?: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * EventReorder
+         * @description The events of one day popover in their new order (first = top).
+         */
+        EventReorder: {
+            /** Ids */
+            ids: string[];
         };
         /**
          * EventUpdate
@@ -1284,6 +1321,11 @@ export interface components {
             all_day: boolean;
             /** Category */
             category: string;
+            /**
+             * Day Order
+             * @default 0
+             */
+            day_order: number;
             /** End Date */
             end_date?: string | null;
             /** End Time */
@@ -3424,6 +3466,73 @@ export interface operations {
             };
             /** @description CSRF or Origin check failed, or forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    events_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventReorder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -97,7 +97,7 @@ export function MobileCalendar() {
         </button>
       </div>
 
-      <CategoryChips scroll />
+      <CategoryChips scroll occurrences={occurrences.data} />
 
       {occurrences.isError ? (
         <p role="alert" className="text-sm text-danger">

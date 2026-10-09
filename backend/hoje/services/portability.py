@@ -94,6 +94,7 @@ async def build_export(db: AsyncSession, user: User, *, app_version: str) -> dic
                 "repeat": e.repeat,
                 "repeat_until": _iso(e.repeat_until),
                 "label_vertical": e.label_vertical,
+                "day_order": e.day_order,
                 "reminders": [{"offset_minutes": o} for o in reminders.get(e.id, [])],
             }
         )
@@ -361,6 +362,7 @@ async def _plan(db: AsyncSession, user: User, doc: ExportDocument, mode: Mode) -
                 "repeat": ev.repeat,
                 "repeat_until": ev.repeat_until,
                 "label_vertical": ev.label_vertical,
+                "day_order": ev.day_order,
                 "counts_as_leave": is_leave,
                 "version": 1,
             }
