@@ -79,6 +79,14 @@ export async function registerUser(page: Page, baseURL: string): Promise<Account
     data: account,
   });
   expect(res.status(), await res.text()).toBe(201);
+  // Category glyphs are on by default; the layout specs measure bare titles, so start without.
+  const state = await request.get('/api/v1/auth/state');
+  const { csrf_token: csrf } = (await state.json()) as { csrf_token: string };
+  const patch = await request.patch('/api/v1/me', {
+    headers: { Origin: origin, 'X-CSRF-Token': csrf },
+    data: { show_category_icons: false },
+  });
+  expect(patch.ok(), await patch.text()).toBeTruthy();
   return account;
 }
 
