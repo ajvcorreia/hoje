@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.13] — 2026-10-09
+
+### Added
+
+- Category counters: each category pill shows how many event occurrences it has in the visible
+  range (the viewed year on desktop, the visible week or month on mobile; repeating events count
+  once per occurrence). A pill that is switched off keeps its count and stays dimmed, and the
+  pill's accessible name includes the count.
+- Reorder the events of a day: the day popover has "Move up" / "Move down" buttons when it lists
+  more than one event. The order is saved per event (`day_order`, migration 0010,
+  `POST /api/v1/events/reorder`), follows you to every machine and applies to the month grid,
+  agenda, mobile views, the popover and the daily summary email. A multi-day event has one
+  position for all its days. Reordering is not an edit (it does not appear under "Changes since"
+  in the daily summary) and `day_order` is included in export/import. Never-reordered events
+  keep today's order; a newly created event appears first among its day's events until ordered.
+
 ## [1.3.12] — 2026-10-09
 
 ### Changed
