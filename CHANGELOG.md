@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.18] — 2026-10-09
+
+### Added
+
+- To-dos. Add them from the day popover (desktop) or the day view (mobile), with an optional due
+  date. An open to-do moves to the next day until you check it off; a checked-off one stays on the
+  day you completed it. On page load a pop-up lists the to-dos due today or overdue, and the daily
+  summary email has a "To-dos due" section. To-dos sync live between tabs and are part of the
+  per-user export and import (optional `todos` key; format version unchanged). Migration 0014.
+
 ## [1.3.17] — 2026-10-09
 
 ### Fixed
