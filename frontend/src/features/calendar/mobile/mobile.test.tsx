@@ -234,6 +234,18 @@ describe('mobile calendar', () => {
     expect(await screen.findByRole('dialog', { name: 'New event' })).toBeInTheDocument();
   });
 
+  it('More carries the typed title into the full editor', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await dayViewReady();
+    await userEvent.click(screen.getByRole('button', { name: 'Add event' }));
+    const sheet = await screen.findByRole('dialog');
+    await userEvent.type(within(sheet).getByLabelText('Add an event'), 'Dentist');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'More' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New event' });
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Dentist');
+  });
+
   it('remembers the Day/Month view across remounts', async () => {
     mockApi(baseRoutes());
     renderApp();

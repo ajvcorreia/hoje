@@ -21,7 +21,10 @@ import { WeekStrip } from './WeekStrip';
 const DEFAULT_WEEKEND = [6, 7];
 
 type Sheet =
-  { kind: 'quick' } | { kind: 'create'; date: string } | { kind: 'edit'; eventId: string } | null;
+  | { kind: 'quick' }
+  | { kind: 'create'; date: string; title: string }
+  | { kind: 'edit'; eventId: string }
+  | null;
 
 const VIEWS: { id: MobileView; label: string }[] = [
   { id: 'day', label: 'Day' },
@@ -171,7 +174,7 @@ export function MobileCalendar() {
         <QuickAddSheet
           date={selected}
           onClose={closeSheet}
-          onMore={() => setSheet({ kind: 'create', date: selected })}
+          onMore={(title) => setSheet({ kind: 'create', date: selected, title })}
         />
       ) : null}
       {sheet?.kind === 'create' || sheet?.kind === 'edit' ? (
@@ -180,6 +183,7 @@ export function MobileCalendar() {
           mode={sheet.kind}
           eventId={sheet.kind === 'edit' ? sheet.eventId : undefined}
           initialDate={sheet.kind === 'create' ? sheet.date : undefined}
+          initialTitle={sheet.kind === 'create' ? sheet.title : undefined}
           onClose={closeSheet}
         />
       ) : null}

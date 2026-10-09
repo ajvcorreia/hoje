@@ -276,6 +276,20 @@ describe('event editor', () => {
     expect(within(dialog).getByLabelText('Repeat')).toBeInTheDocument();
   });
 
+  it('carries the title typed in the quick-add field into the full editor', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    await userEvent.click(cell('2026-01-01'));
+    await userEvent.type(await screen.findByLabelText('Add an event'), 'Dentist');
+    await userEvent.click(
+      await screen.findByRole('button', { hidden: true, name: 'Add with details' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'New event' });
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Dentist');
+  });
+
   it('deletes with an undo toast; Undo restores the event', async () => {
     const event = makeEvent('ev-1', 'Dentist', '2026-01-08');
     const api = mockApi({
