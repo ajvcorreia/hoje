@@ -1753,6 +1753,10 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Icons In Calendar */
+            icons_in_calendar: boolean;
+            /** Icons On Vertical */
+            icons_on_vertical: boolean;
             /**
              * Id
              * Format: uuid
@@ -1781,6 +1785,10 @@ export interface components {
             daily_summary_enabled?: boolean | null;
             /** Daily Summary Time */
             daily_summary_time?: string | null;
+            /** Icons In Calendar */
+            icons_in_calendar?: boolean | null;
+            /** Icons On Vertical */
+            icons_on_vertical?: boolean | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
             /** Past Stripe Colour */

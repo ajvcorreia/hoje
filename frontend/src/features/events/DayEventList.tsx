@@ -51,7 +51,7 @@ const MOVE_BUTTON =
 export function DayEventList({ date, occurrences, onSelect, onReorder }: DayEventListProps) {
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('calendar');
   const listRef = useRef<HTMLUListElement>(null);
   // The row that was just moved keeps keyboard focus on its button (or the other one at an end).
   const refocus = useRef<{ id: string; dir: 'up' | 'down' } | null>(null);

@@ -63,7 +63,7 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
   const { data, isPending, isError, error } = useOccurrences(today, to);
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('calendar');
   const birthdays = useBirthdaysBetween(today, to);
   const groups = useMemo(
     () => groupForAgenda(filterVisible(data, categories), today, birthdays),

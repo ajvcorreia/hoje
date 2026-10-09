@@ -20,7 +20,7 @@ export function SearchBox({ onPick }: SearchBoxProps) {
   const [open, setOpen] = useState(false);
   const { data: categories } = useCategories();
   const byId = categoryMap(categories);
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('calendar');
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTerm(text), 250);

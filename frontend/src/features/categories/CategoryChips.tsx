@@ -39,7 +39,7 @@ export function CategoryChips({
   const [showHolidays, setShowHolidays] = useShowHolidays();
   const [showBirthdays, setShowBirthdays] = useShowBirthdays();
   const { data: felizanniv } = useFelizAnnivStatus();
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('pills');
   const enabledCalendar = calendars?.find((c) => c.enabled);
   const counts = useMemo(() => countByCategory(occurrences), [occurrences]);
   const hasBirthdays = !!felizanniv?.configured && felizanniv.count > 0;

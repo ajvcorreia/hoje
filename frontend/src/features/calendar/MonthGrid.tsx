@@ -52,8 +52,10 @@ import {
 import { centerScrollLeft } from './centerScroll';
 import {
   GRID_ROWS,
+  horizontalTitle,
   layoutMonth,
   moveFocusDate,
+  verticalTitle,
   type ArrowKey,
   type DayLayout,
   type LayoutInput,
@@ -155,7 +157,7 @@ function MonthColumnImpl({
       if (!p || !p.showTitle) continue;
       segments.push({
         key: `${p.input.key}:${day}`,
-        title: p.input.title,
+        title: verticalTitle(p.input),
         colour: p.input.colour,
         row: day - 1 + offset,
         len: p.blockLen,
@@ -284,7 +286,7 @@ function MonthColumnImpl({
             data-edge={i === lastItem ? '' : undefined}
             style={{ '--c': firstItemCol + i } as CSSProperties}
           >
-            {p.showTitle ? p.input.title : ''}
+            {p.showTitle ? horizontalTitle(p.input) : ''}
           </span>
         ))}
         {d.overflow > 0 ? (
@@ -400,7 +402,8 @@ export function MonthGrid({
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
   const [pastStripe] = usePastStripeColour();
-  const iconOf = useCategoryIcon();
+  const iconOf = useCategoryIcon('calendar');
+  const verticalIconOf = useCategoryIcon('vertical');
   const [maxEvents] = useMaxEvents();
   const [verticalSize] = useVerticalTextSize();
   const [fonts, setFonts] = useState<FitFonts | null>(null);
@@ -467,6 +470,7 @@ export function MonthGrid({
         o,
         colourOf.get(o.event.category_id),
         iconOf(o.event.category_id),
+        verticalIconOf(o.event.category_id),
       );
       const first =
         o.occurrence_start < `${prefix}01-01` ? 0 : Number(o.occurrence_start.slice(5, 7)) - 1;
@@ -475,7 +479,7 @@ export function MonthGrid({
       for (let m = first; m <= last; m += 1) buckets[m]?.push(input);
     }
     return buckets;
-  }, [occurrences, categories, year, iconOf]);
+  }, [occurrences, categories, year, iconOf, verticalIconOf]);
 
   // Required event-area width per month; memoised on the month inputs, holidays, font and row
   // height (a rotated label only fits a block tall enough for its name).
