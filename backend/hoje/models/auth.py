@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     LargeBinary,
     SmallInteger,
+    String,
     Time,
     text,
 )
@@ -43,6 +44,9 @@ class User(Base):
     vertical_text_size: Mapped[int] = mapped_column(
         SmallInteger, default=12, server_default=text("12")
     )
+    past_stripe_colour: Mapped[str] = mapped_column(
+        String(7), default="#9ca3af", server_default=text("'#9ca3af'")
+    )
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Wall-clock send time in ``timezone``.
     daily_summary_time: Mapped[time] = mapped_column(
@@ -64,6 +68,7 @@ class User(Base):
     __table_args__ = (
         CheckConstraint("max_events_per_day between 1 and 6", name="max_events_per_day"),
         CheckConstraint("vertical_text_size between 8 and 32", name="vertical_text_size"),
+        CheckConstraint("past_stripe_colour ~ '^#[0-9a-fA-F]{6}$'", name="past_stripe_colour"),
     )
 
 

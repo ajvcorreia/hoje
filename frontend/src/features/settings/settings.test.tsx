@@ -420,3 +420,25 @@ describe('daily summary email setting', () => {
     expect(within(list).getByText('Daily summary')).toBeVisible();
   });
 });
+
+describe('past days stripe colour setting', () => {
+  it('defaults to grey and saves a choice on the user', async () => {
+    let me = { ...ME, past_stripe_colour: '#9ca3af' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const input = await screen.findByLabelText('Past days stripe colour');
+    expect(input).toHaveValue('#9ca3af');
+    fireEvent.input(input, { target: { value: '#ff0000' } });
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ past_stripe_colour: '#ff0000' }),
+    );
+  });
+});

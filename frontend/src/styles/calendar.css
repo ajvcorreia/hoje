@@ -436,9 +436,20 @@
   background: var(--ev-text);
 }
 
-/* "Strike through past days" preference: day number, titles and fully past vertical labels. */
-.cal-cell[data-past] .cal-num,
-.cal-cell[data-past] .cal-ev,
+/* "Strike through past days" preference: diagonal stripes over the whole day, in the colour chosen
+   in Settings. Drawn above the events (pointer-events: none) so coloured events are marked too. */
+.cal-cell[data-past]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--past-stripe, #9ca3af) 55%, transparent) 0 2px,
+    transparent 2px 7px
+  );
+}
+
 .cal-vlabel[data-past] .cal-vlabel-text {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
@@ -461,11 +472,6 @@
     var(--ev-fill) 0 4px,
     color-mix(in srgb, var(--ev-fill) 40%, var(--surface)) 4px 8px
   );
-}
-
-.cal-cell[data-past] .cal-hol {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
 }
 
 .yr-day[data-holiday-off] {

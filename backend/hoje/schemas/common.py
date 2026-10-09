@@ -36,6 +36,7 @@ Timezone = Annotated[str, Field(min_length=1, max_length=64), AfterValidator(val
 WeekendDays = Annotated[list[int], Field(max_length=7), AfterValidator(validate_weekend_days)]
 MaxEventsPerDay = Annotated[int, Field(ge=1, le=6)]
 VerticalTextSize = Annotated[int, Field(ge=8, le=32)]
+PastStripeColour = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
 # "HH:MM" on the wire (24 hour clock, no seconds, no offset).
 DailySummaryTime = Annotated[str, Field(pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")]
 

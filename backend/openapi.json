@@ -2755,6 +2755,10 @@
             "title": "Max Events Per Day",
             "type": "integer"
           },
+          "past_stripe_colour": {
+            "title": "Past Stripe Colour",
+            "type": "string"
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -2782,6 +2786,7 @@
           "weekend_days",
           "max_events_per_day",
           "vertical_text_size",
+          "past_stripe_colour",
           "daily_summary_enabled",
           "daily_summary_time",
           "totp_enabled",
@@ -2827,6 +2832,18 @@
               }
             ],
             "title": "Max Events Per Day"
+          },
+          "past_stripe_colour": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9a-fA-F]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Stripe Colour"
           },
           "timezone": {
             "anyOf": [
