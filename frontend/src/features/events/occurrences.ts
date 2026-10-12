@@ -69,6 +69,7 @@ export function toLayoutInput(
     title: o.event.title,
     icon,
     verticalIcon,
+    reminder: (o.event.reminders?.length ?? 0) > 0,
     colour,
     labelVertical: o.event.label_vertical,
     dayOrder: o.event.day_order ?? 0,

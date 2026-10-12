@@ -20,6 +20,8 @@ export interface LayoutInput {
   icon?: string;
   /** Same, for the title of a vertical (rotated) label; none when icons are off there. */
   verticalIcon?: string;
+  /** The event has a reminder: a bell is drawn after the title, so the width fit counts it. */
+  reminder?: boolean;
   /** Palette key; opaque to the layout, carried through for rendering. */
   colour?: string;
   /** Draw the title rotated along a multi-day block. */
@@ -243,12 +245,21 @@ export function moveFocusDate(iso: string, key: ArrowKey, weekStart = 1): string
   }
 }
 
+/** Marks an event that has a reminder (a notification is configured). */
+export const REMINDER_MARK = '🔔';
+
+function withBell(text: string, input: Pick<LayoutInput, 'reminder'>): string {
+  return input.reminder ? `${text} ${REMINDER_MARK}` : text;
+}
+
 /** Text of an event drawn horizontally: glyph (if any) then title. */
-export function horizontalTitle(input: Pick<LayoutInput, 'title' | 'icon'>): string {
-  return input.icon ? `${input.icon} ${input.title}` : input.title;
+export function horizontalTitle(input: Pick<LayoutInput, 'title' | 'icon' | 'reminder'>): string {
+  return withBell(input.icon ? `${input.icon} ${input.title}` : input.title, input);
 }
 
 /** Text of a rotated label: glyph (if any) then title. */
-export function verticalTitle(input: Pick<LayoutInput, 'title' | 'verticalIcon'>): string {
-  return input.verticalIcon ? `${input.verticalIcon} ${input.title}` : input.title;
+export function verticalTitle(
+  input: Pick<LayoutInput, 'title' | 'verticalIcon' | 'reminder'>,
+): string {
+  return withBell(input.verticalIcon ? `${input.verticalIcon} ${input.title}` : input.title, input);
 }
