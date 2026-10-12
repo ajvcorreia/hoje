@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.19] — 2026-10-12
+
+### Added
+
+- Events that have a reminder show a bell (🔔) after their title in the month grid, on horizontal
+  and vertical labels alike.
+
 ## [1.3.18] — 2026-10-09
 
 ### Added
