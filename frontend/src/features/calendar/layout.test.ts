@@ -358,3 +358,12 @@ describe('day_order (the user own order)', () => {
     expect(day.items.map((p) => p.input.key)).toEqual(['x', 'y']);
   });
 });
+
+describe('reminder mark', () => {
+  it('adds a bell after the title of events that have a reminder', async () => {
+    const { horizontalTitle, verticalTitle } = await import('./layout');
+    expect(horizontalTitle({ title: 'Dentist', icon: '🦷', reminder: true })).toBe('🦷 Dentist 🔔');
+    expect(verticalTitle({ title: 'Trip', reminder: true })).toBe('Trip 🔔');
+    expect(horizontalTitle({ title: 'Dentist', reminder: false })).toBe('Dentist');
+  });
+});
