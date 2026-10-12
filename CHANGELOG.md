@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.20] — 2026-10-12
+
+### Fixed
+
+- The web image is built with Go 1.26.9 and `golang.org/x/net` 0.60.0 / `x/crypto` 0.57.0 so it
+  passes the vulnerability scan again. 1.3.19 (the reminder bell in the month grid) was published
+  for the API only; 1.3.20 publishes both images.
+
 ## [1.3.19] — 2026-10-12
 
 ### Added
