@@ -157,10 +157,6 @@ export interface HolidayDay {
   colour: Colour;
   nonWorking: boolean;
   estimated: boolean;
-  /** Set for a synced FelizAnniv birthday drawn with the overlay (read-only, never non-working). */
-  kind?: 'birthday';
-  /** Age reached that day, when the year of birth is known. */
-  age?: number | null;
 }
 
 const DEFAULT_COLOUR: Record<string, Colour> = { PT: 'green', AE: 'red' };
@@ -170,27 +166,13 @@ export function calendarColour(calendar: Pick<HolidayCalendar, 'code' | 'colour'
   return (calendar.colour as Colour | undefined) ?? DEFAULT_COLOUR[calendar.code] ?? 'slate';
 }
 
-/** Birthday cake emoji (U+1F382) drawn before a birthday name. */
-export const CAKE = '\u{1F382}';
-
-/** True for a birthday entry of the overlay. */
-export function isBirthday(h: HolidayDay): boolean {
-  return h.kind === 'birthday';
-}
-
-/** "Ana (34)", or just the name when the age is unknown. */
-export function birthdayName(h: HolidayDay): string {
-  return h.age ? `${h.name} (${h.age})` : h.name;
-}
-
-/** What a day cell shows for one entry: the holiday name, or "🎂 Ana (34)". */
+/** What a day cell shows for one entry: the holiday name. */
 export function dayText(h: HolidayDay): string {
-  return isBirthday(h) ? `${CAKE} ${birthdayName(h)}` : h.name;
+  return h.name;
 }
 
-/** "Portugal · Freedom Day" (+ " (estimated)"), or "Birthday · Ana (34)". */
+/** "Portugal · Freedom Day" (+ " (estimated)"). */
 export function holidayLabel(h: HolidayDay): string {
-  if (isBirthday(h)) return `Birthday · ${birthdayName(h)}`;
   return `${h.calendarName} · ${h.name}${h.estimated ? ' (estimated)' : ''}`;
 }
 
@@ -252,17 +234,9 @@ export function holidayText(list: readonly HolidayDay[]): string {
   return list.map(dayText).join(' · ');
 }
 
-/**
- * Screen-reader text for a day's overlay: "holiday: Freedom Day", "birthday: Ana (34)" or both
- * ("holiday: …, birthday: …"). Names inside each part are joined with `joiner`.
- */
+/** Screen-reader text for a day's overlay: "holiday: Freedom Day". Names are joined with `joiner`. */
 export function overlayAria(list: readonly HolidayDay[], joiner = ' · '): string {
-  const holidays = list.filter((h) => !isBirthday(h)).map((h) => h.name);
-  const birthdays = list.filter(isBirthday).map(birthdayName);
-  const parts: string[] = [];
-  if (holidays.length > 0) parts.push(`holiday: ${holidays.join(joiner)}`);
-  if (birthdays.length > 0) parts.push(`birthday: ${birthdays.join(joiner)}`);
-  return parts.join(', ');
+  return list.length > 0 ? `holiday: ${list.map((h) => h.name).join(joiner)}` : '';
 }
 
 /** All holidays of one calendar in `year`, enabled or not (for the settings editor). */

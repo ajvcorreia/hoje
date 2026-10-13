@@ -33,7 +33,6 @@ import { toLayoutInput } from '../events/occurrences';
 import {
   NO_HOLIDAYS,
   holidayText,
-  isBirthday,
   isNonWorkingDay,
   overlayAria,
   type HolidayDay,
@@ -214,7 +213,6 @@ function MonthColumnImpl({
     const label = `${formatDayHeading(iso)} ${year}${
       d.total > 0 ? `, ${d.total} ${d.total === 1 ? 'event' : 'events'}` : ''
     }${dayHolidays ? `, ${overlayAria(dayHolidays)}` : ''}`;
-    const onlyBirthdays = dayHolidays?.every(isBirthday) || undefined;
     // Day number | rotated columns | overlay | one track per event | chip. Columns are numbered
     // from 1 (the day number); every item names its own column, so a spacer column left by a
     // free rotated lane never shifts the others.
@@ -270,7 +268,6 @@ function MonthColumnImpl({
             className="cal-hol"
             data-cat={dayHolidays[0]?.colour}
             data-holiday=""
-            data-birthday={onlyBirthdays}
             style={{ '--c': overlayCol } as CSSProperties}
           >
             {holidayText(dayHolidays)}

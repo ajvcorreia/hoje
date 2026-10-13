@@ -78,6 +78,8 @@ class Event(BaseModel):
     counts_as_leave: bool
     label_vertical: bool = False
     reminders: list[ReminderOut] = []
+    # Kept in sync with a FelizAnniv person (set by the sync, never by clients).
+    felizanniv: bool = False
     day_order: int = (
         0  # position among the events of a day; 0 = never ordered; set by /events/reorder
     )

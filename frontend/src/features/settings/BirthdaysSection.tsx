@@ -4,7 +4,6 @@ import { Dialog } from '../../components/ui/Dialog';
 import { Field } from '../../components/ui/Field';
 import { btnDanger, btnPrimary, btnSecondary } from '../../components/ui/classes';
 import { describeError } from '../../lib/errors';
-import { useShowBirthdays } from '../../lib/showBirthdays';
 import {
   useConnectFelizAnniv,
   useDisconnectFelizAnniv,
@@ -23,15 +22,15 @@ function birthdaysCount(n: number): string {
 
 /**
  * Settings › FelizAnniv birthdays: connect a FelizAnniv server (address + API key, tested by the
- * server before saving), sync now, disconnect, and show or hide birthdays on this device.
- * The API key is write-only: the field is never prefilled, only a short hint is shown.
+ * server before saving), sync now and disconnect. The birthdays themselves are ordinary events
+ * in the "Birthdays" category. The API key is write-only: the field is never prefilled, only a
+ * short hint is shown.
  */
 export function BirthdaysSection() {
   const status = useFelizAnnivStatus();
   const connect = useConnectFelizAnniv();
   const syncNow = useSyncFelizAnniv();
   const disconnect = useDisconnectFelizAnniv();
-  const [show, setShow] = useShowBirthdays();
   // null = untouched: follow the saved address.
   const [url, setUrl] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
@@ -58,9 +57,12 @@ export function BirthdaysSection() {
   return (
     <SettingsSection title="FelizAnniv birthdays" id="birthdays">
       <p className="text-sm text-text-muted">
-        Show the birthdays from your FelizAnniv app in the calendar. Hoje only reads names and
-        birthdays (every 6 hours or when you sync); it never changes anything in FelizAnniv. Create
-        a key in FelizAnniv under Settings › API Keys › New API Key (it starts with{' '}
+        Keep the birthdays of your FelizAnniv app in the calendar. Each one is an event in the
+        &ldquo;Birthdays&rdquo; category that you can edit or delete, and the changes go both ways:
+        Hoje syncs every 6 hours, shortly after you edit a birthday, and when you press Sync now. If
+        both sides changed the same detail, Hoje wins. A yearly all-day event you add to the
+        Birthdays category is added to FelizAnniv. Hoje also shares the notes you write on a
+        birthday. Create a key in FelizAnniv under Settings › API Keys › New API Key (it starts with{' '}
         <code>fa_live_</code>).
       </p>
 
@@ -159,21 +161,12 @@ export function BirthdaysSection() {
         ) : null}
       </form>
 
-      <label className="flex min-h-9 items-center gap-2 text-sm font-medium">
-        <input
-          type="checkbox"
-          checked={show}
-          onChange={(e) => setShow(e.target.checked)}
-          className="size-4"
-        />
-        Show birthdays in the calendar (on this device)
-      </label>
-
       {confirming ? (
         <Dialog title="Disconnect FelizAnniv?" onClose={() => setConfirming(false)}>
           <p className="text-sm">
-            This removes the saved address and key and the {birthdaysCount(data?.count ?? 0)} synced
-            to Hoje. Nothing changes in FelizAnniv.
+            This removes the saved address and key. The {birthdaysCount(data?.count ?? 0)} stay in
+            your calendar as ordinary events, but are no longer synced. Nothing changes in
+            FelizAnniv.
           </p>
           {disconnect.isError ? (
             <p role="alert" className="mt-2 text-sm text-danger">

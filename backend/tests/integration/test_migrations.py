@@ -36,7 +36,6 @@ async def test_schema_tables_exist(db_session: AsyncSession) -> None:
         "notification_log",
         "backup_runs",
         "felizanniv_integrations",
-        "birthdays",
         "alembic_version",
     }
 

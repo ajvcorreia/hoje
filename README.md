@@ -11,7 +11,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Categories with colours**: 12-colour palette, filter chips, customizable icons.
 - **Vacation balance**: working-day counting, carry-over policy, leave impact preview on events.
 - **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
-- **Birthdays from FelizAnniv**: one-way sync of the birthdays in your [FelizAnniv](#felizanniv-birthdays) app, drawn read-only on the calendar ("🎂 Ana (34)").
+- **Birthdays from FelizAnniv**: the birthdays of your [FelizAnniv](#felizanniv-birthdays) app are ordinary yearly events in a "Birthdays" category that you can edit, and changes sync both ways.
 - **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
 - **Daily summary email**: optional, at a time you choose (in your time zone): changes since the last summary, today, today's birthdays and holidays, and tomorrow. Days with nothing to report send nothing.
 - **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
@@ -277,11 +277,23 @@ other route at 1 MB and the import route at 10 MB).
 
 ## FelizAnniv birthdays
 
-If you also run FelizAnniv (the birthday tracker), Hoje can show its birthdays on the calendar as a
-read-only overlay, like holidays: "🎂 Ana (34)" on the day (29 February birthdays show on the 28th
-in other years). Hoje only reads; it never writes to FelizAnniv. Birthdays are not events: they
-cannot be edited in Hoje, never count as leave or working days, never send reminders and are not
-part of the export file.
+If you also run FelizAnniv (the birthday tracker), Hoje keeps its birthdays in your calendar and
+keeps both sides in step. Each person is an ordinary event: all day, repeating yearly, titled
+"Ana's birthday", in a **Birthdays** category (created for you, with its own chip and colour). You
+can rename it, move its date, write notes, add a reminder or delete it like any other event. A
+birthday whose year of birth is unknown is stored in the placeholder year 1904 (a leap year, so
+29 February works) and never reported to FelizAnniv as a year.
+
+What is shared: the **name** (the title without "'s birthday"), the **date** (month, day and year
+of birth) and the **notes**. Everything else (category, reminders, colour, label direction) stays in
+Hoje. Each sync merges the two sides per detail: a change made on one side only is copied to the
+other; if both sides changed the same detail since the last sync, **Hoje wins**. A new yearly
+all-day event you add to the Birthdays category becomes a new person in FelizAnniv. Deleting an
+event deletes the person (and restoring it from the bin adds a new one); a person deleted in
+FelizAnniv removes its event, unless you edited it in Hoje since, in which case it is sent again.
+The notes you write on a birthday are shared with FelizAnniv, and FelizAnniv's notes appear in the
+event, so do not put anything in them that should not live in both. Names are limited to 120
+characters and notes to 2000, as in FelizAnniv.
 
 1. In FelizAnniv, open **Settings › API Keys › New API Key** and copy the key (it starts with
    `fa_live_` and is shown once).
@@ -292,9 +304,11 @@ part of the export file.
    them if that works. The key is stored encrypted (AES-256-GCM under `HOJE_SECRET_KEY`) and never
    shown again, only its first characters.
 3. The worker syncs every 6 hours (with a little jitter; after repeated failures it waits 12, then
-   24 hours). **Sync now** queues a sync at once (at most 6 per hour). **Disconnect** removes the
-   address, the key and the synced birthdays. **Show birthdays** (and the Birthdays chip on the
-   calendar) hides or shows them on this device.
+   24 hours), and about 20 seconds after you add, edit or delete a birthday. **Sync now** queues
+   a sync at once (at most 6 per hour). A sync sends at most 40 changes (FelizAnniv allows 60
+   requests a minute per key) and comes back a minute later for the rest. **Disconnect** removes
+   the address and the key; the birthday events stay in your calendar as ordinary events and are
+   no longer synced. To hide the birthdays, switch off the **Birthdays** category chip.
 
 **Private addresses must be allowed by the server.** Because Hoje connects to an address a user
 typed, it refuses loopback, link-local and metadata addresses always, and private networks (LAN,

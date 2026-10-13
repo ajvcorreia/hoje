@@ -2,10 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ME, authState, mockApi, problem, renderApp } from '../../test/utils';
-import { SHOW_BIRTHDAYS_KEY } from '../../lib/showBirthdays';
-import { holidayLabel, holidayText, overlayAria, type HolidayDay } from '../holidays/api';
+import { overlayAria, holidayText, type HolidayDay } from '../holidays/api';
 import { keysForChange } from '../realtime/realtimeKeys';
-import { groupBirthdays, mergeOverlays, toOverlayDay } from './api';
 
 const NOW = new Date(2026, 9, 2, 12, 0, 0); // Friday 2 October 2026, local time
 const minutesAgo = (n: number) => new Date(NOW.getTime() - n * 60_000).toISOString();
@@ -41,18 +39,6 @@ function connected(overrides: Record<string, unknown> = {}) {
     count: 2,
     sync_pending: false,
     ...overrides,
-  };
-}
-
-function birthday(id: string, date: string, name: string, age: number | null = null) {
-  return {
-    id,
-    name,
-    date,
-    birth_month: Number(date.slice(5, 7)),
-    birth_day: Number(date.slice(8, 10)),
-    birth_year: age === null ? null : Number(date.slice(0, 4)) - age,
-    age,
   };
 }
 
@@ -114,6 +100,16 @@ describe('settings › FelizAnniv birthdays', () => {
     expect(within(box).getByText('Syncing…')).toBeInTheDocument();
     expect(within(box).getByLabelText('API key')).toHaveValue('');
     expect(box).not.toHaveTextContent('fa_live_secretvalue123');
+  });
+
+  it('explains that the sync goes both ways and that birthdays are ordinary events', async () => {
+    mockApi({ ...settingsBase, 'GET /api/v1/integrations/felizanniv': NOT_CONNECTED });
+    renderApp('/settings');
+    const box = await section();
+    expect(box).toHaveTextContent(/edit or delete/);
+    expect(box).toHaveTextContent(/changes go both ways/);
+    expect(box).toHaveTextContent(/Hoje wins/);
+    expect(box).not.toHaveTextContent(/never changes anything in FelizAnniv/);
   });
 
   it('shows the server message when the connection test fails', async () => {
@@ -178,7 +174,7 @@ describe('settings › FelizAnniv birthdays', () => {
     );
   });
 
-  it('disconnects after confirming', async () => {
+  it('disconnects after confirming, and says the birthdays stay as events', async () => {
     let status: Record<string, unknown> = connected();
     const api = mockApi({
       ...settingsBase,
@@ -192,7 +188,8 @@ describe('settings › FelizAnniv birthdays', () => {
     const box = await section();
     await userEvent.click(await within(box).findByRole('button', { name: 'Disconnect' }));
     const dialog = await screen.findByRole('dialog', { name: 'Disconnect FelizAnniv?' });
-    expect(dialog).toHaveTextContent('the 2 birthdays synced to Hoje');
+    expect(dialog).toHaveTextContent('The 2 birthdays stay in your calendar as ordinary events');
+    expect(dialog).toHaveTextContent('Nothing changes in FelizAnniv');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Disconnect' }));
     await waitFor(() =>
       expect(api.callsTo('DELETE', '/api/v1/integrations/felizanniv')).toHaveLength(1),
@@ -202,21 +199,15 @@ describe('settings › FelizAnniv birthdays', () => {
     );
   });
 
-  it('has a per-device "Show birthdays" switch', async () => {
+  it('no longer has a per-device "Show birthdays" switch (they are ordinary events)', async () => {
     mockApi({ ...settingsBase, 'GET /api/v1/integrations/felizanniv': connected() });
     renderApp('/settings');
     const box = await section();
-    const toggle = within(box).getByRole('checkbox', { name: /Show birthdays in the calendar/ });
-    expect(toggle).toBeChecked();
-    await userEvent.click(toggle);
-    expect(toggle).not.toBeChecked();
-    expect(window.localStorage.getItem(SHOW_BIRTHDAYS_KEY)).toBe('off');
+    expect(within(box).queryByRole('checkbox')).not.toBeInTheDocument();
   });
 });
 
-describe('birthday overlay helpers', () => {
-  const ana = toOverlayDay(birthday('b1', '2026-10-02', 'Ana', 34));
-  const leo = toOverlayDay(birthday('b2', '2026-10-02', 'Leo'));
+describe('overlay helpers (holidays only)', () => {
   const freedom: HolidayDay = {
     id: 'h1',
     date: '2026-10-02',
@@ -227,37 +218,22 @@ describe('birthday overlay helpers', () => {
     estimated: false,
   };
 
-  it('labels birthdays with a cake and the age', () => {
-    expect(ana).toMatchObject({ kind: 'birthday', colour: 'pink', nonWorking: false, age: 34 });
-    expect(holidayText([ana, leo])).toBe('\u{1F382} Ana (34) · \u{1F382} Leo');
-    expect(holidayLabel(ana)).toBe('Birthday · Ana (34)');
-    expect(holidayText([freedom, ana])).toBe('Freedom Day · \u{1F382} Ana (34)');
-  });
-
-  it('keeps holiday-only accessible names unchanged and adds birthdays', () => {
+  it('draws and announces the holiday name', () => {
+    expect(holidayText([freedom])).toBe('Freedom Day');
     expect(overlayAria([freedom])).toBe('holiday: Freedom Day');
-    expect(overlayAria([freedom, ana, leo])).toBe('holiday: Freedom Day, birthday: Ana (34) · Leo');
-    expect(overlayAria([ana, leo], ', ')).toBe('birthday: Ana (34), Leo');
-  });
-
-  it('merges birthdays after the holidays of the same day', () => {
-    const holidays = new Map([['2026-10-02', [freedom]]]);
-    const merged = mergeOverlays(
-      holidays,
-      groupBirthdays([birthday('b1', '2026-10-02', 'Ana', 34)]),
-    );
-    expect(merged.get('2026-10-02')?.map((d) => d.name)).toEqual(['Freedom Day', 'Ana']);
-    expect(holidays.get('2026-10-02')).toHaveLength(1); // inputs are not mutated
-  });
-
-  it('refreshes birthdays and the status on a realtime birthday change', () => {
-    expect(
-      keysForChange({ entity: 'birthday', op: 'update', id: 'x', version: 0, client_id: null }),
-    ).toEqual([['birthdays'], ['integrations', 'felizanniv']]);
+    expect(overlayAria([])).toBe('');
   });
 });
 
-describe('mobile day view: birthday cards', () => {
+describe('realtime', () => {
+  it('refreshes only the connection status on a birthday change (events arrive as events)', () => {
+    expect(
+      keysForChange({ entity: 'birthday', op: 'update', id: 'x', version: 0, client_id: null }),
+    ).toEqual([['integrations', 'felizanniv']]);
+  });
+});
+
+describe('calendar: birthdays are ordinary events', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: false,
@@ -267,79 +243,59 @@ describe('mobile day view: birthday cards', () => {
     }));
   });
 
-  it('shows the birthdays of the selected day as read-only cards and a Birthdays chip', async () => {
+  it('shows a synced birthday as an event card and asks for no birthday overlay', async () => {
+    const category = {
+      id: 'cat-birthdays',
+      name: 'Birthdays',
+      colour: 'pink',
+      icon: null,
+      sort_order: 0,
+      is_leave: false,
+      hidden: false,
+      version: 1,
+    };
+    const event = {
+      id: 'ev-ana',
+      category_id: category.id,
+      title: "Ana's birthday",
+      notes: null,
+      start_date: '1992-10-02',
+      end_date: '1992-10-02',
+      all_day: true,
+      start_time: null,
+      end_time: null,
+      timezone: 'Europe/Lisbon',
+      repeat: 'yearly',
+      repeat_until: null,
+      counts_as_leave: false,
+      label_vertical: false,
+      day_order: 0,
+      reminders: [],
+      felizanniv: true,
+      version: 1,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
     const api = mockApi({
       'GET /api/v1/auth/state': authState(),
-      'GET /api/v1/categories': [],
-      'GET /api/v1/events': { occurrences: [] },
+      'GET /api/v1/categories': [category],
+      'GET /api/v1/events': {
+        occurrences: [
+          {
+            event_id: event.id,
+            occurrence_start: '2026-10-02',
+            occurrence_end: '2026-10-02',
+            event,
+          },
+        ],
+      },
       'GET /api/v1/holiday-calendars': [],
       'GET /api/v1/integrations/felizanniv': connected(),
-      'GET /api/v1/birthdays': [birthday('b1', '2026-10-02', 'Ana', 34)],
     });
     renderApp();
-    const list = await screen.findByRole('list', { name: 'Birthdays' });
-    expect(within(list).getByText('Ana')).toBeInTheDocument();
-    expect(within(list).getByText('Birthday · turns 34')).toBeInTheDocument();
-    expect(within(list).queryByRole('button')).not.toBeInTheDocument();
-    expect(api.callsTo('GET', '/api/v1/birthdays')[0]?.search).toBe(
-      '?from=2026-01-01&to=2026-12-31',
-    );
-
-    const chip = screen.getByRole('button', { name: 'Birthdays' });
-    expect(chip).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.click(chip);
-    await waitFor(() =>
-      expect(screen.queryByRole('list', { name: 'Birthdays' })).not.toBeInTheDocument(),
-    );
-  });
-
-  it('asks for no birthdays when FelizAnniv is not connected', async () => {
-    const api = mockApi({
-      'GET /api/v1/auth/state': authState(),
-      'GET /api/v1/categories': [],
-      'GET /api/v1/events': { occurrences: [] },
-      'GET /api/v1/holiday-calendars': [],
-      'GET /api/v1/integrations/felizanniv': NOT_CONNECTED,
-    });
-    renderApp();
-    await waitFor(() =>
-      expect(api.callsTo('GET', '/api/v1/integrations/felizanniv').length).toBeGreaterThan(0),
-    );
-    await screen.findByText('No events');
+    expect(await screen.findByText("Ana's birthday")).toBeInTheDocument();
     expect(api.callsTo('GET', '/api/v1/birthdays')).toHaveLength(0);
-    expect(screen.queryByRole('button', { name: 'Birthdays' })).not.toBeInTheDocument();
-  });
-});
-
-describe('desktop month grid: birthday overlay', () => {
-  it('draws "🎂 Name (age)" on an empty day, never shades it and lists it in the popover', async () => {
-    mockApi({
-      'GET /api/v1/auth/state': authState(),
-      'GET /api/v1/categories': [],
-      'GET /api/v1/events': { occurrences: [] },
-      'GET /api/v1/holiday-calendars': [],
-      'GET /api/v1/integrations/felizanniv': connected(),
-      'GET /api/v1/birthdays': [
-        birthday('b1', '2026-03-10', 'Ana', 34),
-        birthday('b2', '2026-02-28', 'Leap'),
-      ],
-    });
-    renderApp();
-    // The full 12-month grid (with text measuring) is slow to mount under a loaded test run.
-    await waitFor(() => expect(document.querySelector('.cal-hol')).not.toBeNull(), {
-      timeout: 5000,
-    });
-    const cell = document.querySelector<HTMLElement>('[data-date="2026-03-10"]')!;
-    const mark = cell.querySelector('.cal-hol')!;
-    expect(mark).toHaveTextContent('\u{1F382} Ana (34)');
-    expect(mark).toHaveAttribute('data-birthday', 'true');
-    expect(mark).toHaveAttribute('data-cat', 'pink');
-    expect(cell).not.toHaveAttribute('data-holiday-off');
-    expect(cell).toHaveAccessibleName(/birthday: Ana \(34\)/);
-
-    await userEvent.click(cell);
-    const popover = await screen.findByRole('dialog', { hidden: true, name: /Events on/ });
-    const list = within(popover).getByRole('list', { hidden: true, name: 'Birthdays' });
-    expect(list).toHaveTextContent('Ana (34)');
+    // The Birthdays category has the same chip as any category, and there is no extra one.
+    expect(screen.getAllByRole('button', { name: /^Birthdays/ })).toHaveLength(1);
   });
 });

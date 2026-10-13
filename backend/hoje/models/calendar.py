@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime, time
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, SmallInteger, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hoje.constants import COLOURS
@@ -62,6 +63,15 @@ class Event(Base):
             postgresql_using="gin",
             postgresql_ops={"title": "gin_trgm_ops"},
         ),
+        # One event per FelizAnniv person (deleted events included: a pending remote delete
+        # must not be mistaken for a person that still needs an event).
+        Index(
+            "uq_events_user_id_felizanniv_id",
+            "user_id",
+            "felizanniv_id",
+            unique=True,
+            postgresql_where=text("felizanniv_id is not null"),
+        ),
     )
 
     id: Mapped[UuidPk]
@@ -82,10 +92,20 @@ class Event(Base):
     label_vertical: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Position among the events of a day (1..n once ordered by the user, 0 = never ordered).
     day_order: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"))
+    # The FelizAnniv person this event is kept in sync with, and what the two sides last agreed
+    # on ({"name", "month", "day", "year", "notes"}): the base of the three-way merge in
+    # hoje.services.felizanniv. Both are null for an ordinary event.
+    felizanniv_id: Mapped[str | None]
+    felizanniv_sync: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     version: Mapped[int] = mapped_column(default=1, server_default=text("1"))
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]
     deleted_at: Mapped[datetime | None]
+
+    @property
+    def felizanniv(self) -> bool:
+        """Whether the event is linked to a FelizAnniv person (exposed by the API)."""
+        return self.felizanniv_id is not None
 
 
 class Reminder(Base):

@@ -317,6 +317,28 @@ describe('event editor', () => {
     await waitFor(() => expect(api.callsTo('POST', '/api/v1/events/ev-1/restore')).toHaveLength(1));
   });
 
+  it.each([
+    [true, 'a birthday kept in sync with FelizAnniv says so in its editor'],
+    [false, 'an ordinary event does not'],
+  ])('felizanniv=%s: %s', async (linked) => {
+    const event = makeEvent('ev-fa', "Ana's birthday", '2026-01-12', '2026-01-12', {
+      felizanniv: linked,
+    });
+    mockApi({ ...baseRoutes([event]), 'GET /api/v1/events/ev-fa': event });
+    renderApp();
+    await waitFor(() =>
+      expect(within(cell('2026-01-12')).getByText("Ana's birthday")).toBeInTheDocument(),
+    );
+    await userEvent.click(cell('2026-01-12'));
+    const popover = await screen.findByRole('dialog', { hidden: true, name: /Events on/ });
+    await userEvent.click(within(popover).getByRole('button', { name: /Ana's birthday/ }));
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
+    await within(editor).findByDisplayValue("Ana's birthday");
+    const note = within(editor).queryByText(/Synced with FelizAnniv/);
+    if (linked) expect(note).toBeInTheDocument();
+    else expect(note).not.toBeInTheDocument();
+  });
+
   it('shows the conflict notice on 409 and can reload the server copy', async () => {
     const event = makeEvent('ev-2', 'Review', '2026-01-09');
     const current = { ...event, title: 'Review (moved)', version: 2 };

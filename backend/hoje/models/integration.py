@@ -1,17 +1,9 @@
-"""felizanniv_integrations, birthdays: one-way birthday sync from a FelizAnniv server."""
+"""felizanniv_integrations: two-way birthday sync with FelizAnniv (birthdays are events)."""
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    CheckConstraint,
-    ForeignKey,
-    Index,
-    LargeBinary,
-    SmallInteger,
-    UniqueConstraint,
-    text,
-)
+from sqlalchemy import CheckConstraint, ForeignKey, Index, LargeBinary, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hoje.db import Base
@@ -32,6 +24,11 @@ class FelizAnnivIntegration(Base):
         ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
     base_url: Mapped[str]
+    # Where people new to Hoje land, and the category whose yearly all-day events are sent to
+    # FelizAnniv. Created on the first sync; null again if the category is removed.
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL")
+    )
     api_key_enc: Mapped[bytes] = mapped_column(LargeBinary)
     api_key_hint: Mapped[str]
     enabled: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
@@ -45,27 +42,5 @@ class FelizAnnivIntegration(Base):
     last_success_at: Mapped[datetime | None]
     last_error: Mapped[str | None]
     consecutive_failures: Mapped[int] = mapped_column(default=0, server_default=text("0"))
-    created_at: Mapped[CreatedAt]
-    updated_at: Mapped[UpdatedAt]
-
-
-class Birthday(Base):
-    """A person synced from FelizAnniv (read-only in Hoje; notes are never stored)."""
-
-    __tablename__ = "birthdays"
-    __table_args__ = (
-        UniqueConstraint("user_id", "external_id", name="uq_birthdays_user_id_external_id"),
-        CheckConstraint("birth_month between 1 and 12", name="birth_month"),
-        CheckConstraint("birth_day between 1 and 31", name="birth_day"),
-        Index("ix_birthdays_user_id_birth_month_birth_day", "user_id", "birth_month", "birth_day"),
-    )
-
-    id: Mapped[UuidPk]
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    external_id: Mapped[str]
-    name: Mapped[str]
-    birth_month: Mapped[int] = mapped_column(SmallInteger)
-    birth_day: Mapped[int] = mapped_column(SmallInteger)
-    birth_year: Mapped[int | None] = mapped_column(SmallInteger)
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]

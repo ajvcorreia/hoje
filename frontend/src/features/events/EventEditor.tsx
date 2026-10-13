@@ -252,6 +252,11 @@ function EditorForm(props: FormProps) {
         maxLength={200}
         autoComplete="off"
       />
+      {editing?.felizanniv ? (
+        <p className="text-xs text-text-muted">
+          Synced with FelizAnniv: the name, date and notes follow the person there.
+        </p>
+      ) : null}
 
       <div className="space-y-1">
         <label htmlFor="event-category" className="block text-sm font-medium">

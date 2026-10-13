@@ -380,7 +380,9 @@ test.describe('holidays and birthdays', () => {
     await api.createEvent(WIDE, dateInCurrentMonth(15));
     await api.createEvent(ACCENTS, dateInCurrentMonth(15));
     await page.goto('/');
-    await expect(page.locator('.cal-hol[data-birthday]').first()).toBeVisible();
+    await expect(
+      page.locator('.cal-ev', { hasText: "Ada Lovelace's birthday" }).first(),
+    ).toBeVisible();
     await expectNoTruncation(page);
   });
 });

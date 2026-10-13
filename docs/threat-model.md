@@ -16,7 +16,7 @@ lives in [hardening-checklist.md](hardening-checklist.md).
 | `HOJE_SECRET_KEY` | `deploy/.env`, API/worker env | Decrypts TOTP secrets, forges CSRF tokens (`security/tokens.py`) |
 | `POSTGRES_PASSWORD`, SMTP credentials | `deploy/.env`, container env | DB access; sending mail as the owner's domain |
 | Backups | `/backups` volume of the worker (`hoje_backups` or `HOJE_BACKUP_DIR_HOST`; 0600, plaintext `pg_dump -Fc`) | Everything except TOTP seeds; a compromised worker can also delete them |
-| FelizAnniv API keys | `felizanniv_integrations.api_key_enc` (AES-256-GCM, AAD = purpose + user id); only a 10-character hint is ever returned | Read access to that user's FelizAnniv people (names, birthdays, notes) until revoked in FelizAnniv |
+| FelizAnniv API keys | `felizanniv_integrations.api_key_enc` (AES-256-GCM, AAD = purpose + user id); only a 10-character hint is ever returned | Read and write access to that user's FelizAnniv people (names, birthdays, notes: add, change, delete) until revoked in FelizAnniv; FelizAnniv keys have no read-only scope |
 | Docker Hub token | GitHub Actions secret | Malicious image pushed to the tag production pulls |
 
 ## Trust boundaries
@@ -70,16 +70,20 @@ Supply chain: GitHub Actions --> Docker Hub --> `docker compose pull` on the hos
 | D | Resource exhaustion | argon2 limited to 2 concurrent hashes, 400-day range cap on listings, 10 SSE streams per user, bounded subscriber queues, container `mem_limit`, read-only root FS, 1 MB request body cap (NPM, Caddy, API), 10 MB only on the import route (same three layers), import limited to 10 requests/hour per user with global caps (20 000 events, 100 categories, 2 000 custom holidays), bounded dates and event spans |
 | E / I | SSRF through the FelizAnniv address (a signed-in user, or a session thief, points the server at internal services: `db:5432`, `hoje-web`, the Docker host, cloud metadata, the LAN) | `security/ssrf.py`: http/https only, no userinfo/query/fragment, port 0 and non-canonical numeric hosts (`2130706433`, `0x7f.1`, `0177.0.0.1`) refused; the name is resolved once and **every** address must pass: loopback, link-local (incl. 169.254.169.254, fe80::/10), unspecified, multicast, reserved, site-local and broadcast always refused, also when embedded in IPv6 (IPv4-mapped, IPv4-compatible, 6to4, Teredo, NAT64); other non-global ranges (RFC 1918, 100.64/10, fc00::/7, documentation) only inside `HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS` (default empty); the networks the container itself is attached to (read from `/proc/net` at start) only through an allowed CIDR strictly narrower than that network, so no range setting can open the database or the web container. The connection goes to the vetted IP (original `Host` header and TLS SNI/certificate name), defeating DNS rebinding; redirects are not followed; no proxy from the environment; 10 s per request, 5 MiB per page (streamed), 50 pages, 5 minutes per sync. Responses are parsed as data only; errors stored and shown are fixed sentences (never response bodies, the key or the URL query) and httpx request logging is off. Saves are throttled (20/hour, each makes one request), manual syncs 6/hour, scheduled ones every 6 h with backoff |
 | I | Leaking the FelizAnniv API key | Write-only in the API (never in a response, an error or a log; `api_key` is a redacted log key), encrypted at rest bound to the user id, sent only as a Bearer header to the vetted address; export files never include it |
-| T | Hostile FelizAnniv responses (malicious or compromised server) | Strict per-row validation (month 1-12, day valid for the month, year 1800 to today or dropped, id <= 64 printable, name cleaned of control characters and cut to 200), invalid rows skipped, notes never stored, rows rendered as React text only; a malformed page or any failure keeps the previous rows (replace happens in one transaction after a complete fetch) |
+| T | Hostile FelizAnniv responses (malicious or compromised server) | Strict per-row validation (month 1-12, day valid for the month, year 1900 to today or dropped, id <= 64 printable, name cleaned of control characters and cut to 200, notes cleaned of control characters and cut to 2000), invalid rows skipped and never taken for a deletion, text rendered as React text only; nothing is written to Hoje unless every page was fetched and parsed. A hostile server can still add, rename or delete birthday *events* (and set their notes) in that user's calendar: they are restorable from the bin for 30 days, and a person gone from FelizAnniv only deletes an event that was not edited in Hoje since |
 | E | Container escape / lateral movement | Non-root images (uid 10001), `cap_drop: ALL`, `no-new-privileges`, read-only FS, internal DB network, API not published, `--no-proxy-headers` |
 | E | Supply chain | Lockfiles committed (`uv.lock`, `package-lock.json`), Actions pinned by SHA, base images pinned by digest and OS-patched at build, Dependabot, `permissions: contents: read`, no `pull_request_target`, release never runs on PRs, the scanned digest is the published image (Trivy gate before any tag moves, provenance + SBOM), pip-audit and npm audit in CI |
 
 ## Outbound requests (SSRF)
 
-The FelizAnniv birthday sync is the only feature that makes the server fetch an address a user
-chose. The API does it once when settings are saved (connection test, `edge` network); the
-worker does the scheduled and on-demand syncs (`egress` network). Both use the same guard,
-`backend/hoje/security/ssrf.py` (see the SSRF row above).
+The FelizAnniv birthday sync is the only feature that makes the server contact an address a user
+chose. The API does it once when settings are saved (connection test, `edge` network, one GET);
+the worker does the scheduled and on-demand syncs (`egress` network): GETs of the people list and,
+for changes made in Hoje, at most 40 POST / PATCH / DELETE requests per sync, all to
+`/api/v1/people` of the vetted address (the person's id is percent-encoded into the path). Both
+use the same guard, `backend/hoje/security/ssrf.py` (see the SSRF row above): every request goes to
+the address vetted for that sync, with no redirects and no proxy. A replace import unlinks the
+birthday events it bins, so importing a file can never delete people in FelizAnniv.
 
 Trade-off for private networks: a self-hosted FelizAnniv usually lives on the owner's LAN, so
 private addresses cannot simply be banned. They are refused unless the operator lists them in
