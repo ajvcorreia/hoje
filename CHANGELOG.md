@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Birthdays are ordinary events and sync both ways with FelizAnniv.** Each FelizAnniv person is
+  now a yearly all-day event ("Ana's birthday") in a "Birthdays" category that you can rename,
+  move, annotate, give a reminder, or delete. Changes made in Hoje are sent to FelizAnniv (a new
+  yearly all-day event in the Birthdays category becomes a new person; deleting an event deletes the
+  person), changes made in FelizAnniv are copied into the event, and when both sides changed the
+  same detail (name, date or notes) since the last sync, Hoje wins. Syncing happens every 6 hours,
+  about 20 seconds after an edit, and on **Sync now**; a sync sends at most 40 changes (FelizAnniv's
+  rate limit) and returns a minute later for the rest. The notes of a birthday are now shared with
+  FelizAnniv (they used to be ignored). Migration 0015 converts the birthdays you already have; it
+  needs no action, but take a `pg_dump` first as for any migration.
+- Disconnecting FelizAnniv keeps the birthday events (as ordinary events) instead of deleting them.
+- The daily summary still lists today's birthdays with their age, now from the events; birthday
+  events no longer appear in its event lists or in "what changed".
+- A replace import unlinks the birthday events it moves to the bin, so it never deletes people in
+  FelizAnniv; birthday events are part of the export file as ordinary events.
+
+### Removed
+
+- The read-only birthday overlay: the per-device "Show birthdays" switch and the Birthdays overlay
+  chip (the Birthdays category has a normal chip), the `GET /birthdays` endpoint and the
+  `birthdays` table.
+
 ## [1.3.20] — 2026-10-12
 
 ### Fixed

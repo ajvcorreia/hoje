@@ -1,7 +1,6 @@
-"""FelizAnniv integration and birthday overlay schemas."""
+"""FelizAnniv integration schemas."""
 
 import datetime as dt
-import uuid
 from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
@@ -31,16 +30,3 @@ class FelizAnnivConfig(BaseModel):
     base_url: str = Field(min_length=1, max_length=MAX_URL_LENGTH)
     # Required for the first connection; omit it to keep the stored key (changing the URL only).
     api_key: ApiKey | None = None
-
-
-class BirthdayOccurrence(BaseModel):
-    """One birthday on one date (29 February is shown on the 28th in other years)."""
-
-    id: uuid.UUID
-    name: str
-    date: dt.date
-    birth_month: int
-    birth_day: int
-    birth_year: int | None
-    # Age reached on that date, when the year of birth is known.
-    age: int | None

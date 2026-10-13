@@ -19,7 +19,6 @@ from sqlalchemy.pool import NullPool
 from hoje import clock
 from hoje.config import get_settings
 from hoje.models import (
-    Birthday,
     Category,
     Event,
     Holiday,
@@ -176,7 +175,6 @@ async def live(db_url: str, _run_migrations: None, frozen_clock):
                 delete(NotificationLog).where(NotificationLog.user_id.in_(state.users))
             )
             await db.execute(delete(Event).where(Event.user_id.in_(state.users)))
-            await db.execute(delete(Birthday).where(Birthday.user_id.in_(state.users)))
             await db.execute(
                 delete(HolidayCalendar).where(HolidayCalendar.user_id.in_(state.users))
             )
@@ -269,17 +267,15 @@ async def test_an_empty_day_sends_nothing_but_is_handled(live: Live, frozen_cloc
 
 async def test_birthdays_and_holidays_alone_make_a_summary(live: Live, frozen_clock):
     user = await live.make_user()
+    # A birthday kept in sync with FelizAnniv is a yearly event; it has its own section.
+    await live.make_event(
+        user,
+        "Bea Silva's birthday",
+        start=dt.date(1990, 10, 8),
+        repeat="yearly",
+        felizanniv_id="x1",
+    )
     async with live.sm() as db:
-        db.add(
-            Birthday(
-                user_id=user.id,
-                external_id="x1",
-                name="Bea Silva",
-                birth_month=10,
-                birth_day=8,
-                birth_year=1990,
-            )
-        )
         calendar = HolidayCalendar(
             user_id=user.id, code="pt", name="Portugal", enabled=True, colour="green"
         )

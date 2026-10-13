@@ -23,6 +23,7 @@ import calendar
 import datetime as dt
 import uuid
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -33,7 +34,6 @@ from hoje import clock
 from hoje.config import Settings
 from hoje.logging import get_logger
 from hoje.models import (
-    Birthday,
     Category,
     Event,
     Holiday,
@@ -41,7 +41,7 @@ from hoje.models import (
     NotificationLog,
     User,
 )
-from hoje.services import recurrence
+from hoje.services import felizanniv, recurrence
 from hoje.services import todos as todos_service
 from hoje.services.mailer import APP_NAME, Mailer, RenderedEmail, SessionFactory, render
 from hoje.services.reminders import _zone, local_to_utc
@@ -467,7 +467,20 @@ async def gather(
             await db.scalars(select(Category).where(Category.user_id == user.id))
         ).all()
     }
-    birthdays = list((await db.scalars(select(Birthday).where(Birthday.user_id == user.id))).all())
+    # Birthdays kept in sync with FelizAnniv have their own section (with the age): they are
+    # left out of the event lists, and the sync's own creations out of "what changed".
+    birthdays = [
+        SimpleNamespace(
+            name=card.name, birth_month=card.month, birth_day=card.day, birth_year=card.year
+        )
+        for card in (
+            felizanniv.card_of_event(event, today.year)
+            for event in events
+            if event.felizanniv_id is not None
+        )
+    ]
+    events = [event for event in events if event.felizanniv_id is None]
+    changed = [event for event in changed if event.felizanniv_id is None]
     todos = await todos_service.due_rows(db, user, today)
     holidays = [
         (holiday, calendar_name)

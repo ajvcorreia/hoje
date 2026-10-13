@@ -4,10 +4,11 @@ import { dateInCurrentMonth, expect, test } from './fixtures';
 // address, allowed for the API and the worker with HOJE_INTEGRATION_ALLOWED_PRIVATE_CIDRS.
 const FAKE_URL = 'http://10.231.77.10:4000';
 const FAKE_KEY = 'fa_live_e2e_fake_key_0123456789';
+const ADA = "Ada Lovelace's birthday";
 
 test.skip(({ isMobile }) => isMobile, 'desktop grid only');
 
-test('connects to FelizAnniv, syncs and draws the birthdays in the calendar', async ({
+test('connects to FelizAnniv, syncs and shows the birthdays as ordinary events', async ({
   page,
   api,
 }) => {
@@ -39,22 +40,40 @@ test('connects to FelizAnniv, syncs and draws the birthdays in the calendar', as
   // The worker (2 s interval in the e2e stack) runs the full sync.
   await expect(section.getByText(/Last synced .* · 2 birthdays/)).toBeVisible({ timeout: 20_000 });
 
+  // The birthday is an ordinary event in a "Birthdays" category, with its own chip.
   await page.goto('/');
-  const ada = page.locator(`[data-date="${dateInCurrentMonth(15)}"] .cal-hol`);
-  await expect(ada).toHaveText('\u{1F382} Ada Lovelace (30)'); // born 30 years ago
+  const cell = page.locator(`[data-date="${dateInCurrentMonth(15)}"]`);
+  await expect(cell.locator('.cal-ev')).toHaveText(ADA);
+  await expect(page.getByRole('button', { name: /^Birthdays/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Birthdays' }).click();
-  await expect(ada).toHaveCount(0);
-  await page.getByRole('button', { name: 'Birthdays' }).click();
-  await expect(ada).toBeVisible();
+  // It opens in the normal editor and says it is kept in sync.
+  await cell.click();
+  await page
+    .getByRole('dialog', { name: /^Events on / })
+    .getByRole('button', { name: ADA })
+    .click();
+  const editor = page.getByRole('dialog', { name: 'Edit event' });
+  await expect(editor.getByLabel('Title')).toHaveValue(ADA);
+  await expect(editor.getByText(/Synced with FelizAnniv/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
 
-  // Disconnecting removes the synced birthdays.
+  // Disconnecting keeps the events, which are then plain events.
   await page.goto('/settings');
   await section.getByRole('button', { name: 'Disconnect' }).click();
   const dialog = page.getByRole('dialog', { name: 'Disconnect FelizAnniv?' });
+  await expect(dialog).toContainText('stay in your calendar');
   await dialog.getByRole('button', { name: 'Disconnect' }).click();
   await expect(section.getByRole('button', { name: 'Sync now' })).toHaveCount(0);
   await page.goto('/');
-  await expect(page.locator(`[data-date="${dateInCurrentMonth(15)}"]`)).toBeVisible();
-  await expect(page.locator('.cal-hol[data-birthday]')).toHaveCount(0);
+  await expect(cell.locator('.cal-ev')).toHaveText(ADA);
+  await cell.click();
+  await page
+    .getByRole('dialog', { name: /^Events on / })
+    .getByRole('button', { name: ADA })
+    .click();
+  await expect(page.getByRole('dialog', { name: 'Edit event' }).getByLabel('Title')).toHaveValue(
+    ADA,
+  );
+  await expect(page.getByText(/Synced with FelizAnniv/)).toHaveCount(0);
 });

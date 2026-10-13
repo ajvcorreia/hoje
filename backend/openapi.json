@@ -252,66 +252,6 @@
         "title": "BackupStatus",
         "type": "object"
       },
-      "BirthdayOccurrence": {
-        "description": "One birthday on one date (29 February is shown on the 28th in other years).",
-        "properties": {
-          "age": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Age"
-          },
-          "birth_day": {
-            "title": "Birth Day",
-            "type": "integer"
-          },
-          "birth_month": {
-            "title": "Birth Month",
-            "type": "integer"
-          },
-          "birth_year": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Birth Year"
-          },
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "date",
-          "birth_month",
-          "birth_day",
-          "birth_year",
-          "age"
-        ],
-        "title": "BirthdayOccurrence",
-        "type": "object"
-      },
       "CalendarCounts": {
         "properties": {
           "update": {
@@ -780,6 +720,11 @@
               }
             ],
             "title": "End Time"
+          },
+          "felizanniv": {
+            "default": false,
+            "title": "Felizanniv",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -4764,93 +4709,6 @@
         ]
       }
     },
-    "/api/v1/birthdays": {
-      "get": {
-        "operationId": "birthdays_list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "from",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "From",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "to",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "To",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/BirthdayOccurrence"
-                  },
-                  "title": "Response Birthdays List",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Not authenticated"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "CSRF or Origin check failed, or forbidden"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Validation error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Not implemented yet"
-          }
-        },
-        "summary": "Synced birthdays falling within a date range (read-only overlay)",
-        "tags": [
-          "integrations"
-        ]
-      }
-    },
     "/api/v1/categories": {
       "get": {
         "operationId": "categories_list",
@@ -6777,7 +6635,7 @@
             "description": "Not implemented yet"
           }
         },
-        "summary": "Disconnect FelizAnniv and remove the synced birthdays",
+        "summary": "Disconnect FelizAnniv (the birthday events stay, no longer synced)",
         "tags": [
           "integrations"
         ]

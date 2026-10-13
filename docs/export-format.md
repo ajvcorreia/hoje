@@ -12,9 +12,12 @@ yearly leave policies, and per holiday calendar its on/off state, colour and you
 bundled holidays.
 
 Never included: password hashes, two-factor secrets, recovery codes, sessions, throttle rows,
-the email log, backup runs, user ids or any internal id. Birthdays synced from FelizAnniv and the
-FelizAnniv connection (address, API key) are not exported either: they belong to FelizAnniv, and an
-import never touches them (on a new server, connect FelizAnniv again in Settings). Categories are
+the email log, backup runs, user ids or any internal id. Birthdays from FelizAnniv are ordinary
+events and are exported as such (a yearly all-day event in the "Birthdays" category), but the link
+to the FelizAnniv person and the FelizAnniv connection (address, API key) are never exported, and an
+import never touches the connection (on a new server, connect FelizAnniv again in Settings, which
+brings the people back as events). A *replace* import unlinks the birthday events it moves to the
+bin, so it can never delete anyone in FelizAnniv. Categories are
 tied to events by a file-local `key`, not by database id. Deleted (binned) events and categories
 are not exported.
 

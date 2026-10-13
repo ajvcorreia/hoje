@@ -226,23 +226,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/birthdays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Synced birthdays falling within a date range (read-only overlay) */
-        get: operations["birthdays_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/categories": {
         parameters: {
             query?: never;
@@ -552,7 +535,7 @@ export interface paths {
          */
         put: operations["felizanniv_configure"];
         post?: never;
-        /** Disconnect FelizAnniv and remove the synced birthdays */
+        /** Disconnect FelizAnniv (the birthday events stay, no longer synced) */
         delete: operations["felizanniv_disconnect"];
         options?: never;
         head?: never;
@@ -914,32 +897,6 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
-        /**
-         * BirthdayOccurrence
-         * @description One birthday on one date (29 February is shown on the 28th in other years).
-         */
-        BirthdayOccurrence: {
-            /** Age */
-            age: number | null;
-            /** Birth Day */
-            birth_day: number;
-            /** Birth Month */
-            birth_month: number;
-            /** Birth Year */
-            birth_year: number | null;
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-        };
         /** CalendarCounts */
         CalendarCounts: {
             /** Update */
@@ -1104,6 +1061,11 @@ export interface components {
             end_date: string;
             /** End Time */
             end_time?: string | null;
+            /**
+             * Felizanniv
+             * @default false
+             */
+            felizanniv: boolean;
             /**
              * Id
              * Format: uuid
@@ -3129,65 +3091,6 @@ export interface operations {
             };
             /** @description Too many attempts; see the Retry-After header */
             429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    birthdays_list: {
-        parameters: {
-            query: {
-                from: string;
-                to: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BirthdayOccurrence"][];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CSRF or Origin check failed, or forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Validation error */
-            422: {
                 headers: {
                     [name: string]: unknown;
                 };

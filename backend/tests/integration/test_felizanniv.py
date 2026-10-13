@@ -1,19 +1,21 @@
 # ruff: noqa: F811
-"""FelizAnniv integration: API routes, worker sync, overlay, isolation and export."""
+"""FelizAnniv integration: API routes, the two-way worker sync, isolation and export."""
 
 import datetime as dt
+import json
 import logging
 import uuid
+from collections import Counter
 from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from hoje import clock
 from hoje.config import get_settings
-from hoje.models import Birthday, FelizAnnivIntegration
+from hoje.models import Category, Event, FelizAnnivIntegration
 from hoje.security import crypto
 from hoje.services import changes, felizanniv
 
@@ -26,44 +28,80 @@ BASE = "https://fa.example.com"
 PUBLIC_IP = "93.184.216.34"
 
 
+def pid(i: int) -> str:
+    return str(uuid.UUID(int=i))
+
+
 def person(i: int, **over: Any) -> dict[str, Any]:
     return {
-        "id": str(uuid.UUID(int=i)),
+        "id": pid(i),
         "name": f"Friend {i}",
         "birthMonth": 3,
         "birthDay": (i - 1) % 28 + 1,
         "birthYear": 1990,
-        "notes": "do not store me",
+        "notes": "A note",
         **over,
     }
 
 
 class Fake:
-    """A FelizAnniv server: people, an optional status override and a request log."""
+    """A FelizAnniv server: people (read and written), status overrides and a request log."""
 
     def __init__(self) -> None:
         self.people: list[dict[str, Any]] = [person(1), person(2)]
-        self.status: int | None = None
+        self.status: int | None = None  # answers every request with it
+        self.write_status: int | None = None  # answers POST, PATCH and DELETE with it
         self.fail_page: int | None = None
         self.requests: list[httpx.Request] = []
         self.answers: list[str] = [PUBLIC_IP]
+        self.next_id = 1000
+
+    @property
+    def writes(self) -> list[tuple[str, str, Any]]:
+        return [
+            (r.method, r.url.path.removeprefix("/api/v1/people").lstrip("/"), _body(r))
+            for r in self.requests
+            if r.method != "GET"
+        ]
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
-        page = int(request.url.params["page"])
         if self.status is not None:
             return httpx.Response(self.status, json={"error": {"message": API_KEY}})
         if request.headers.get("authorization") != f"Bearer {API_KEY}":
             return httpx.Response(401, json={"error": {"code": "UNAUTHORIZED"}})
-        if self.fail_page == page:
-            return httpx.Response(200, content=b"garbage")
-        size = int(request.url.params["pageSize"])
-        chunk = self.people[(page - 1) * size : page * size]
-        pages = -(-len(self.people) // size)
-        return httpx.Response(200, json={"items": chunk, "totalPages": pages})
+        if request.method == "GET":
+            page = int(request.url.params["page"])
+            if self.fail_page == page:
+                return httpx.Response(200, content=b"garbage")
+            size = int(request.url.params["pageSize"])
+            chunk = self.people[(page - 1) * size : page * size]
+            pages = -(-len(self.people) // size)
+            return httpx.Response(200, json={"items": chunk, "totalPages": pages})
+        if self.write_status is not None:
+            return httpx.Response(self.write_status, json={"error": {"message": API_KEY}})
+        body = _body(request) or {}
+        if request.method == "POST":
+            created = {"id": pid(self.next_id), "birthYear": None, "notes": None, **body}
+            self.next_id += 1
+            self.people.append(created)
+            return httpx.Response(201, json={"person": created})
+        target = request.url.path.rsplit("/", 1)[-1]
+        found = next((p for p in self.people if p["id"] == target), None)
+        if found is None:
+            return httpx.Response(404, json={"error": {"code": "NOT_FOUND"}})
+        if request.method == "PATCH":
+            found.update(body)
+            return httpx.Response(200, json={"person": found})
+        self.people.remove(found)
+        return httpx.Response(204)
 
     async def resolve(self, host: str, port: int) -> list[str]:
         return list(self.answers)
+
+
+def _body(request: httpx.Request) -> Any:
+    return json.loads(request.content) if request.content else None
 
 
 @pytest.fixture
@@ -114,6 +152,14 @@ async def run_worker_sync(db_session) -> bool:
     return True
 
 
+async def resync(db_session, user) -> None:
+    """Make the integration due now and run one worker pass."""
+    row = await row_for(db_session, user)
+    row.next_sync_at = clock.now()
+    await db_session.flush()
+    assert await run_worker_sync(db_session) is True
+
+
 async def row_for(db_session, user) -> FelizAnnivIntegration | None:
     return await db_session.scalar(
         select(FelizAnnivIntegration)
@@ -122,10 +168,35 @@ async def row_for(db_session, user) -> FelizAnnivIntegration | None:
     )
 
 
-async def birthday_count(db_session, user) -> int:
-    return await db_session.scalar(
-        select(func.count()).select_from(Birthday).where(Birthday.user_id == user.id)
+async def events_of(db_session, user) -> list[Event]:
+    rows = await db_session.scalars(
+        select(Event)
+        .where(Event.user_id == user.id)
+        .order_by(Event.title, Event.created_at)
+        .execution_options(populate_existing=True)
     )
+    return list(rows)
+
+
+async def titled(db_session, user, title: str) -> Event:
+    return next(e for e in await events_of(db_session, user) if e.title == title)
+
+
+async def birthday_count(db_session, user) -> int:
+    return await felizanniv.count_birthdays(db_session, user.id)
+
+
+async def birthdays_category(alice) -> dict[str, Any]:
+    categories = (await alice.get("/categories")).json()
+    return next(c for c in categories if c["name"] == "Birthdays")
+
+
+async def synced(alice, fake, db_session, *people: dict[str, Any]):
+    """Connect and run the first sync against ``people``."""
+    fake.people = list(people)
+    assert (await connect(alice)).status_code == 200
+    assert await run_worker_sync(db_session) is True
+    fake.requests.clear()
 
 
 # --------------------------------------------------------------------------- API
@@ -133,8 +204,11 @@ async def birthday_count(db_session, user) -> int:
 
 async def test_requires_authentication(client):
     assert (await client.get("/api/v1/integrations/felizanniv")).status_code == 401
+
+
+async def test_the_read_only_overlay_is_gone(alice):
     params = {"from": "2026-01-01", "to": "2026-12-31"}
-    assert (await client.get("/api/v1/birthdays", params=params)).status_code == 401
+    assert (await alice.get("/birthdays", params=params)).status_code == 404
 
 
 async def test_status_when_not_connected(alice):
@@ -255,48 +329,74 @@ async def test_saving_is_throttled(alice, fake):
     assert len(fake.requests) == 20
 
 
-# --------------------------------------------------------------------------- sync
+# --------------------------------------------------------------------------- FelizAnniv -> Hoje
 
 
-async def test_worker_sync_stores_birthdays_and_publishes(alice, fake, db_session, published):
+async def test_the_first_sync_creates_a_birthdays_category_and_an_event_per_person(
+    alice, fake, db_session, published
+):
     fake.people = [person(i) for i in range(1, 151)] + [person(200, birthMonth=13)]
     assert (await connect(alice)).status_code == 200
     published.clear()
     assert await run_worker_sync(db_session) is True
     assert await run_worker_sync(db_session) is False  # not due again for ~6 hours
     assert await birthday_count(db_session, alice.user) == 150
-    names = await db_session.scalars(select(Birthday.name).where(Birthday.user_id == alice.user.id))
-    assert "do not store me" not in " ".join(names)
+    assert {r.method for r in fake.requests} == {"GET"}  # nothing to send
+
+    category = await birthdays_category(alice)
+    assert (category["colour"], category["icon"]) == ("pink", "\U0001f382")
+    events = await events_of(db_session, alice.user)
+    assert len(events) == 150
+    friend = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert (friend.start_date, friend.end_date) == (dt.date(1990, 3, 1),) * 2
+    assert (friend.repeat, friend.all_day, friend.notes) == ("yearly", True, "A note")
+    assert (friend.felizanniv_id, friend.version) == (pid(1), 1)
+    assert str(friend.category_id) == category["id"] and friend.timezone == alice.user.timezone
+    shown = (await alice.get(f"/events/{friend.id}")).json()
+    assert shown["felizanniv"] is True
+
     status = (await alice.get("/integrations/felizanniv")).json()
     assert status["count"] == 150 and status["last_error"] is None
     assert status["last_success_at"] is not None and status["sync_pending"] is False
-    assert [p["entity"] for p in published] == ["birthday"]
+    assert Counter(p["entity"] for p in published) == {"category": 1, "event": 150, "birthday": 1}
     row = await row_for(db_session, alice.user)
+    assert str(row.category_id) == category["id"] and row.lease_until is None
     assert row.next_sync_at - clock.now() >= dt.timedelta(hours=6)
-    assert row.lease_until is None
 
 
-async def test_a_resync_replaces_the_rows(alice, fake, db_session):
+async def test_an_existing_birthdays_category_is_reused(alice, fake, db_session):
+    mine = await alice.make_category("birthdays", colour="blue")
+    fake.people = [person(1)]
     await connect(alice)
     await run_worker_sync(db_session)
-    fake.people = [person(1, name="Renamed"), person(3)]
-    row = await row_for(db_session, alice.user)
-    row.next_sync_at = clock.now()
-    await db_session.flush()
-    await run_worker_sync(db_session)
-    rows = {
-        b.external_id: b.name
-        for b in await db_session.scalars(
-            select(Birthday)
-            .where(Birthday.user_id == alice.user.id)
-            .execution_options(populate_existing=True)
-        )
-    }
-    assert rows == {str(uuid.UUID(int=1)): "Renamed", str(uuid.UUID(int=3)): "Friend 3"}
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert str(event.category_id) == mine["id"]
+    categories = await db_session.scalars(
+        select(Category).where(Category.user_id == alice.user.id, Category.name.ilike("birthdays"))
+    )
+    assert len(list(categories)) == 1
+
+
+async def test_a_resync_pulls_changes_and_removes_people_who_are_gone(alice, fake, db_session):
+    await synced(alice, fake, db_session, person(1), person(2))
+    friend = await titled(db_session, alice.user, "Friend 1's birthday")
+    fake.people = [person(1, name="Renamed", notes=None, birthDay=9), person(3)]
+    await resync(db_session, alice.user)
+
+    events = {e.felizanniv_id or e.title: e for e in await events_of(db_session, alice.user)}
+    renamed = events[pid(1)]
+    assert renamed.id == friend.id and renamed.version == 2
+    assert (renamed.title, renamed.notes) == ("Renamed's birthday", None)
+    assert renamed.start_date == renamed.end_date == dt.date(1990, 3, 9)
+    assert events[pid(3)].title == "Friend 3's birthday"
+    gone = events["Friend 2's birthday"]  # deleted in FelizAnniv, untouched in Hoje: deleted here
+    assert gone.deleted_at is not None and gone.felizanniv_id is None
+    assert fake.writes == []
+    assert await birthday_count(db_session, alice.user) == 2
 
 
 @pytest.mark.parametrize("failure", ["status", "malformed_page_2", "rate_limited"])
-async def test_a_failed_sync_keeps_the_old_rows_and_backs_off(
+async def test_a_failed_sync_keeps_the_events_and_backs_off(
     alice, fake, db_session, failure, capsys, caplog
 ):
     caplog.set_level(logging.DEBUG)
@@ -305,7 +405,7 @@ async def test_a_failed_sync_keeps_the_old_rows_and_backs_off(
     await run_worker_sync(db_session)
     assert await birthday_count(db_session, alice.user) == 150
 
-    fake.people = [person(1)]  # would delete 149 rows if applied
+    fake.people = [person(1)]  # would delete 149 events if applied
     if failure == "status":
         fake.status = 500
     elif failure == "rate_limited":
@@ -332,6 +432,222 @@ async def test_a_failed_sync_keeps_the_old_rows_and_backs_off(
     assert "felizanniv_sync_failed" in output
     assert API_KEY not in output
     assert "page=" not in output and "93.184.216.34" not in output
+
+
+async def test_a_row_felizanniv_now_sends_unreadable_is_not_taken_for_a_deletion(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1))
+    fake.people = [person(1, birthMonth=13)]
+    await resync(db_session, alice.user)
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert event.deleted_at is None and event.felizanniv_id == pid(1)
+
+
+# --------------------------------------------------------------------------- Hoje -> FelizAnniv
+
+
+async def test_editing_a_birthday_in_hoje_updates_the_person(alice, fake, db_session):
+    await synced(alice, fake, db_session, person(1))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    resp = await alice.patch(
+        f"/events/{event.id}",
+        {
+            "version": event.version,
+            "title": "Ada's birthday",
+            "start_date": "1991-04-05",
+            "end_date": "1991-04-05",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    row = await row_for(db_session, alice.user)  # an edit asks for a sync within seconds
+    assert row.next_sync_at <= clock.now() + felizanniv.NUDGE_DELAY + dt.timedelta(seconds=1)
+
+    await resync(db_session, alice.user)
+    assert fake.writes == [
+        (
+            "PATCH",
+            pid(1),
+            {"name": "Ada", "birthMonth": 4, "birthDay": 5, "birthYear": 1991},
+        )
+    ]
+    assert fake.people[0]["name"] == "Ada" and fake.people[0]["notes"] == "A note"
+
+    fake.requests.clear()  # nothing left to say: the next sync only reads
+    await resync(db_session, alice.user)
+    assert fake.writes == []
+    again = await titled(db_session, alice.user, "Ada's birthday")
+    assert again.id == event.id and again.start_date == dt.date(1991, 4, 5)
+
+
+async def test_when_both_sides_changed_the_same_part_hoje_wins_and_the_rest_is_merged(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    await alice.patch(f"/events/{event.id}", {"version": 1, "title": "Mine's birthday"})
+    fake.people[0].update(name="Theirs", notes="Their note")
+
+    await resync(db_session, alice.user)
+    assert fake.writes == [("PATCH", pid(1), {"name": "Mine"})]
+    assert fake.people[0]["name"] == "Mine"
+    merged = await titled(db_session, alice.user, "Mine's birthday")
+    assert merged.notes == "Their note"  # only FelizAnniv changed the notes: taken
+
+
+async def test_a_new_birthday_in_the_category_becomes_a_person(alice, fake, db_session):
+    await synced(alice, fake, db_session, person(1))
+    category = await birthdays_category(alice)
+    created = await alice.make_event(
+        title="Newbie's birthday",
+        category_id=category["id"],
+        start_date="1995-04-05",
+        repeat="yearly",
+        notes="Cake",
+    )
+    plain = await alice.make_event(
+        title="Dinner", category_id=category["id"], start_date="2026-04-05"
+    )
+    await resync(db_session, alice.user)
+
+    assert fake.writes == [
+        (
+            "POST",
+            "",
+            {"name": "Newbie", "birthMonth": 4, "birthDay": 5, "birthYear": 1995, "notes": "Cake"},
+        )
+    ]
+    assert len(fake.people) == 2
+    assert (await alice.get(f"/events/{created['id']}")).json()["felizanniv"] is True
+    assert (await alice.get(f"/events/{plain['id']}")).json()["felizanniv"] is False
+
+    fake.requests.clear()
+    await resync(db_session, alice.user)
+    assert fake.writes == [] and len(fake.people) == 2  # never created twice
+
+
+async def test_deleting_a_birthday_in_hoje_deletes_the_person_and_restoring_brings_it_back(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1), person(2))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert (await alice.delete(f"/events/{event.id}")).status_code == 204
+    await resync(db_session, alice.user)
+
+    assert fake.writes == [("DELETE", pid(1), None)]
+    assert [p["id"] for p in fake.people] == [pid(2)]
+    gone = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert gone.deleted_at is not None and gone.felizanniv_id is None
+    await resync(db_session, alice.user)
+    assert await birthday_count(db_session, alice.user) == 1  # not brought back
+
+    restored = await alice.post(f"/events/{event.id}/restore")
+    assert restored.status_code == 200 and restored.json()["felizanniv"] is False
+    fake.requests.clear()
+    await resync(db_session, alice.user)
+    assert [w[0] for w in fake.writes] == ["POST"]
+    assert len(fake.people) == 2
+    assert (await alice.get(f"/events/{event.id}")).json()["felizanniv"] is True
+
+
+async def test_a_failed_delete_is_retried_and_never_brings_the_event_back(alice, fake, db_session):
+    await synced(alice, fake, db_session, person(1))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    await alice.delete(f"/events/{event.id}")
+    fake.write_status = 500
+    await resync(db_session, alice.user)
+
+    row = await row_for(db_session, alice.user)
+    assert row.last_error == "FelizAnniv answered with HTTP 500" and row.consecutive_failures == 1
+    stuck = await titled(db_session, alice.user, "Friend 1's birthday")
+    assert stuck.deleted_at is not None and stuck.felizanniv_id == pid(1)  # still to be sent
+    assert len(fake.people) == 1
+
+    fake.write_status = None
+    await resync(db_session, alice.user)
+    assert fake.people == []
+    assert await birthday_count(db_session, alice.user) == 0
+    assert (await row_for(db_session, alice.user)).consecutive_failures == 0
+
+
+async def test_a_person_deleted_in_felizanniv_is_sent_again_if_hoje_edited_the_event(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1), person(2))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    await alice.patch(f"/events/{event.id}", {"version": 1, "title": "Mine's birthday"})
+    fake.people = [person(2)]  # deleted over there
+    await resync(db_session, alice.user)
+
+    assert [w[0] for w in fake.writes] == ["POST"]
+    sent = await titled(db_session, alice.user, "Mine's birthday")
+    assert sent.deleted_at is None and sent.felizanniv_id not in (None, pid(1))
+    assert sorted(p["name"] for p in fake.people) == ["Friend 2", "Mine"]
+
+
+async def test_a_change_felizanniv_refuses_is_reported_but_not_retried_in_a_loop(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    await alice.patch(f"/events/{event.id}", {"version": 1, "title": "Mine's birthday"})
+    fake.write_status = 400
+    await resync(db_session, alice.user)
+
+    row = await row_for(db_session, alice.user)
+    assert row.last_error == "FelizAnniv refused 1 change(s) made in Hoje"
+    assert row.consecutive_failures == 0
+    assert row.next_sync_at - clock.now() >= dt.timedelta(hours=6)
+    assert API_KEY not in row.last_error
+    kept = await titled(db_session, alice.user, "Mine's birthday")
+    assert kept.felizanniv_id == pid(1) and kept.felizanniv_sync["name"] == "Friend 1"
+
+
+async def test_a_sync_sends_at_most_forty_changes_and_comes_back_soon_for_the_rest(
+    alice, fake, db_session
+):
+    await synced(alice, fake, db_session, person(1))
+    category = await birthdays_category(alice)
+    for i in range(45):
+        await alice.make_event(
+            title=f"New {i:02d}'s birthday",
+            category_id=category["id"],
+            start_date="1990-05-05",
+            repeat="yearly",
+        )
+    await resync(db_session, alice.user)
+    assert [w[0] for w in fake.writes] == ["POST"] * felizanniv.PUSH_BUDGET
+    row = await row_for(db_session, alice.user)
+    assert row.next_sync_at - clock.now() <= felizanniv.FOLLOW_UP + dt.timedelta(seconds=1)
+
+    await resync(db_session, alice.user)
+    assert [w[0] for w in fake.writes] == ["POST"] * 45
+    assert len(fake.people) == 46
+    row = await row_for(db_session, alice.user)
+    assert row.next_sync_at - clock.now() >= dt.timedelta(hours=6)  # nothing left to send
+
+
+async def test_a_failure_while_sending_keeps_what_was_read_and_backs_off(alice, fake, db_session):
+    await synced(alice, fake, db_session, person(1))
+    event = await titled(db_session, alice.user, "Friend 1's birthday")
+    await alice.patch(f"/events/{event.id}", {"version": 1, "title": "Mine's birthday"})
+    fake.people.append(person(3))
+    fake.write_status = 429
+    await resync(db_session, alice.user)
+
+    row = await row_for(db_session, alice.user)
+    assert "rate limiting" in row.last_error and row.consecutive_failures == 1
+    assert row.last_success_at is not None
+    assert row.next_sync_at - clock.now() >= dt.timedelta(hours=6)
+    assert (await titled(db_session, alice.user, "Friend 3's birthday")).felizanniv_id == pid(3)
+
+    fake.write_status = None
+    await resync(db_session, alice.user)
+    assert fake.people[0]["name"] == "Mine"
+    assert (await row_for(db_session, alice.user)).consecutive_failures == 0
+
+
+# --------------------------------------------------------------------------- the lifecycle
 
 
 async def test_two_workers_never_sync_the_same_user_at_once(alice, fake, db_session):
@@ -381,75 +697,49 @@ async def test_sync_now_queues_and_is_rate_limited(alice, fake, db_session, publ
     assert await run_worker_sync(db_session) is True
 
 
-async def test_disconnect_removes_config_and_birthdays(alice, fake, db_session, published):
-    await connect(alice)
-    await run_worker_sync(db_session)
+async def test_disconnect_keeps_the_events_but_stops_syncing_them(
+    alice, fake, db_session, published
+):
+    await synced(alice, fake, db_session, person(1), person(2))
     published.clear()
     assert (await alice.delete("/integrations/felizanniv")).status_code == 204
-    assert await birthday_count(db_session, alice.user) == 0
     assert await row_for(db_session, alice.user) is None
-    assert [(p["entity"], p["op"]) for p in published] == [("birthday", "delete")]
+    assert [(p["entity"], p["op"]) for p in published] == [
+        ("birthday", "delete"),
+        ("data", "update"),
+    ]
     assert (await alice.delete("/integrations/felizanniv")).status_code == 404
     assert (await alice.get("/integrations/felizanniv")).json()["configured"] is False
 
-
-# --------------------------------------------------------------------------- overlay
-
-
-async def test_birthdays_overlay_with_ages_and_february_29(alice, fake, db_session, frozen_clock):
-    fake.people = [
-        person(1, name="Leap", birthMonth=2, birthDay=29, birthYear=1992),
-        person(2, name="Ageless", birthMonth=3, birthDay=10, birthYear=None),
-        person(3, name="Baby", birthMonth=6, birthDay=1, birthYear=2027),
-    ]
-    await connect(alice)
-    await run_worker_sync(db_session)
-
-    resp = await alice.get("/birthdays", params={"from": "2027-01-01", "to": "2027-12-31"})
-    assert resp.status_code == 200
-    got = [(b["name"], b["date"], b["age"]) for b in resp.json()]
-    # 2026 is "today", so a 2027 year of birth is dropped as invalid by the sync.
-    assert got == [
-        ("Leap", "2027-02-28", 35),
-        ("Ageless", "2027-03-10", None),
-        ("Baby", "2027-06-01", None),
-    ]
-    leap = await alice.get("/birthdays", params={"from": "2028-02-28", "to": "2028-03-01"})
-    assert [(b["date"], b["age"]) for b in leap.json()] == [("2028-02-29", 36)]
-    spanning = await alice.get("/birthdays", params={"from": "2026-12-01", "to": "2027-03-31"})
-    assert [b["name"] for b in spanning.json()] == ["Leap", "Ageless"]
-    before_birth = await alice.get("/birthdays", params={"from": "1980-01-01", "to": "1980-12-31"})
-    assert [b["name"] for b in before_birth.json()] == ["Ageless", "Baby"]
-
-
-async def test_birthdays_range_limits(alice):
-    ok = await alice.get("/birthdays", params={"from": "2026-01-01", "to": "2027-02-04"})
-    assert ok.status_code == 200 and ok.json() == []
-    too_long = await alice.get("/birthdays", params={"from": "2026-01-01", "to": "2027-02-05"})
-    assert too_long.status_code == 422
-    backwards = await alice.get("/birthdays", params={"from": "2026-02-01", "to": "2026-01-01"})
-    assert backwards.status_code == 422
+    events = await events_of(db_session, alice.user)
+    assert len(events) == 2 and all(e.deleted_at is None for e in events)
+    assert all(e.felizanniv_id is None and e.felizanniv_sync is None for e in events)
+    event = events[0]
+    assert (await alice.get(f"/events/{event.id}")).json()["felizanniv"] is False
+    assert (await alice.delete(f"/events/{event.id}")).status_code == 204
+    assert fake.writes == []  # nothing is sent to FelizAnniv any more
 
 
 async def test_users_never_see_each_others_birthdays(alice, bob, fake, db_session):
     await connect(alice)
     await run_worker_sync(db_session)
-    params = {"from": "2026-01-01", "to": "2026-12-31"}
-    assert len((await alice.get("/birthdays", params=params)).json()) == 2
-    assert (await bob.get("/birthdays", params=params)).json() == []
+    assert len(await events_of(db_session, alice.user)) == 2
+    assert await events_of(db_session, bob.user) == []
     assert (await bob.get("/integrations/felizanniv")).json()["configured"] is False
     assert (await bob.delete("/integrations/felizanniv")).status_code == 404
     assert (await bob.post("/integrations/felizanniv/sync")).status_code == 404
     assert await birthday_count(db_session, alice.user) == 2
+    assert all(c["name"] != "Birthdays" for c in (await bob.get("/categories")).json())
 
 
-async def test_export_excludes_birthdays_and_the_integration(alice, fake, db_session):
+async def test_export_has_the_birthday_events_but_no_link_and_no_key(alice, fake, db_session):
     fake.people = [person(1, name="Zebediah Unique")]
     await connect(alice)
     await run_worker_sync(db_session)
     text = (await alice.get("/export")).text
-    assert "Zebediah" not in text and "felizanniv" not in text.lower()
-    assert "fa_live" not in text and "birthday" not in text.lower()
+    assert "Zebediah Unique's birthday" in text  # an ordinary event
+    assert "felizanniv" not in text.lower() and "fa_live" not in text
+    assert pid(1) not in text
 
 
 async def test_the_worker_job_drains_every_due_integration(alice, bob, fake, db_session):

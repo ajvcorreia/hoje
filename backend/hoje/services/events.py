@@ -19,7 +19,7 @@ from hoje.schemas import Event as EventSchema
 from hoje.schemas import EventCreate, EventUpdate, Occurrence
 from hoje.schemas.common import MAX_EVENT_SPAN_DAYS
 from hoje.schemas.events import ReminderOut
-from hoje.services import changes, recurrence
+from hoje.services import changes, felizanniv, recurrence
 from hoje.services.changes import VersionConflict
 
 NOT_FOUND = "Event not found"
@@ -215,6 +215,8 @@ async def create(db: AsyncSession, user: User, body: EventCreate) -> EventSchema
     await changes.publish(
         db, user_id=user.id, entity="event", op="create", id=event.id, version=event.version
     )
+    if felizanniv.affects_sync(event):
+        await felizanniv.request_sync(db, user.id)
     return to_schema(event, offsets)
 
 
@@ -292,6 +294,8 @@ async def update(
     await changes.publish(
         db, user_id=user.id, entity="event", op="update", id=event.id, version=event.version
     )
+    if felizanniv.affects_sync(event):
+        await felizanniv.request_sync(db, user.id)
     return (await _to_schemas(db, [event]))[0]
 
 
@@ -305,6 +309,8 @@ async def delete(db: AsyncSession, user: User, event_id: uuid.UUID) -> None:
     await changes.publish(
         db, user_id=user.id, entity="event", op="delete", id=event.id, version=event.version
     )
+    if felizanniv.affects_sync(event):
+        await felizanniv.request_sync(db, user.id)
 
 
 async def _undelete_category(
@@ -367,6 +373,8 @@ async def restore(db: AsyncSession, user: User, event_id: uuid.UUID) -> EventSch
     await changes.publish(
         db, user_id=user.id, entity="event", op="update", id=event.id, version=event.version
     )
+    if felizanniv.affects_sync(event):
+        await felizanniv.request_sync(db, user.id)
     return (await _to_schemas(db, [event]))[0]
 
 

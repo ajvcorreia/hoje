@@ -167,6 +167,7 @@ export function useCreateEvent() {
         label_vertical: body.label_vertical ?? false,
         day_order: 0,
         reminders: body.reminders ?? [],
+        felizanniv: false,
         version: 1,
         created_at: now,
         updated_at: now,

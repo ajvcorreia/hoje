@@ -92,7 +92,7 @@ async def test_fetches_every_page_from_the_pinned_address():
         assert request.extensions["sni_hostname"] == "fa.example.com"
     first = result.people[0]
     assert first.name == "Person 1" and first.year == 1990
-    assert not hasattr(first, "notes")
+    assert first.notes == "private notes that must never be stored"
 
 
 async def test_plain_http_sends_no_tls_server_name():

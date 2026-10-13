@@ -8,7 +8,7 @@ import time
 
 import pytest
 from argon2 import PasswordHasher
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from hoje.models import Category, Event, LeavePolicy, RecoveryCode
@@ -433,6 +433,29 @@ async def test_replace_moves_the_old_data_to_the_bin_and_it_is_restorable(
         "Work",
     ]
     assert (await alice.get(f"/events/{old['id']}")).status_code == 200
+
+
+async def test_replace_unlinks_birthdays_so_the_sync_never_deletes_them_in_felizanniv(
+    alice, db_session, cheap_argon
+):
+    await give_password(alice, db_session, cheap_argon)
+    work = await alice.make_category("Work")
+    old = await alice.make_event(
+        title="Ada's birthday", category_id=work["id"], start_date="1990-03-10", repeat="yearly"
+    )
+    await db_session.execute(
+        update(Event)
+        .where(Event.id == old["id"])
+        .values(felizanniv_id="p1", felizanniv_sync={"name": "Ada"})
+    )
+
+    replaced = await do_import(alice, small_doc(), mode="replace", password=PASSWORD)
+    assert replaced.status_code == 200
+    row = await db_session.scalar(
+        select(Event).where(Event.id == old["id"]).execution_options(populate_existing=True)
+    )
+    assert row.deleted_at is not None  # in the bin, as for every replaced event
+    assert row.felizanniv_id is None and row.felizanniv_sync is None  # no remote delete is queued
 
 
 async def test_restore_conflicts_when_a_live_category_took_the_name(alice, db_session, cheap_argon):

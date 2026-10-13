@@ -46,7 +46,7 @@ from hoje.schemas.data import (
     LeavePolicyCounts,
     SettingsCounts,
 )
-from hoje.services import changes, seed
+from hoje.services import changes, felizanniv, seed
 
 log = get_logger(__name__)
 
@@ -621,6 +621,8 @@ async def _execute(db: AsyncSession, user: User, plan: _Plan, doc: ExportDocumen
     now = clock.now()
     replace = plan.mode == "replace"
     if replace:
+        # Binned birthdays must not make the sync delete their people in FelizAnniv.
+        await felizanniv.unlink_all(db, user.id)
         for model in (Event, Category):
             await db.execute(
                 update(model)
