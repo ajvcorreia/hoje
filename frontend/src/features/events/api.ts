@@ -333,3 +333,34 @@ export function useReorderEvents() {
     onSettled: () => qc.invalidateQueries({ queryKey: OCCURRENCES_KEY }),
   });
 }
+
+export const invitesKey = (eventId: string) => ['event', eventId, 'invites'] as const;
+
+/** Who the event's invitations were emailed to, newest first. */
+export function useInvites(eventId: string) {
+  return useQuery({
+    queryKey: invitesKey(eventId),
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/api/v1/events/{event_id}/invites', {
+          params: { path: { event_id: eventId } },
+        }),
+      ),
+  });
+}
+
+/** `POST /events/{id}/invites`: email the event to one address. A failed delivery is recorded too. */
+export function useSendInvite(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { protected: true },
+    mutationFn: async (body: { email: string; message?: string | null }) =>
+      unwrap(
+        await api.POST('/api/v1/events/{event_id}/invites', {
+          params: { path: { event_id: eventId } },
+          body,
+        }),
+      ),
+    onSettled: () => qc.invalidateQueries({ queryKey: invitesKey(eventId) }),
+  });
+}

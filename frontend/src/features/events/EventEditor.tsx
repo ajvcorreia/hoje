@@ -15,6 +15,7 @@ import { useEmailSettings } from '../settings/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { getClientId } from '../../api/clientId';
 import { subscribeChanges } from '../realtime/store';
+import { InvitePanel } from './InvitePanel';
 import { conflictCurrent, useCreateEvent, useDeleteEvent, useEvent, useUpdateEvent } from './api';
 import {
   blankForm,
@@ -462,6 +463,8 @@ function EditorForm(props: FormProps) {
           </div>
         ) : null}
       </div>
+
+      {editing ? <InvitePanel eventId={editing.id} /> : null}
 
       {remote ? (
         <div

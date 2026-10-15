@@ -592,6 +592,78 @@ describe('repeat options in the editor', () => {
   });
 });
 
+describe('inviting by email from the editor', () => {
+  const guest = {
+    id: 'inv-1',
+    email: 'old@example.com',
+    status: 'sent',
+    created_at: '2026-01-02T10:00:00Z',
+  };
+
+  async function openEditor(routes: Record<string, unknown>) {
+    const event = makeEvent('ev-9', 'Planning', '2026-01-08');
+    const api = mockApi({
+      ...baseRoutes([event]),
+      'GET /api/v1/events/ev-9': event,
+      'GET /api/v1/settings/email': { configured: true, from_address: 'hoje@example.com' },
+      ...routes,
+    });
+    renderApp();
+    await waitFor(() =>
+      expect(within(cell('2026-01-08')).getByText('Planning')).toBeInTheDocument(),
+    );
+    await userEvent.click(cell('2026-01-08'));
+    await userEvent.click(await screen.findByRole('button', { hidden: true, name: /Planning/ }));
+    const editor = await screen.findByRole('dialog', { hidden: true, name: 'Edit event' });
+    return { api, editor };
+  }
+
+  it('lists who was invited and sends a new invitation without saving the event', async () => {
+    const { api, editor } = await openEditor({
+      'GET /api/v1/events/ev-9/invites': [guest],
+      'POST /api/v1/events/ev-9/invites': (call: { body: unknown }) => ({
+        id: 'inv-2',
+        status: 'sent',
+        created_at: '2026-01-03T10:00:00Z',
+        email: (call.body as { email: string }).email,
+      }),
+    });
+    expect(await within(editor).findByText('old@example.com')).toBeInTheDocument();
+
+    await userEvent.type(within(editor).getByLabelText('Email address'), 'new@example.com{Enter}');
+
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/events/ev-9/invites')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/v1/events/ev-9/invites')[0]?.body).toMatchObject({
+      email: 'new@example.com',
+    });
+    expect(api.callsTo('PATCH', '/api/v1/events/ev-9')).toHaveLength(0);
+    expect(await within(editor).findByText('Invitation sent to new@example.com.')).toBeVisible();
+  });
+
+  it('rejects a malformed address before asking the server', async () => {
+    const { api, editor } = await openEditor({ 'GET /api/v1/events/ev-9/invites': [] });
+
+    await userEvent.type(within(editor).getByLabelText('Email address'), 'nobody');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Send invitation' }));
+
+    expect(await within(editor).findByText('Enter a valid email address.')).toBeVisible();
+    expect(api.callsTo('POST', '/api/v1/events/ev-9/invites')).toHaveLength(0);
+  });
+
+  it('is not offered when creating a new event', async () => {
+    mockApi({ ...baseRoutes() });
+    renderApp();
+    await gridReady();
+    await userEvent.click(cell('2026-01-01'));
+    await userEvent.click(
+      await screen.findByRole('button', { hidden: true, name: 'Add with details' }),
+    );
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'New event' });
+
+    expect(within(dialog).queryByText('Invite by email')).toBeNull();
+  });
+});
+
 describe('vertical label option in the editor', () => {
   it('is offered only for multi-day events and is sent on create', async () => {
     const api = mockApi({

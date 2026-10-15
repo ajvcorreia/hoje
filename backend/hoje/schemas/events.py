@@ -2,9 +2,9 @@
 
 import datetime as dt
 import uuid
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem, Repeat, Timezone
 from hoje.schemas.leave import LeaveImpact
@@ -203,3 +203,26 @@ class EventReorder(BaseModel):
         if len(set(value)) != len(value):
             raise ValueError("ids must be unique")
         return value
+
+
+class InviteCreate(BaseModel):
+    """Email an invitation for an event."""
+
+    email: EmailStr
+    message: Annotated[str, Field(max_length=500)] | None = None
+
+    @field_validator("message")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
+class Invite(BaseModel):
+    """An invitation that was emailed from an event."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    status: Literal["sent", "failed"]
+    created_at: dt.datetime

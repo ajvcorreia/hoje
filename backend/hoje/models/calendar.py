@@ -121,6 +121,24 @@ class Reminder(Base):
     created_at: Mapped[CreatedAt]
 
 
+class EventInvite(Base):
+    """One invitation emailed from an event: who it went to and whether the server delivered it."""
+
+    __tablename__ = "event_invites"
+    __table_args__ = (
+        CheckConstraint("status in ('sent','failed')", name="status"),
+        CheckConstraint("char_length(email) between 3 and 254", name="email_length"),
+        Index("ix_event_invites_event_id_created_at", "event_id", "created_at"),
+    )
+
+    id: Mapped[UuidPk]
+    event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    email: Mapped[str]
+    status: Mapped[str]
+    created_at: Mapped[CreatedAt]
+
+
 class ReminderDelivery(Base):
     __tablename__ = "reminder_deliveries"
     __table_args__ = (

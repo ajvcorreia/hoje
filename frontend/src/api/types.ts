@@ -11,6 +11,7 @@ export type Event = Schemas['Event'];
 export type EventCreate = Schemas['EventCreate'];
 export type Repeat = Schemas['Event']['repeat'];
 export type EventUpdate = Schemas['EventUpdate'];
+export type Invite = Schemas['Invite'];
 export type EventWithImpact = Schemas['EventWithImpact'];
 export type EventConflict = Schemas['EventConflict'];
 export type Occurrence = Schemas['Occurrence'];

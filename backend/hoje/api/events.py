@@ -4,12 +4,13 @@ import datetime as dt
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from hoje.api._common import problems
-from hoje.api.deps import CurrentUser, DbSession
+from hoje.api.deps import CurrentUser, DbSession, get_mailer
 from hoje.errors import PROBLEM_MEDIA_TYPE
+from hoje.models import EventInvite
 from hoje.schemas import (
     Event,
     EventConflict,
@@ -17,17 +18,21 @@ from hoje.schemas import (
     EventReorder,
     EventUpdate,
     EventWithImpact,
+    Invite,
+    InviteCreate,
     OccurrenceList,
     SearchResult,
 )
 from hoje.schemas.common import MAX_DATE, MIN_DATE
 from hoje.services import events as service
-from hoje.services import leave
+from hoje.services import invites, leave
+from hoje.services import mailer as mailer_service
 from hoje.services.changes import VersionConflict
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 CategoryIds = Annotated[list[uuid.UUID] | None, Query()]
+Mail = Annotated[mailer_service.Mailer, Depends(get_mailer)]
 
 
 @router.get("", response_model=OccurrenceList, summary="List occurrences in a date range")
@@ -133,3 +138,33 @@ async def events_restore(event_id: uuid.UUID, db: DbSession, user: CurrentUser) 
     event = await service.restore(db, user, event_id)
     await db.commit()
     return event
+
+
+@router.get(
+    "/{event_id}/invites",
+    response_model=list[Invite],
+    responses=problems(404),
+    summary="Who the invitations of an event were emailed to",
+)
+async def events_invites(
+    event_id: uuid.UUID, db: DbSession, user: CurrentUser
+) -> list[EventInvite]:
+    return await invites.listing(db, user, event_id)
+
+
+@router.post(
+    "/{event_id}/invites",
+    response_model=Invite,
+    status_code=201,
+    responses=problems(404, 429, 502, 503),
+    summary="Email an invitation for an event",
+    description=(
+        "Sends the event to one email address, with a calendar file attached, and records the "
+        "address on the event. Replies go to the current user. A delivery failure is recorded "
+        "too (status `failed`) and answered with 502. At most 20 invitations per hour."
+    ),
+)
+async def events_invite(
+    event_id: uuid.UUID, body: InviteCreate, db: DbSession, user: CurrentUser, mailer: Mail
+) -> EventInvite:
+    return await invites.send(db, mailer, user, event_id, body)

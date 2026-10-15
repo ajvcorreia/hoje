@@ -14,6 +14,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Birthdays from FelizAnniv**: the birthdays of your [FelizAnniv](#felizanniv-birthdays) app are ordinary yearly events in a "Birthdays" category that you can edit, and changes sync both ways.
 - **Import .ics calendars**: events from Google Calendar, Outlook, Apple Calendar and other iCalendar files, previewed before anything is written.
 - **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
+- **Event invitations**: email an event to someone from its editor, with a calendar file attached; every address an event was sent to (and whether the mail server accepted it) is listed on the event.
 - **Daily summary email**: optional, at a time you choose (in your time zone): changes since the last summary, today, today's birthdays and holidays, and tomorrow. Days with nothing to report send nothing.
 - **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
 - **Two-factor authentication**: TOTP-based 2FA with single-use recovery codes and encrypted storage.
