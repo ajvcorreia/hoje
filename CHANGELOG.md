@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.26] — 2026-10-15
+
+### Fixed
+
+- Migration 0018 gives `event_invites.email` and `status` the text type the model declares
+  (migration 0017 had created them as varchar, which made the CI schema check fail). No behaviour
+  changes. If you have not deployed 1.3.25, you go straight to 0018.
+
 ## [1.3.25] — 2026-10-15
 
 ### Added
