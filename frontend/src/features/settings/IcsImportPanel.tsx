@@ -136,8 +136,8 @@ export function IcsImportPanel() {
       <p className="text-sm text-text-muted">
         Add the events of an .ics file exported from Google Calendar, Outlook, Apple Calendar and
         similar. They all go into one category, and events you already have are skipped, so
-        importing a file twice is safe. Repeats other than monthly or yearly are added as separate
-        events from five years back to two years ahead.
+        importing a file twice is safe. Repeats other than weekly, every two weeks, monthly or
+        yearly are added as separate events from five years back to two years ahead.
       </p>
       <input
         ref={fileInput}

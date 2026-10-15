@@ -5,10 +5,11 @@ dry run previews it. Nothing here touches the database.
 
 Mapping, in short: a date-only ``DTSTART`` is an all-day event (``DTEND`` is exclusive in
 iCalendar, inclusive in Hoje); a timed one is shown in the user's time zone. A plain yearly or
-monthly repeat stays a repeating event. Any other repeat (weekly, daily, with exceptions or
-changed instances) is written out as separate events between ``FLOOR_YEARS`` back and
-``HORIZON_YEARS`` ahead. Alarms before the start become reminders. Everything else in the file
-(attendees, organiser, attachments, free/busy, to-dos) is ignored.
+monthly repeat stays a repeating event, and so does a weekly or every-two-weeks one (on the start
+day). Any other repeat (daily, several weekdays, with exceptions or changed instances) is written
+out as separate events between ``FLOOR_YEARS`` back and ``HORIZON_YEARS`` ahead. Alarms before
+the start become reminders. Everything else in the file (attendees, organiser, attachments,
+free/busy, to-dos) is ignored.
 """
 
 import datetime as dt
@@ -191,32 +192,55 @@ def _until(rule: Any, tz: ZoneInfo) -> dt.date | None:
     return _local(value, tz).date() if isinstance(value, dt.datetime) else value
 
 
+ICS_WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+
+
 def _simple_repeat(
     component: Component, start: dt.date, tz: ZoneInfo
 ) -> tuple[str, dt.date | None] | None:
-    """``(repeat, repeat_until)`` for a plain yearly or monthly rule Hoje repeats natively."""
+    """``(repeat, repeat_until)`` for a plain weekly, bi-weekly, monthly or yearly rule."""
     rule = component.get("RRULE")
     if rule is None or isinstance(rule, list) or component.get("RDATE") or component.get("EXDATE"):
         return None
-    if not set(rule) <= SIMPLE_RULE_KEYS or rule.get("INTERVAL", [1]) != [1]:
-        return None
     freq = (rule.get("FREQ") or [""])[0]
-    if freq == "YEARLY" and (start.month, start.day) != (2, 29):
-        step = 12
+    interval = (rule.get("INTERVAL") or [1])[0]
+    keys = set(rule)
+    if freq == "WEEKLY" and interval in (1, 2):
+        byday = rule.get("BYDAY") or []
+        if not keys <= SIMPLE_RULE_KEYS | {"BYDAY"} or byday not in (
+            [],
+            [ICS_WEEKDAYS[start.weekday()]],
+        ):
+            return None
+        days, repeat = 7 * interval, "weekly" if interval == 1 else "biweekly"
+    elif not keys <= SIMPLE_RULE_KEYS or interval != 1:
+        return None
+    elif freq == "YEARLY" and (start.month, start.day) != (2, 29):
+        days, repeat = 0, "yearly"
     elif freq == "MONTHLY" and start.day <= 28:  # a 31st is skipped by iCalendar, clamped here
-        step = 1
+        days, repeat = 0, "monthly"
     else:
         return None
     until = _until(rule, tz)
     count = (rule.get("COUNT") or [None])[0]
     if count is not None:
-        year, month = divmod(start.year * 12 + start.month - 1 + (int(count) - 1) * step, 12)
-        counted = LAST_DAY if year > LAST_DAY.year else dt.date(year, month + 1, start.day)
+        counted = _nth_start(start, int(count) - 1, repeat, days)
         until = counted if until is None else min(until, counted)
     if until is not None and until <= start:
         return "none", None
-    repeat = "yearly" if step == 12 else "monthly"
     return repeat, (None if until is None else min(until, LAST_DAY))
+
+
+def _nth_start(start: dt.date, index: int, repeat: str, days: int) -> dt.date:
+    """The start of the occurrence ``index`` steps after the first (capped at the last day)."""
+    if days:
+        try:
+            return min(start + dt.timedelta(days=index * days), LAST_DAY)
+        except OverflowError:
+            return LAST_DAY
+    step = 12 if repeat == "yearly" else 1
+    year, month = divmod(start.year * 12 + start.month - 1 + index * step, 12)
+    return LAST_DAY if year > LAST_DAY.year else dt.date(year, month + 1, start.day)
 
 
 def _event(

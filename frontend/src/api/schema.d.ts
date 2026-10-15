@@ -1110,7 +1110,7 @@ export interface components {
              * Repeat
              * @enum {string}
              */
-            repeat: "none" | "monthly" | "yearly";
+            repeat: "none" | "weekly" | "biweekly" | "monthly" | "yearly";
             /** Repeat Until */
             repeat_until?: string | null;
             /**
@@ -1194,7 +1194,7 @@ export interface components {
              * @default none
              * @enum {string}
              */
-            repeat: "none" | "monthly" | "yearly";
+            repeat: "none" | "weekly" | "biweekly" | "monthly" | "yearly";
             /** Repeat Until */
             repeat_until?: string | null;
             /**
@@ -1237,7 +1237,7 @@ export interface components {
             /** Reminders */
             reminders?: components["schemas"]["ReminderIn"][] | null;
             /** Repeat */
-            repeat?: ("none" | "monthly" | "yearly") | null;
+            repeat?: ("none" | "weekly" | "biweekly" | "monthly" | "yearly") | null;
             /** Repeat Until */
             repeat_until?: string | null;
             /** Start Date */
@@ -1391,7 +1391,7 @@ export interface components {
              * @default none
              * @enum {string}
              */
-            repeat: "none" | "monthly" | "yearly";
+            repeat: "none" | "weekly" | "biweekly" | "monthly" | "yearly";
             /** Repeat Until */
             repeat_until?: string | null;
             /**
@@ -1790,7 +1790,7 @@ export interface components {
              * @default none
              * @enum {string}
              */
-            repeat: "none" | "monthly" | "yearly";
+            repeat: "none" | "weekly" | "biweekly" | "monthly" | "yearly";
             /** Repeat Until */
             repeat_until?: string | null;
             /**

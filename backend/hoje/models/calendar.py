@@ -49,7 +49,7 @@ class Event(Base):
         CheckConstraint("notes is null or char_length(notes) <= 5000", name="notes_length"),
         CheckConstraint("end_date >= start_date", name="dates_order"),
         CheckConstraint("day_order between 0 and 32767", name="day_order"),
-        CheckConstraint("repeat in ('none','monthly','yearly')", name="repeat"),
+        CheckConstraint("repeat in ('none','weekly','biweekly','monthly','yearly')", name="repeat"),
         Index(
             "ix_events_user_id_start_date_end_date",
             "user_id",

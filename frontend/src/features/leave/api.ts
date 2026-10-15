@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from '../../api/client';
-import type { LeaveImpact } from '../../api/types';
+import type { LeaveImpact, Repeat } from '../../api/types';
 import { useCategories } from '../categories/api';
 
 /** Root of every leave query: balances (`['leave', 'balance', year]`) and previews. */
@@ -48,7 +48,7 @@ export interface PreviewParams {
   startDate: string;
   endDate: string;
   categoryId: string;
-  repeat: 'none' | 'monthly' | 'yearly';
+  repeat: Repeat;
   repeatUntil: string;
   excludeEventId?: string;
 }

@@ -92,7 +92,7 @@ def test_event_span_is_limited_to_366_days():
         ({"title": "x" * 201}, "events[0].title"),
         ({"notes": "x" * 5001}, "events[0].notes"),
         ({"timezone": "Mars/Olympus"}, "events[0].timezone"),
-        ({"repeat": "weekly"}, "events[0].repeat"),
+        ({"repeat": "daily"}, "events[0].repeat"),
         ({"repeat_until": "2026-03-01"}, "events[0].repeat_until"),
         ({"all_day": True, "start_time": "09:00:00"}, "events[0].start_time"),
         ({"all_day": False, "end_time": "10:00:00"}, "events[0].start_time"),
@@ -291,3 +291,9 @@ def test_format_path():
         "events[57].reminders[0].offset_minutes"
     )
     assert format_path([]) == "document"
+
+
+@pytest.mark.parametrize("repeat", ["none", "weekly", "biweekly", "monthly", "yearly"])
+def test_every_repeat_value_is_accepted(repeat):
+    event = {"category": "c1", "title": "Run", "start_date": "2026-03-04", "repeat": repeat}
+    assert parse_document(doc(events=[event])).events[0].repeat == repeat

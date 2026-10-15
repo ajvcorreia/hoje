@@ -103,7 +103,7 @@ async def test_create_without_any_category_is_422(alice):
         {"title": ""},
         {"title": "x" * 201},
         {"timezone": "Mars/Olympus"},
-        {"repeat": "weekly"},
+        {"repeat": "daily"},
         {"reminders": [{"offset_minutes": -1}]},
         {"reminders": [{"offset_minutes": 525_601}]},
         {"reminders": [{"offset_minutes": 5}, {"offset_minutes": 5}]},
@@ -336,6 +336,25 @@ async def test_repeating_events_across_a_year_boundary(alice, work):
     assert [(o["event"]["title"], o["occurrence_start"]) for o in leap.json()["occurrences"]] == [
         ("Birthday", "2028-02-29")
     ]
+
+
+async def test_weekly_and_biweekly_events_repeat_on_their_weekday(alice, work):
+    await alice.make_event(title="Run", start_date="2026-03-04", repeat="weekly")  # a Wednesday
+    await alice.make_event(
+        title="Sprint", start_date="2026-03-05", repeat="biweekly", repeat_until="2026-04-02"
+    )
+    resp = await alice.get("/events", params={"from": "2026-03-01", "to": "2026-04-15"})
+    got = [(o["event"]["title"], o["occurrence_start"]) for o in resp.json()["occurrences"]]
+    runs = [d for t, d in got if t == "Run"]
+    assert runs == [f"2026-03-{d:02d}" for d in (4, 11, 18, 25)] + [
+        "2026-04-01",
+        "2026-04-08",
+        "2026-04-15",
+    ]
+    assert [d for t, d in got if t == "Sprint"] == ["2026-03-05", "2026-03-19", "2026-04-02"]
+    plain = await alice.make_event(title="X", start_date="2026-03-04")
+    changed = await alice.patch(f"/events/{plain['id']}", {"version": 1, "repeat": "biweekly"})
+    assert changed.status_code == 200 and changed.json()["event"]["repeat"] == "biweekly"
 
 
 async def test_occurrences_filter_by_category(alice, work):

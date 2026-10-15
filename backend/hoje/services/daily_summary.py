@@ -261,7 +261,7 @@ def _change_when(event: Any, user_tz: str) -> str:
     if not event.all_day and event.start_time is not None:
         text = f"{text}, {_times(event, user_tz)}"
     if event.repeat != "none":
-        text = f"{text}, repeats {event.repeat}"
+        text = f"{text}, repeats {'every 2 weeks' if event.repeat == 'biweekly' else event.repeat}"
     return text
 
 
