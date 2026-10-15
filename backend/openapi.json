@@ -2248,6 +2248,35 @@
         "title": "HolidayUpdate",
         "type": "object"
       },
+      "IcsImportRequest": {
+        "properties": {
+          "category": {
+            "default": "Imported",
+            "description": "Category for the events; reused when it already exists",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Category",
+            "type": "string"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "ics": {
+            "description": "The text of an .ics file",
+            "maxLength": 10000000,
+            "minLength": 1,
+            "title": "Ics",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ics"
+        ],
+        "title": "IcsImportRequest",
+        "type": "object"
+      },
       "ImportRequest": {
         "properties": {
           "data": {
@@ -6572,6 +6601,88 @@
           }
         },
         "summary": "Import an export file (merge or replace); dry_run previews without writing",
+        "tags": [
+          "data"
+        ]
+      }
+    },
+    "/api/v1/import/ics": {
+      "post": {
+        "description": "The file is converted to an export document (see ``services/ics.py``) and merged like any\nother import: events you already have are skipped, so importing a file twice is harmless.\nCounts towards the same 10/hour limit as ``/import``.",
+        "operationId": "ics_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IcsImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Import an iCalendar (.ics) file as events (merge); dry_run previews without writing",
         "tags": [
           "data"
         ]

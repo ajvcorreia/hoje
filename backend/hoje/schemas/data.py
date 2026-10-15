@@ -252,6 +252,22 @@ class ImportRequest(BaseModel):
     data: dict[str, Any] = Field(description="An export document (see docs/export-format.md)")
 
 
+class IcsImportRequest(BaseModel):
+    ics: str = Field(min_length=1, max_length=10_000_000, description="The text of an .ics file")
+    category: CategoryName = Field(
+        default="Imported", description="Category for the events; reused when it already exists"
+    )
+    dry_run: bool = False
+
+    @field_validator("category")
+    @classmethod
+    def _category_name(cls, value: str) -> str:
+        value = _storable(value).strip()
+        if not value:
+            raise ValueError("category must not be blank")
+        return value
+
+
 class CategoryCounts(BaseModel):
     create: int
     reuse: int

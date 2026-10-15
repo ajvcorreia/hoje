@@ -12,23 +12,10 @@ import {
   type ImportMode,
   type ImportResult,
 } from './dataApi';
+import { IcsImportPanel } from './IcsImportPanel';
+import { ImportPreview } from './ImportPreview';
+import { MB, readText, summary } from './importCommon';
 import { SettingsSection } from './SettingsSection';
-
-const MB = 1_000_000;
-
-function readText(file: File): Promise<string> {
-  if (typeof file.text === 'function') return file.text();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsText(file);
-  });
-}
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 function ExportPanel() {
   const exportData = useExportData();
@@ -56,48 +43,6 @@ function ExportPanel() {
       <FormError message={exportData.isError ? describeError(exportData.error) : null} />
     </div>
   );
-}
-
-function Preview({ result }: { result: ImportResult }) {
-  const { categories, events, leave_policies: leave, holiday_calendars: calendars } = result;
-  return (
-    <>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-text-muted">Categories</dt>
-        <dd>
-          {categories.create} new, {categories.reuse} matched to existing
-        </dd>
-        <dt className="text-text-muted">Events</dt>
-        <dd>
-          {events.create} to add, {events.skip_duplicate} already there (skipped)
-        </dd>
-        <dt className="text-text-muted">Leave allowances</dt>
-        <dd>
-          {leave.create} new, {leave.update} updated
-        </dd>
-        <dt className="text-text-muted">Holiday calendars</dt>
-        <dd>{calendars.update} updated</dd>
-        <dt className="text-text-muted">Time zone and weekend</dt>
-        <dd>{result.settings.update ? 'will be updated' : 'unchanged'}</dd>
-      </dl>
-      {result.warnings.length > 0 ? (
-        <ul aria-label="Warnings" className="list-disc space-y-1 pl-5 text-sm">
-          {result.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      ) : null}
-    </>
-  );
-}
-
-function summary(result: ImportResult): string {
-  const added = `${plural(result.events.create, 'event', 'events')} and ${plural(result.categories.create, 'category', 'categories')} added`;
-  const skipped =
-    result.events.skip_duplicate > 0
-      ? `, ${plural(result.events.skip_duplicate, 'duplicate', 'duplicates')} skipped`
-      : '';
-  return `Import finished: ${added}${skipped}.`;
 }
 
 function ImportPanel() {
@@ -260,7 +205,7 @@ function ImportPanel() {
           >
             {`What importing ${file.name} would do`}
           </h4>
-          <Preview result={shown} />
+          <ImportPreview result={shown} />
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Import mode</legend>
             <label className="flex items-start gap-2 text-sm">
@@ -335,6 +280,7 @@ export function DataSection() {
     <SettingsSection title="Your data" id="data">
       <ExportPanel />
       <ImportPanel />
+      <IcsImportPanel />
     </SettingsSection>
   );
 }

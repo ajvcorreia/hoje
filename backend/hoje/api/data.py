@@ -1,7 +1,9 @@
 """Per-user data export and import (docs/export-format.md)."""
 
+import asyncio
 import json
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
@@ -13,12 +15,13 @@ from hoje.api.deps import AppSettings, CurrentUser, DbSession, client_ip
 from hoje.errors import problem_response
 from hoje.schemas.data import (
     ExportDocument,
+    IcsImportRequest,
     ImportInvalidError,
     ImportRequest,
     ImportResult,
     parse_document,
 )
-from hoje.services import portability, throttle
+from hoje.services import ics, portability, throttle
 
 router = APIRouter(tags=["data"])
 
@@ -97,5 +100,56 @@ async def data_import(
             events_skipped=result.events.skip_duplicate,
             leave_policies=result.leave_policies.create + result.leave_policies.update,
             calendars=result.holiday_calendars.update,
+        )
+    return result
+
+
+@router.post(
+    "/import/ics",
+    response_model=ImportResult,
+    responses=problems(429),
+    summary="Import an iCalendar (.ics) file as events (merge); dry_run previews without writing",
+)
+async def ics_import(
+    body: IcsImportRequest, request: Request, db: DbSession, user: CurrentUser
+) -> ImportResult | JSONResponse:
+    """The file is converted to an export document (see ``services/ics.py``) and merged like any
+    other import: events you already have are skipped, so importing a file twice is harmless.
+    Counts towards the same 10/hour limit as ``/import``.
+    """
+    ip = client_ip(request)
+    with audit.log_lockout("import", ip):
+        await throttle.hit(db, f"import:user:{user.id}", limit=IMPORT_LIMIT, window=IMPORT_WINDOW)
+    tz = ZoneInfo(user.timezone)
+    try:
+        conversion = await asyncio.to_thread(
+            ics.convert,
+            body.ics,
+            tz=tz,
+            today=clock.now().astimezone(tz).date(),
+            category=body.category,
+        )
+        if not body.dry_run:
+            await db.refresh(user, with_for_update=True)  # serialise concurrent imports
+        result = await portability.run_import(
+            db, user, conversion.document, mode="merge", dry_run=body.dry_run
+        )
+    except ics.IcsError as exc:
+        return problem_response(422, str(exc), instance=request.url.path)
+    except ImportInvalidError as exc:  # nothing was written; the session closes without commit
+        return problem_response(422, exc.detail, errors=exc.errors, instance=request.url.path)
+    result.warnings = [*conversion.warnings, *result.warnings]
+    if not body.dry_run:
+        await db.commit()
+        audit.auth_event(
+            "data_imported",
+            user.id,
+            ip,
+            mode="merge",
+            source="ics",
+            categories_created=result.categories.create,
+            categories_reused=result.categories.reuse,
+            events_created=result.events.create,
+            events_skipped=result.events.skip_duplicate,
         )
     return result

@@ -12,6 +12,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Vacation balance**: working-day counting, carry-over policy, leave impact preview on events.
 - **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
 - **Birthdays from FelizAnniv**: the birthdays of your [FelizAnniv](#felizanniv-birthdays) app are ordinary yearly events in a "Birthdays" category that you can edit, and changes sync both ways.
+- **Import .ics calendars**: events from Google Calendar, Outlook, Apple Calendar and other iCalendar files, previewed before anything is written.
 - **Email reminders**: due-time scheduling with configurable offsets, retry logic, delivery notifications.
 - **Daily summary email**: optional, at a time you choose (in your time zone): changes since the last summary, today, today's birthdays and holidays, and tomorrow. Days with nothing to report send nothing.
 - **Live sync across devices**: Server-Sent Events with Postgres LISTEN/NOTIFY, real-time change warnings.
@@ -273,7 +274,19 @@ to 10 per hour and 10 MB per file.
 
 Import files can be larger than the usual 1 MB request limit, so raise `client_max_body_size` in the
 NPM Advanced block to `10m` if you want to import files over 1 MB (Caddy and the API still cap every
-other route at 1 MB and the import route at 10 MB).
+other route at 1 MB and the import routes at 10 MB).
+
+**Calendar files (.ics).** Under **Import a calendar file** on the same page you can add the events
+of an iCalendar file exported from Google Calendar, Outlook, Apple Calendar and similar. You choose
+one category for them (an existing one, or a new name), see a preview first, and events you already
+have are skipped, so importing a file twice is harmless. All-day and timed events, multi-day events,
+locations, descriptions and reminders before the start are kept; times are shown in your time
+zone. Plain yearly and monthly repeats stay repeating events; any other repeat (weekly, daily, with
+exceptions or moved instances) is added as separate events from five years back to two years ahead
+(import the file again later to extend an open-ended repeat). Cancelled events are left out, and
+so are attendees, attachments and anything repeating more than once a day. Files up to 8 MB; they
+count towards the same 10 imports per hour. Birthdays: a yearly all-day event imported into the
+**Birthdays** category is sent to FelizAnniv at the next sync, like any other.
 
 ## FelizAnniv birthdays
 

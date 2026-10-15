@@ -91,3 +91,79 @@ test('the import route takes up to 10 MB while other routes stay at 1 MB', async
   const tooBig = await api.post('/api/v1/import', ' '.repeat(10_500_000), json);
   expect(tooBig.status()).toBe(413);
 });
+
+test('imports an .ics calendar file through the UI, and importing it again adds nothing', async ({
+  page,
+  account,
+}) => {
+  expect(account.email).toBeTruthy(); // registers the user the page is logged in as
+  const stamp = Date.now();
+  const first = dateInCurrentMonth(8);
+  const second = dateInCurrentMonth(9);
+  const compact = (iso: string) => iso.replaceAll('-', '');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//e2e//EN',
+    'BEGIN:VEVENT',
+    `UID:a-${stamp}`,
+    `SUMMARY:Planning ${stamp}`,
+    `DTSTART;VALUE=DATE:${compact(first)}`,
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    `UID:b-${stamp}`,
+    `SUMMARY:Retro ${stamp}`,
+    `DTSTART;VALUE=DATE:${compact(second)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+  const upload = { name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) };
+
+  await page.goto('/settings');
+  await page.getByLabel('Calendar file to import').setInputFiles(upload);
+  await expect(
+    page.getByRole('heading', { name: 'What importing team.ics would do' }),
+  ).toBeVisible();
+  await expect(page.getByText('2 to add, 0 already there (skipped)')).toBeVisible();
+  await page.getByLabel('Add the events to this category').fill('Team');
+  await expect(page.getByText('1 new, 0 matched to existing')).toBeVisible();
+  const card = page.locator('section[aria-labelledby="ics-preview-heading"]');
+  await expect(card.getByRole('button', { name: 'Import', exact: true })).toBeEnabled();
+  await card.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByText(/^Import finished: 2 events and 1 category added/)).toBeVisible();
+
+  await page.goto('/');
+  await expect(page.locator(`[data-date="${first}"] .cal-ev`)).toHaveText(`Planning ${stamp}`);
+  await expect(page.locator(`[data-date="${second}"] .cal-ev`)).toHaveText(`Retro ${stamp}`);
+
+  await page.goto('/settings');
+  await page.getByLabel('Calendar file to import').setInputFiles(upload);
+  await page.getByLabel('Add the events to this category').fill('Team');
+  await expect(page.getByText('0 to add, 2 already there (skipped)')).toBeVisible();
+});
+
+test('the .ics import route takes up to 10 MB like the data import route', async ({ api }) => {
+  const description = 'n'.repeat(4000);
+  const events = Array.from({ length: 1300 }, (_, i) =>
+    [
+      'BEGIN:VEVENT',
+      `UID:bulk-${i}`,
+      `SUMMARY:Bulk ${i}`,
+      'DTSTART;VALUE=DATE:20260504',
+      `DESCRIPTION:${description}`,
+      'END:VEVENT',
+    ].join('\r\n'),
+  );
+  const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${events.join('\r\n')}\r\nEND:VCALENDAR\r\n`;
+  const body = JSON.stringify({ ics, dry_run: true });
+  expect(body.length).toBeGreaterThan(5_000_000);
+  const json = { 'Content-Type': 'application/json' };
+
+  const accepted = await api.post('/api/v1/import/ics', body, json);
+  expect(accepted.status(), (await accepted.text()).slice(0, 200)).toBe(200);
+  expect(((await accepted.json()) as { events: { create: number } }).events.create).toBe(1300);
+
+  const tooBig = await api.post('/api/v1/import/ics', ' '.repeat(10_500_000), json);
+  expect(tooBig.status()).toBe(413);
+});

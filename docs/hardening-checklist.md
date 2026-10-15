@@ -73,7 +73,7 @@ from the network even when ufw denies it.**
       client_max_body_size 1m;
       ```
       (`1m` blocks imports of export files over 1 MB at the edge. To allow them, use `10m`: Caddy and
-      the API keep every route except `/api/v1/import` at 1 MB regardless.)
+      the API keep every route except `/api/v1/import` and `/api/v1/import/ics` at 1 MB regardless.)
 - [ ] Access List allowing only your own IP attached to the proxy host **until you have
       registered** (section 9), then removed (or kept, if you only use Hoje from fixed places).
 
