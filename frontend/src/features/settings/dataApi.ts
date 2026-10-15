@@ -5,12 +5,19 @@ import type { components } from '../../api/schema';
 export type ImportRequest = components['schemas']['ImportRequest'];
 export type ImportResult = components['schemas']['ImportResult'];
 export type ImportMode = ImportRequest['mode'];
+export type IcsImportRequest = components['schemas']['IcsImportRequest'];
 
 /**
  * Largest file the client will send. The server accepts 10 MiB and Caddy 10 MB (10 000 000
  * bytes), measured on the whole request; keep a margin for the JSON envelope around the file.
  */
 export const MAX_IMPORT_BYTES = 10_000_000 - 1_000;
+
+/**
+ * Largest .ics file the client reads. The text travels inside JSON, where every line break and
+ * quote grows, so this leaves room under the 10 MB request cap.
+ */
+export const MAX_ICS_BYTES = 8_000_000;
 
 function todayIso(): string {
   const now = new Date();
@@ -60,5 +67,13 @@ export function useImportData() {
     meta: { protected: true },
     mutationFn: async (body: ImportRequest): Promise<ImportResult> =>
       unwrap(await api.POST('/api/v1/import', { body })),
+  });
+}
+
+export function useImportIcs() {
+  return useMutation({
+    meta: { protected: true },
+    mutationFn: async (body: IcsImportRequest): Promise<ImportResult> =>
+      unwrap(await api.POST('/api/v1/import/ics', { body })),
   });
 }

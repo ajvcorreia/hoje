@@ -149,3 +149,26 @@ refresh everything.
 
 A file with many events that all carry long notes can exceed the 10 MB import limit; split it or
 shorten the notes.
+
+## Importing an .ics calendar file
+
+`POST /api/v1/import/ics` with `{ "ics": "<the file's text>", "category": "Imported", "dry_run": bool }`
+converts an iCalendar file into a document like the one above (one category, `events` only) and
+merges it with the rules in *Import semantics*. The response is the same counts and warnings.
+`category` is reused when you already have one with that name (case-insensitive), otherwise it is
+created. Body limit 10 MB, shared limit of 10 imports an hour. How the file is read:
+
+| In the file | In Hoje |
+|---|---|
+| `SUMMARY` | title (200 characters; `(no title)` when missing) |
+| `LOCATION`, `DESCRIPTION` | notes: `Location: ...`, a blank line, then the description (5000 characters) |
+| `DTSTART` as a date (`VALUE=DATE`) | all-day event; `DTEND` is exclusive in iCalendar, so the last day is `DTEND` minus one day |
+| `DTSTART` with a time | timed event in your time zone (UTC and `TZID` times are converted, floating times are taken as yours); seconds are dropped; no end or a non-positive length becomes one hour; an end at midnight becomes 23:59 of the day before |
+| `RRULE` `FREQ=YEARLY`, or `FREQ=MONTHLY` on a day up to the 28th, with at most `UNTIL` or `COUNT`, no `EXDATE`/`RDATE` | `repeat` `yearly` / `monthly` with `repeat_until` |
+| any other `RRULE`, `RDATE`, `EXDATE`, or changed instances (`RECURRENCE-ID`) | separate events from five years back to two years ahead of today |
+| `VALARM` with a negative `TRIGGER` relative to the start | reminder (at most 5, 0 to 525 600 minutes) |
+| `STATUS:CANCELLED`, events without `DTSTART`, rules firing more than once a day | left out, with a warning |
+
+Everything else (attendees, organiser, attachments, categories, free/busy, to-dos, alarms with an
+absolute time or relative to the end) is ignored. An event that breaks one of the limits above is
+reported in the warnings and does not stop the others.

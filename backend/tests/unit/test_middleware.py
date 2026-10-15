@@ -203,8 +203,10 @@ def test_import_path_has_a_ten_mebibyte_limit_and_everything_else_one():
     from hoje.middleware import IMPORT_BODY_BYTES, PATH_LIMITS
 
     limiter = BodyLimitMiddleware(build_app())
-    assert PATH_LIMITS == {"/api/v1/import": 10 * MB} and IMPORT_BODY_BYTES == 10 * MB
+    assert PATH_LIMITS == {"/api/v1/import": 10 * MB, "/api/v1/import/ics": 10 * MB}
+    assert IMPORT_BODY_BYTES == 10 * MB
     assert limiter.limit_for("/api/v1/import") == 10 * MB
+    assert limiter.limit_for("/api/v1/import/ics") == 10 * MB
     assert limiter.limit_for("/api/v1/import/") == MAX_BODY_BYTES  # exact match only
     assert limiter.limit_for("/api/v1/events") == MAX_BODY_BYTES
     assert limiter.limit_for("/api/v1/export") == MAX_BODY_BYTES

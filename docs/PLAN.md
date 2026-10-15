@@ -105,6 +105,7 @@ POST /api/v1/backups                   owner only → 202 run {status:"requested
                                        (no download and no restore endpoint, on purpose: restores are a CLI operation and a download would let a stolen session exfiltrate the database)
 GET  /api/v1/export                   JSON file download of the user's own data (docs/export-format.md); audit `data_exported`
 POST /api/v1/import                   {mode: "merge"|"replace", dry_run, password?, data} → counts + warnings; 10 MiB body, 10/hour per user; replace needs the password; 422 names the offending item
+POST /api/v1/import/ics                {ics, category?, dry_run} → counts + warnings (merge into one category, created when new); .ics text converted by services/ics.py; 10 MiB body, shares the 10/hour import limit; 422 when the text is not iCalendar
 GET  /api/v1/integrations/felizanniv     {configured, base_url, api_key_hint, enabled, last_sync_at, last_success_at, last_error, count, sync_pending} (the key is never returned)
 PUT  /api/v1/integrations/felizanniv     {base_url, api_key?} → status; validates the URL and the SSRF policy, fetches the first page and saves only if it works (422 invalid/not allowed address, 400 upstream failure such as a rejected key, 429 after 20/hour); api_key required the first time
 POST /api/v1/integrations/felizanniv/sync → 202 status (queued for the worker); 404 not connected, 409 a sync is running, 429 after 6/hour

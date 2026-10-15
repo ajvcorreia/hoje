@@ -519,6 +519,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/import/ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import an iCalendar (.ics) file as events (merge); dry_run previews without writing
+         * @description The file is converted to an export document (see ``services/ics.py``) and merged like any
+         *     other import: events you already have are skipped, so importing a file twice is harmless.
+         *     Counts towards the same 10/hour limit as ``/import``.
+         */
+        post: operations["ics_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/felizanniv": {
         parameters: {
             query?: never;
@@ -1588,6 +1610,25 @@ export interface components {
             is_non_working?: boolean | null;
             /** Name */
             name?: string | null;
+        };
+        /** IcsImportRequest */
+        IcsImportRequest: {
+            /**
+             * Category
+             * @description Category for the events; reused when it already exists
+             * @default Imported
+             */
+            category: string;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Ics
+             * @description The text of an .ics file
+             */
+            ics: string;
         };
         /** ImportRequest */
         ImportRequest: {
@@ -4492,6 +4533,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    ics_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IcsImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             /** @description Not authenticated */

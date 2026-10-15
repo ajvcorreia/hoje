@@ -68,9 +68,11 @@ http://127.0.0.1:2020 {
 		respond "{err.status_code} {err.status_text}" {err.status_code}
 	}
 
-	# Data import: a whole export file is posted here, so this one route takes up to 10 MB (the API
-	# enforces the same per-route cap). It must come before the generic /api/* block.
-	handle /api/v1/import {
+	# Data import: a whole export file (or an .ics calendar) is posted here, so these two routes take
+	# up to 10 MB (the API enforces the same per-route cap). They must come before the generic
+	# /api/* block.
+	@data_import path /api/v1/import /api/v1/import/ics
+	handle @data_import {
 		@import_too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 10000000`
 		respond @import_too_large "Request body too large" 413 {
 			close

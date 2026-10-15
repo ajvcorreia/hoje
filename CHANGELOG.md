@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Import .ics calendar files.** Settings › Your data › **Import a calendar file** adds the events
+  of an iCalendar file (Google Calendar, Outlook, Apple Calendar and others) to a category you
+  choose, after a preview. Events you already have are skipped, so a second import adds nothing.
+  All-day, timed and multi-day events, locations, descriptions and reminders before the start are
+  kept, and times are shown in your time zone. Plain yearly and monthly repeats stay repeating
+  events; other repeats (weekly, daily, with exceptions or moved instances) are written out as
+  separate events from five years back to two years ahead. New API route `POST /api/v1/import/ics`
+  (10 MB, same 10-per-hour limit as the data import). Adds the `icalendar` and
+  `recurring-ical-events` libraries to the API.
+- Operators who run their own Caddy in front of the API: the 10 MB body allowance now also covers
+  `/api/v1/import/ics` (the bundled `deploy/Caddyfile` does it already; NPM's
+  `client_max_body_size` still needs `10m` for files over 1 MB).
+
 ## [1.3.21] — 2026-10-13
 
 ### Changed

@@ -14,7 +14,10 @@ from hoje.errors import problem_response
 MAX_BODY_BYTES = 1024 * 1024  # 1 MiB; Caddy enforces the same cap in front of the API
 IMPORT_BODY_BYTES = 10 * 1024 * 1024  # data import documents; Caddy mirrors it for this path only
 # Per-path overrides of MAX_BODY_BYTES (exact path match).
-PATH_LIMITS: dict[str, int] = {"/api/v1/import": IMPORT_BODY_BYTES}
+PATH_LIMITS: dict[str, int] = {
+    "/api/v1/import": IMPORT_BODY_BYTES,
+    "/api/v1/import/ics": IMPORT_BODY_BYTES,
+}
 BODY_TOO_LARGE = "Request body too large"
 API_PREFIX = "/api/"
 
