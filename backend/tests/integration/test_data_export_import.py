@@ -11,6 +11,7 @@ from argon2 import PasswordHasher
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from hoje.api.data import IMPORT_LIMIT, PREVIEW_LIMIT
 from hoje.models import Category, Event, LeavePolicy, RecoveryCode
 from hoje.models import Session as SessionRow
 from hoje.schemas.data import ExportDocument
@@ -644,11 +645,21 @@ async def test_audit_events_carry_no_content(alice, db_session, monkeypatch):
 # ------------------------------------------------------------------ limits
 
 
-async def test_imports_are_limited_to_ten_per_hour_dry_runs_included(alice):
-    for _ in range(10):
+async def test_previews_have_their_own_hourly_allowance_apart_from_real_imports(alice):
+    for _ in range(PREVIEW_LIMIT):
         assert (await do_import(alice, small_doc(), dry_run=True)).status_code == 200
     blocked = await do_import(alice, small_doc(), dry_run=True)
     assert blocked.status_code == 429 and int(blocked.headers["retry-after"]) > 0
+    # Previews used up their allowance; real imports still work.
+    assert (await do_import(alice, small_doc())).status_code == 200
+
+
+async def test_real_imports_are_limited_per_hour(alice):
+    for _ in range(IMPORT_LIMIT):
+        assert (await do_import(alice, small_doc())).status_code == 200
+    blocked = await do_import(alice, small_doc())
+    assert blocked.status_code == 429 and int(blocked.headers["retry-after"]) > 0
+    assert (await do_import(alice, small_doc(), dry_run=True)).status_code == 200
 
 
 async def test_a_five_megabyte_import_is_accepted_but_five_megabytes_elsewhere_are_not(alice):

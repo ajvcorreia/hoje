@@ -7,6 +7,7 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
+from hoje.api.data import PREVIEW_LIMIT
 from hoje.models import Category, Event
 
 from ._api_helpers import alice, bob, insecure_cookies  # noqa: F401
@@ -144,7 +145,8 @@ async def test_the_import_belongs_to_the_caller_only(alice, bob, db_session):
     assert (await send(bob)).json()["events"]["create"] == 3
 
 
-async def test_it_shares_the_ten_per_hour_import_limit(alice):
-    for _ in range(10):
+async def test_it_shares_the_hourly_import_allowances(alice):
+    for _ in range(PREVIEW_LIMIT):
         assert (await send(alice, dry_run=True)).status_code == 200
     assert (await send(alice, dry_run=True)).status_code == 429
+    assert (await send(alice)).status_code == 200  # real imports have their own allowance

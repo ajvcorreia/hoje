@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Higher import limits.** Previews (dry runs) no longer use up the import allowance: real imports
+  are limited to 30 an hour and previews to 120 an hour, counted separately (it was 10 an hour for
+  both, and every preview, including each category change in the .ics import, counted).
+
 ## [1.3.22] — 2026-10-15
 
 ### Added

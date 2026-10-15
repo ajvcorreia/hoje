@@ -123,7 +123,7 @@ Applying a calendar means: delete the `removed_bundled` entries, then add the `e
 "data": <document> }`. The whole document is validated first; one problem rejects everything with
 a `422` whose `detail` names the item, for example `events[57].end_date: end_date must be on or
 after start_date`. The write is one transaction. `dry_run: true` writes nothing and returns the
-counts. Imports (dry runs included) are limited to 10 per hour per user.
+counts. Imports are limited to 30 per hour per user, and dry runs to 120 per hour (counted separately).
 
 **Merge** (default):
 
