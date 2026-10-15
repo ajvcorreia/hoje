@@ -147,3 +147,49 @@ def test_expand_survives_a_window_at_the_start_of_the_calendar():
     assert expand(date(2026, 1, 1), date(2026, 1, 3), "none", None, date.min, date.max) == [
         (date(2026, 1, 1), date(2026, 1, 3))
     ]
+
+
+def test_weekly_steps_seven_days_from_the_start():
+    result = expand(D(2026, 3, 4), D(2026, 3, 4), "weekly", None, D(2026, 3, 1), D(2026, 3, 31))
+    assert [s for s, _ in result] == [D(2026, 3, 4), D(2026, 3, 11), D(2026, 3, 18), D(2026, 3, 25)]
+
+
+def test_biweekly_steps_fourteen_days_from_the_start():
+    result = expand(D(2026, 3, 4), D(2026, 3, 4), "biweekly", None, D(2026, 3, 1), D(2026, 4, 30))
+    assert [s for s, _ in result] == [
+        D(2026, 3, 4),
+        D(2026, 3, 18),
+        D(2026, 4, 1),
+        D(2026, 4, 15),
+        D(2026, 4, 29),
+    ]
+    assert (
+        expand(D(2026, 3, 4), D(2026, 3, 4), "biweekly", None, D(2026, 3, 5), D(2026, 3, 17)) == []
+    )
+
+
+def test_weekly_window_far_after_the_start_lands_on_the_right_weekday():
+    start = D(2020, 1, 6)  # a Monday
+    for repeat, step in (("weekly", 7), ("biweekly", 14)):
+        result = expand(start, start, repeat, None, D(2026, 10, 1), D(2026, 12, 31))
+        assert result and all((s - start).days % step == 0 for s, _ in result)
+        assert all(D(2026, 10, 1) <= s <= D(2026, 12, 31) for s, _ in result)
+
+
+def test_weekly_multi_day_events_keep_their_length_and_overlap_the_window():
+    result = expand(D(2026, 3, 2), D(2026, 3, 4), "weekly", None, D(2026, 3, 10), D(2026, 3, 10))
+    assert result == [(D(2026, 3, 9), D(2026, 3, 11))]
+
+
+def test_weekly_stops_at_repeat_until_inclusive():
+    result = expand(
+        D(2026, 3, 4), D(2026, 3, 4), "weekly", D(2026, 3, 18), D(2026, 3, 1), D(2026, 12, 31)
+    )
+    assert [s for s, _ in result] == [D(2026, 3, 4), D(2026, 3, 11), D(2026, 3, 18)]
+
+
+def test_weekly_near_the_end_of_time_stops_instead_of_overflowing():
+    result = expand(
+        D(9999, 12, 20), D(9999, 12, 20), "weekly", None, D(9999, 12, 1), D(9999, 12, 31)
+    )
+    assert [s for s, _ in result] == [D(9999, 12, 20), D(9999, 12, 27)]

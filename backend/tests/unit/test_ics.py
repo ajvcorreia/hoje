@@ -173,13 +173,38 @@ def test_monthly_on_the_31st_is_written_out_because_icalendar_skips_short_months
     assert {e.repeat for e in result.document.events} == {"none"}
 
 
-def test_weekly_repeat_is_written_out_as_separate_events():
+@pytest.mark.parametrize(
+    ("rule", "repeat", "last"),
+    [
+        ("FREQ=WEEKLY", "weekly", None),
+        ("FREQ=WEEKLY;BYDAY=MO", "weekly", None),
+        ("FREQ=WEEKLY;COUNT=4", "weekly", dt.date(2026, 1, 26)),
+        ("FREQ=WEEKLY;INTERVAL=2;COUNT=3", "biweekly", dt.date(2026, 2, 2)),
+        ("FREQ=WEEKLY;INTERVAL=2;UNTIL=20260301", "biweekly", dt.date(2026, 3, 1)),
+    ],
+)
+def test_plain_weekly_and_every_two_weeks_stay_repeating_events(rule, repeat, last):
+    event = only(f"UID:a\nSUMMARY:Run\nDTSTART;VALUE=DATE:20260105\nRRULE:{rule}")  # a Monday
+    assert (event.repeat, event.repeat_until) == (repeat, last)
+
+
+@pytest.mark.parametrize(
+    "rule",
+    ["FREQ=WEEKLY;BYDAY=MO,WE", "FREQ=WEEKLY;BYDAY=TU", "FREQ=WEEKLY;INTERVAL=3;COUNT=3"],
+)
+def test_other_weekly_rules_are_written_out(rule):
+    result = read(f"UID:a\nSUMMARY:Run\nDTSTART;VALUE=DATE:20260105\nRRULE:{rule}")
+    assert len(result.document.events) > 1
+    assert {e.repeat for e in result.document.events} == {"none"}
+
+
+def test_a_repeat_with_an_exception_is_written_out_as_separate_events():
     result = read(
         "UID:a\nSUMMARY:Standup\nDTSTART:20260105T090000\nDTEND:20260105T091500\n"
-        "RRULE:FREQ=WEEKLY;COUNT=3"
+        "RRULE:FREQ=WEEKLY;COUNT=3\nEXDATE:20260112T090000"
     )
     events = result.document.events
-    assert [e.start_date.isoformat() for e in events] == ["2026-01-05", "2026-01-12", "2026-01-19"]
+    assert [e.start_date.isoformat() for e in events] == ["2026-01-05", "2026-01-19"]
     assert {(e.start_time, e.end_time, e.repeat) for e in events} == {
         (dt.time(9, 0), dt.time(9, 15), "none")
     }

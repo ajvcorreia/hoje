@@ -558,6 +558,40 @@ describe('per-event vertical labels', () => {
   });
 });
 
+describe('repeat options in the editor', () => {
+  it('offers weekly and every two weeks, and sends the choice on create', async () => {
+    const api = mockApi({
+      ...baseRoutes(),
+      'POST /api/v1/events': (call) => ({
+        event: makeEvent('new-2', (call.body as { title: string }).title, '2026-01-01'),
+        leave_impact: [],
+      }),
+    });
+    renderApp();
+    await gridReady();
+    await userEvent.click(cell('2026-01-01'));
+    await userEvent.click(
+      await screen.findByRole('button', { hidden: true, name: 'Add with details' }),
+    );
+    const dialog = await screen.findByRole('dialog', { hidden: true, name: 'New event' });
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Sprint review');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'More' }));
+    const repeat = within(dialog).getByLabelText('Repeat');
+    expect(
+      within(repeat)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['None', 'Weekly', 'Every 2 weeks', 'Monthly', 'Yearly']);
+    await userEvent.selectOptions(repeat, 'biweekly');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/events')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/v1/events')[0]?.body).toMatchObject({
+      title: 'Sprint review',
+      repeat: 'biweekly',
+    });
+  });
+});
+
 describe('vertical label option in the editor', () => {
   it('is offered only for multi-day events and is sent on create', async () => {
     const api = mockApi({

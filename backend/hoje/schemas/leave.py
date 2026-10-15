@@ -3,14 +3,13 @@
 import uuid
 from datetime import date
 from decimal import Decimal
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem
+from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem, Repeat
 
 Days = Annotated[Decimal, Field(ge=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
-Repeat = Literal["none", "monthly", "yearly"]
 
 
 class LeaveImpact(BaseModel):

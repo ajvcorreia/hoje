@@ -429,6 +429,8 @@ function EditorForm(props: FormProps) {
                   className={inputClass}
                 >
                   <option value="none">None</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
                 </select>

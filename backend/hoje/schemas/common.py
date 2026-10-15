@@ -31,6 +31,8 @@ MIN_DATE = dt.date(1900, 1, 1)
 MAX_DATE = dt.date(2200, 12, 31)
 MAX_EVENT_SPAN_DAYS = 366
 BoundedDate = Annotated[dt.date, Field(ge=MIN_DATE, le=MAX_DATE)]
+# How an event repeats: every 7 days, every 14 days, on the same day of each month or each year.
+Repeat = Literal["none", "weekly", "biweekly", "monthly", "yearly"]
 
 Timezone = Annotated[str, Field(min_length=1, max_length=64), AfterValidator(validate_timezone)]
 WeekendDays = Annotated[list[int], Field(max_length=7), AfterValidator(validate_weekend_days)]

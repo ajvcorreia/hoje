@@ -758,6 +758,8 @@
           "repeat": {
             "enum": [
               "none",
+              "weekly",
+              "biweekly",
               "monthly",
               "yearly"
             ],
@@ -984,6 +986,8 @@
             "default": "none",
             "enum": [
               "none",
+              "weekly",
+              "biweekly",
               "monthly",
               "yearly"
             ],
@@ -1159,6 +1163,8 @@
               {
                 "enum": [
                   "none",
+                  "weekly",
+                  "biweekly",
                   "monthly",
                   "yearly"
                 ],
@@ -1609,6 +1615,8 @@
             "default": "none",
             "enum": [
               "none",
+              "weekly",
+              "biweekly",
               "monthly",
               "yearly"
             ],
@@ -2671,6 +2679,8 @@
             "default": "none",
             "enum": [
               "none",
+              "weekly",
+              "biweekly",
               "monthly",
               "yearly"
             ],

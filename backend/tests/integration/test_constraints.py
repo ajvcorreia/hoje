@@ -69,7 +69,7 @@ class TestEventRepeatConstraint:
     async def test_event_repeat_must_be_valid_value(
         self, db_session: AsyncSession, make_user
     ) -> None:
-        """Verify that event repeat must be one of: none, monthly, yearly."""
+        """Verify that event repeat must be one of: none, weekly, biweekly, monthly, yearly."""
         user = await make_user()
         category = Category(
             user_id=user.id,
@@ -88,7 +88,7 @@ class TestEventRepeatConstraint:
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 1),
             timezone="UTC",
-            repeat="weekly",  # Invalid value
+            repeat="daily",  # Invalid value
         )
         db_session.add(bad_event)
 

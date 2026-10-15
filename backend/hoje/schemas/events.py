@@ -2,16 +2,15 @@
 
 import datetime as dt
 import uuid
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem, Timezone
+from hoje.schemas.common import MAX_EVENT_SPAN_DAYS, BoundedDate, Problem, Repeat, Timezone
 from hoje.schemas.leave import LeaveImpact
 
 Title = Annotated[str, Field(min_length=1, max_length=200)]
 Notes = Annotated[str, Field(max_length=5000)]
-Repeat = Literal["none", "monthly", "yearly"]
 MAX_REMINDERS = 5
 
 

@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Weekly and every-two-weeks repeats.** An event can now repeat weekly (every 7 days) or every
+  two weeks (every 14 days) from its start date, with an optional end date, next to the existing
+  monthly and yearly options. Reminders, the daily summary, vacation counting and the calendar
+  all follow them. Export and import files accept `"repeat": "weekly"` and `"biweekly"` (a file
+  with them cannot be read by an older Hoje). The .ics import now keeps a plain weekly or
+  every-two-weeks rule as a repeating event instead of writing it out as separate events.
+  Migration 0016 only widens a check constraint; take a `pg_dump` first as for any migration.
+
 ## [1.3.23] — 2026-10-15
 
 ### Changed

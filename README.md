@@ -281,8 +281,8 @@ of an iCalendar file exported from Google Calendar, Outlook, Apple Calendar and 
 one category for them (an existing one, or a new name), see a preview first, and events you already
 have are skipped, so importing a file twice is harmless. All-day and timed events, multi-day events,
 locations, descriptions and reminders before the start are kept; times are shown in your time
-zone. Plain yearly and monthly repeats stay repeating events; any other repeat (weekly, daily, with
-exceptions or moved instances) is added as separate events from five years back to two years ahead
+zone. Plain weekly, every-two-weeks, monthly and yearly repeats stay repeating events; any other
+repeat (daily, several weekdays, with exceptions or moved instances) is added as separate events from five years back to two years ahead
 (import the file again later to extend an open-ended repeat). Cancelled events are left out, and
 so are attendees, attachments and anything repeating more than once a day. Files up to 8 MB; they
 count towards the same hourly import allowance (30 imports and 120 previews an hour). Birthdays: a yearly all-day event imported into the

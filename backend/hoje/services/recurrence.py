@@ -1,10 +1,11 @@
-"""Pure recurrence expansion for monthly and yearly repeating events (no DB)."""
+"""Pure recurrence expansion for weekly, bi-weekly, monthly and yearly repeating events (no DB)."""
 
 import calendar
-from datetime import date
-from typing import Literal
+from datetime import date, timedelta
 
-Repeat = Literal["none", "monthly", "yearly"]
+from hoje.schemas.common import Repeat
+
+WEEK_DAYS = {"weekly": 7, "biweekly": 14}
 
 
 def _clamped(year: int, month: int, day: int) -> date:
@@ -21,8 +22,9 @@ def expand(
 ) -> list[tuple[date, date]]:
     """Occurrences ``(start, end)`` of an event that overlap ``[window_from, window_to]``.
 
-    Monthly repeats stay anchored on the original day of month (clamped to the month's last day),
-    yearly repeats on the original month/day (29 Feb becomes 28 Feb in non-leap years). Every
+    Weekly and bi-weekly repeats step 7 and 14 days from the start date. Monthly repeats stay
+    anchored on the original day of month (clamped to the month's last day), yearly repeats on the
+    original month/day (29 Feb becomes 28 Feb in non-leap years). Every
     occurrence has the original length. ``repeat_until`` bounds the occurrence start, inclusively.
     """
     length = end - start
@@ -58,6 +60,16 @@ def expand(
                 except OverflowError:  # the occurrence would end after date.max: stop here
                     break
             index += 1
+    elif repeat in WEEK_DAYS:
+        step = WEEK_DAYS[repeat]
+        skipped = max(0, -(-(lo - start).days // step))  # whole steps before the window
+        try:
+            occ = start + timedelta(days=skipped * step)
+            while occ <= hi:
+                result.append((occ, occ + length))
+                occ += timedelta(days=step)
+        except OverflowError:  # the occurrence would pass date.max: stop here
+            pass
     else:  # yearly
         year = max(start.year, lo.year)
         while year <= 9998:

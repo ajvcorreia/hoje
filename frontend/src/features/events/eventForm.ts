@@ -1,4 +1,4 @@
-import type { Event as HojeEvent, EventUpdate } from '../../api/types';
+import type { Event as HojeEvent, EventUpdate, Repeat } from '../../api/types';
 import type { NewEvent } from './api';
 
 /** Reminder choices offered in the editor; `custom` reveals a number + unit. */
@@ -22,7 +22,7 @@ export interface EventFormState {
   customUnit: ReminderUnit;
   /** True once the user changed the reminder: only then are reminders sent on edit. */
   reminderTouched: boolean;
-  repeat: 'none' | 'monthly' | 'yearly';
+  repeat: Repeat;
   repeatUntil: string;
   notes: string;
   /** Draw the name rotated along the block (multi-day events only). */

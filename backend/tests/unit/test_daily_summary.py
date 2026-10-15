@@ -161,6 +161,17 @@ def test_monthly_and_yearly_recurrence_appear_on_their_day():
     assert [i.title for i in data.tomorrow_items] == ["Anniversary"]
 
 
+def test_weekly_and_biweekly_recurrence_appear_on_their_day():
+    # Today is Thu 8 Oct, tomorrow Fri 9 Oct.
+    weekly = event("Run", start=date(2026, 9, 10), repeat="weekly")  # Thursdays
+    biweekly = event("Sprint", start=date(2026, 9, 24), repeat="biweekly")  # Thursdays, this week
+    off_week = event("Review", start=date(2026, 10, 1), repeat="biweekly")  # Thursdays, next week
+    friday = event("Standup", start=date(2026, 10, 2), repeat="weekly")
+    data = build([weekly, biweekly, off_week, friday])
+    assert sorted(i.title for i in data.today_items) == ["Run", "Sprint"]
+    assert [i.title for i in data.tomorrow_items] == ["Standup"]
+
+
 def test_month_end_recurrence_is_clamped_on_the_last_day():
     monthly = event("Payday", start=date(2026, 1, 31), repeat="monthly")
     data = build([monthly], now=utc(2026, 2, 27, 12, 0))  # today 27 Feb, tomorrow 28 Feb
@@ -254,6 +265,13 @@ def test_changes_describe_dates_times_and_repetition_and_cap():
     assert {c.item.title: c.item.when for c in data.changes} == {
         "Review": "Mon 2 Nov, 14:00-15:00, repeats monthly",
         "Holiday": "Thu 24 Dec to Sat 26 Dec",
+    }
+    sprint = event("Sprint", start=date(2026, 11, 2), repeat="biweekly", updated_at=stamp)
+    weekly = event("Run", start=date(2026, 11, 2), repeat="weekly", updated_at=stamp)
+    both = build(changed=[sprint, weekly], since=since)
+    assert {c.item.title: c.item.when for c in both.changes} == {
+        "Sprint": "Mon 2 Nov, repeats every 2 weeks",
+        "Run": "Mon 2 Nov, repeats weekly",
     }
     lots = [
         event(f"E{i:02d}", updated_at=stamp + timedelta(minutes=i))
