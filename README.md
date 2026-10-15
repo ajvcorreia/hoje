@@ -270,7 +270,7 @@ loads such a file back: it first shows a preview of what would change, then eith
 (categories with the same name are reused, duplicate events are skipped) or **replaces** your data
 (needs your password; the old events and categories go to the bin for 30 days). See
 [docs/export-format.md](docs/export-format.md) for the format and exact rules. Imports are limited
-to 10 per hour and 10 MB per file.
+to 30 per hour (previews have their own 120 per hour) and 10 MB per file.
 
 Import files can be larger than the usual 1 MB request limit, so raise `client_max_body_size` in the
 NPM Advanced block to `10m` if you want to import files over 1 MB (Caddy and the API still cap every
@@ -285,7 +285,7 @@ zone. Plain yearly and monthly repeats stay repeating events; any other repeat (
 exceptions or moved instances) is added as separate events from five years back to two years ahead
 (import the file again later to extend an open-ended repeat). Cancelled events are left out, and
 so are attendees, attachments and anything repeating more than once a day. Files up to 8 MB; they
-count towards the same 10 imports per hour. Birthdays: a yearly all-day event imported into the
+count towards the same hourly import allowance (30 imports and 120 previews an hour). Birthdays: a yearly all-day event imported into the
 **Birthdays** category is sent to FelizAnniv at the next sync, like any other.
 
 ## FelizAnniv birthdays

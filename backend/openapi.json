@@ -6516,7 +6516,7 @@
     },
     "/api/v1/import": {
       "post": {
-        "description": "Everything happens in one transaction. ``replace`` needs the account password (it is\nnot checked for a dry run, which writes nothing). Dry runs count towards the 10/hour limit.",
+        "description": "Everything happens in one transaction. ``replace`` needs the account password (it is\nnot checked for a dry run, which writes nothing). 30 imports an hour; dry runs have their own\nallowance of 120.",
         "operationId": "data_import",
         "requestBody": {
           "content": {
@@ -6608,7 +6608,7 @@
     },
     "/api/v1/import/ics": {
       "post": {
-        "description": "The file is converted to an export document (see ``services/ics.py``) and merged like any\nother import: events you already have are skipped, so importing a file twice is harmless.\nCounts towards the same 10/hour limit as ``/import``.",
+        "description": "The file is converted to an export document (see ``services/ics.py``) and merged like any\nother import: events you already have are skipped, so importing a file twice is harmless.\nUses the same hourly allowances as ``/import``.",
         "operationId": "ics_import",
         "requestBody": {
           "content": {

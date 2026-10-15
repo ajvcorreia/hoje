@@ -25,9 +25,16 @@ from hoje.services import ics, portability, throttle
 
 router = APIRouter(tags=["data"])
 
-IMPORT_LIMIT = 10
+IMPORT_LIMIT = 30  # real imports per hour
+PREVIEW_LIMIT = 120  # dry runs write nothing, so they have their own, larger allowance
 IMPORT_WINDOW = timedelta(hours=1)
 PASSWORD_REQUIRED = "Your password is required to replace your data"  # noqa: S105
+
+
+async def _throttle_import(db: DbSession, user: CurrentUser, ip: str, *, dry_run: bool) -> None:
+    kind, limit = ("import_preview", PREVIEW_LIMIT) if dry_run else ("import", IMPORT_LIMIT)
+    with audit.log_lockout("import", ip):
+        await throttle.hit(db, f"{kind}:user:{user.id}", limit=limit, window=IMPORT_WINDOW)
 
 
 @router.get(
@@ -69,11 +76,11 @@ async def data_import(
     user: CurrentUser,
 ) -> ImportResult | JSONResponse:
     """Everything happens in one transaction. ``replace`` needs the account password (it is
-    not checked for a dry run, which writes nothing). Dry runs count towards the 10/hour limit.
+    not checked for a dry run, which writes nothing). 30 imports an hour; dry runs have their own
+    allowance of 120.
     """
     ip = client_ip(request)
-    with audit.log_lockout("import", ip):
-        await throttle.hit(db, f"import:user:{user.id}", limit=IMPORT_LIMIT, window=IMPORT_WINDOW)
+    await _throttle_import(db, user, ip, dry_run=body.dry_run)
     if body.mode == "replace" and not body.dry_run:
         if not body.password:
             raise HTTPException(status_code=400, detail=PASSWORD_REQUIRED)
@@ -115,11 +122,10 @@ async def ics_import(
 ) -> ImportResult | JSONResponse:
     """The file is converted to an export document (see ``services/ics.py``) and merged like any
     other import: events you already have are skipped, so importing a file twice is harmless.
-    Counts towards the same 10/hour limit as ``/import``.
+    Uses the same hourly allowances as ``/import``.
     """
     ip = client_ip(request)
-    with audit.log_lockout("import", ip):
-        await throttle.hit(db, f"import:user:{user.id}", limit=IMPORT_LIMIT, window=IMPORT_WINDOW)
+    await _throttle_import(db, user, ip, dry_run=body.dry_run)
     tz = ZoneInfo(user.timezone)
     try:
         conversion = await asyncio.to_thread(

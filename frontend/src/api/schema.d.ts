@@ -510,7 +510,8 @@ export interface paths {
         /**
          * Import an export file (merge or replace); dry_run previews without writing
          * @description Everything happens in one transaction. ``replace`` needs the account password (it is
-         *     not checked for a dry run, which writes nothing). Dry runs count towards the 10/hour limit.
+         *     not checked for a dry run, which writes nothing). 30 imports an hour; dry runs have their own
+         *     allowance of 120.
          */
         post: operations["data_import"];
         delete?: never;
@@ -532,7 +533,7 @@ export interface paths {
          * Import an iCalendar (.ics) file as events (merge); dry_run previews without writing
          * @description The file is converted to an export document (see ``services/ics.py``) and merged like any
          *     other import: events you already have are skipped, so importing a file twice is harmless.
-         *     Counts towards the same 10/hour limit as ``/import``.
+         *     Uses the same hourly allowances as ``/import``.
          */
         post: operations["ics_import"];
         delete?: never;
