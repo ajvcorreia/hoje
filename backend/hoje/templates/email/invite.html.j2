@@ -1,0 +1,14 @@
+{% extends "base.html.j2" %}
+{% block content %}
+                <p style="margin:0 0 16px;">{{ organiser }} invited you to an event.</p>
+                <p style="margin:0 0 4px;font-size:18px;font-weight:600;">{{ title }}</p>
+                <p style="margin:0 0 16px;">{{ when }}{% if repeats %}<br>{{ repeats }}{% endif %}</p>
+{% if notes %}
+                <p style="margin:0 0 16px;white-space:pre-wrap;">{{ notes }}</p>
+{% endif %}
+{% if message %}
+                <p style="margin:0 0 4px;font-size:13px;color:#57534e;">Message from {{ organiser }}:</p>
+                <p style="margin:0 0 16px;white-space:pre-wrap;">{{ message }}</p>
+{% endif %}
+                <p style="margin:0;">The invitation is attached as a calendar file. Open it to add the event to your calendar. Reply to this email to answer {{ organiser }}.</p>
+{% endblock %}

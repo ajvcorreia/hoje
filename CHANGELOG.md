@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Invite people to an event by email.** The event editor has a new "Invite by email" section:
+  enter an address (and an optional message) and Hoje emails the event's title, date, time, repeat
+  and notes with a calendar (.ics) invitation attached, so the recipient can add it to their own
+  calendar and reply to you (Reply-To is your address). Each event keeps a record of everyone it
+  was sent to, with the time and whether the mail server delivered it; a failed delivery is
+  recorded too. Limited to 20 invitations an hour per user. New endpoints:
+  `GET` and `POST /api/v1/events/{id}/invites`. Needs email configured on the server. Migration
+  0017 adds the `event_invites` table and lets `notification_log.kind` be `invite`; take a
+  `pg_dump` first as for any migration. Export and import files do not carry the invitation
+  record.
+
 ## [1.3.24] — 2026-10-15
 
 ### Added

@@ -1,0 +1,19 @@
+{{ organiser }} invited you to an event.
+
+{{ title }}
+{{ when }}
+{% if repeats %}
+{{ repeats }}
+{% endif %}
+{% if notes %}
+
+{{ notes }}
+{% endif %}
+{% if message %}
+
+Message from {{ organiser }}:
+{{ message }}
+{% endif %}
+
+The invitation is attached as a calendar file. Open it to add the event to your calendar.
+Reply to this email to answer {{ organiser }}.

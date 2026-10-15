@@ -31,7 +31,7 @@ SMTP_TIMEOUT_SECONDS = 15
 NOT_CONFIGURED = "SMTP not configured"
 _ERROR_MAX = 500
 
-Kind = Literal["reminder", "password_reset", "test", "security", "daily_summary"]
+Kind = Literal["reminder", "password_reset", "test", "security", "daily_summary", "invite"]
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"
@@ -113,6 +113,8 @@ class Mailer(Protocol):
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> SendOutcome: ...
 
     async def send(
@@ -125,6 +127,8 @@ class Mailer(Protocol):
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> bool: ...
 
 
@@ -182,9 +186,19 @@ class SmtpMailer:
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> bool:
         outcome = await self.deliver(
-            to, subject, text, html, kind=kind, user_id=user_id, message_id=message_id
+            to,
+            subject,
+            text,
+            html,
+            kind=kind,
+            user_id=user_id,
+            message_id=message_id,
+            reply_to=reply_to,
+            calendar=calendar,
         )
         return outcome.ok
 
@@ -198,6 +212,8 @@ class SmtpMailer:
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> SendOutcome:
         error: str | None = None
         retryable = False
@@ -212,10 +228,19 @@ class SmtpMailer:
                 message["From"] = formataddr((name or APP_NAME, address))
                 message["To"] = to
                 message["Subject"] = subject
+                if reply_to:
+                    message["Reply-To"] = reply_to
                 sent_id = message_id or make_msgid(domain=address.rpartition("@")[2] or "localhost")
                 message["Message-ID"] = sent_id
                 message.set_content(text)
                 message.add_alternative(html, subtype="html")
+                if calendar:
+                    message.add_attachment(
+                        calendar,
+                        subtype="calendar",
+                        filename="invite.ics",
+                        params={"method": "REQUEST"},
+                    )
                 s = self._settings
                 await aiosmtplib.send(
                     message,
@@ -255,6 +280,8 @@ class SentMessage:
     kind: str
     user_id: uuid.UUID | None
     message_id: str | None
+    reply_to: str | None = None
+    calendar: str | None = None
 
 
 class MemoryMailer:
@@ -276,9 +303,19 @@ class MemoryMailer:
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> bool:
         outcome = await self.deliver(
-            to, subject, text, html, kind=kind, user_id=user_id, message_id=message_id
+            to,
+            subject,
+            text,
+            html,
+            kind=kind,
+            user_id=user_id,
+            message_id=message_id,
+            reply_to=reply_to,
+            calendar=calendar,
         )
         return outcome.ok
 
@@ -292,9 +329,13 @@ class MemoryMailer:
         kind: Kind,
         user_id: uuid.UUID | None,
         message_id: str | None = None,
+        reply_to: str | None = None,
+        calendar: str | None = None,
     ) -> SendOutcome:
         mid = message_id or make_msgid(domain="example.com")
-        self.outbox.append(SentMessage(to, subject, text, html, kind, user_id, mid))
+        self.outbox.append(
+            SentMessage(to, subject, text, html, kind, user_id, mid, reply_to, calendar)
+        )
         await _write_log(
             self._factory,
             to=to,
