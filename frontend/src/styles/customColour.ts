@@ -12,7 +12,7 @@ const AAA = 7;
 
 type Rgb = [number, number, number];
 
-export const isHex = (value: string | null | undefined): value is string =>
+export const isHex = (value: string | null | undefined): boolean =>
   typeof value === 'string' && HEX.test(value);
 
 const toRgb = (hex: string): Rgb => {

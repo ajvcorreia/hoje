@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from '../../api/client';
-import type { Category, Holiday, HolidayCalendar } from '../../api/types';
+import type { Holiday, HolidayCalendar } from '../../api/types';
 import { useShowHolidays } from '../../lib/showHolidays';
 import { LEAVE_KEY } from '../leave/api';
 
@@ -9,7 +9,7 @@ import { LEAVE_KEY } from '../leave/api';
 export const HOLIDAYS_KEY = ['holidays'] as const;
 export const CALENDARS_KEY = ['holiday-calendars'] as const;
 
-type Colour = Category['colour'];
+type Colour = NonNullable<HolidayCalendar['colour']>;
 
 /** Holidays of the ENABLED calendars overlapping `[from, to]` (inclusive ISO dates). */
 export function useHolidays(from: string, to: string, enabled = true) {

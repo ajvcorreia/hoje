@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.28] — 2026-10-19
+
+### Fixed
+
+- The frontend of 1.3.27 did not compile in the Docker build (two type errors in the new colour
+  code), so its web image was never published. 1.3.28 has the same features, with the types fixed.
+  Skip 1.3.27.
+
 ## [1.3.27] — 2026-10-19
 
 ### Added
