@@ -11,7 +11,7 @@ RUN npm run build
 
 # Caddy compiled with the current Go toolchain and patched dependencies: the upstream
 # release binary lags behind Go and x/* security fixes, which fails the image scan.
-FROM golang:1.26-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS caddy
+FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS caddy
 ARG CADDY_VERSION=v2.11.4
 WORKDIR /src
 RUN printf '%s\n' 'package main' \
