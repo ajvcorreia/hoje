@@ -10,6 +10,7 @@ import type { HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
 import { TodoSection } from '../../todos/TodoSection';
 import { dayOfLabel } from './mobileLib';
+import { catProps } from '../../../styles/customColour';
 
 interface DayViewProps {
   date: string;
@@ -42,7 +43,7 @@ export function DayView({ date, occurrences, loading, holidays, onSelectEvent }:
               <li key={occurrenceKey(o)}>
                 <button
                   type="button"
-                  data-cat={category?.colour ?? 'slate'}
+                  {...catProps(category?.colour ?? 'slate')}
                   onClick={() => onSelectEvent(o.event_id)}
                   className="m-card flex min-h-14 w-full flex-col items-start justify-center rounded-md px-3 py-2 text-left"
                 >

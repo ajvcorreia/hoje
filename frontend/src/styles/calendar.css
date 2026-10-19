@@ -1,4 +1,25 @@
 /* Calendar styles. Colours come only from the palette tokens via data-cat. */
+
+/* A custom (#rrggbb) category colour: customColour.ts sets --cc-* inline, one pair per theme. */
+[data-cat='custom'] {
+  --ev-fill: var(--cc-light-fill);
+  --ev-text: var(--cc-light-text);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='light-contrast']) [data-cat='custom'] {
+    --ev-fill: var(--cc-dark-fill);
+    --ev-text: var(--cc-dark-text);
+  }
+}
+:root[data-theme='dark'] [data-cat='custom'] {
+  --ev-fill: var(--cc-dark-fill);
+  --ev-text: var(--cc-dark-text);
+}
+:root[data-theme='light-contrast'] [data-cat='custom'] {
+  --ev-fill: var(--cc-contrast-fill);
+  --ev-text: var(--cc-contrast-text);
+}
+
 [data-cat='slate'] {
   --ev-fill: var(--cat-slate-fill);
   --ev-text: var(--cat-slate-text);

@@ -8,7 +8,7 @@ A self-hosted personal planner replacing a spreadsheet, with a desktop month-col
 - **Mobile calendar**: day and week-strip views with quick add (click-type-Enter).
 - **Multiple views**: Year overview and Agenda view for flexible planning.
 - **Multi-day events**: visual blocks spanning columns, per-event vertical names, same-day halves with "+N" indicator.
-- **Categories with colours**: 12-colour palette, filter chips, customizable icons.
+- **Categories with colours**: 20 named colours or any colour you pick (readable in every theme), filter chips, customizable icons.
 - **Vacation balance**: working-day counting, carry-over policy, leave impact preview on events.
 - **Holiday overlays**: Portugal and UAE holiday calendars (bundled data, user-selectable).
 - **Birthdays from FelizAnniv**: the birthdays of your [FelizAnniv](#felizanniv-birthdays) app are ordinary yearly events in a "Birthdays" category that you can edit, and changes sync both ways.

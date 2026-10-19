@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hoje.constants import Colour
+from hoje.constants import CategoryColour
 from hoje.schemas.common import Problem
 
 CategoryName = Annotated[str, Field(min_length=1, max_length=40)]
@@ -17,7 +17,7 @@ class Category(BaseModel):
 
     id: uuid.UUID
     name: str
-    colour: Colour
+    colour: CategoryColour
     icon: str | None = None
     sort_order: int
     is_leave: bool
@@ -27,7 +27,7 @@ class Category(BaseModel):
 
 class CategoryCreate(BaseModel):
     name: CategoryName
-    colour: Colour
+    colour: CategoryColour
     icon: IconName | None = None
     is_leave: bool = False
     hidden: bool = False
@@ -38,7 +38,7 @@ class CategoryUpdate(BaseModel):
 
     version: int = Field(ge=1)
     name: CategoryName | None = None
-    colour: Colour | None = None
+    colour: CategoryColour | None = None
     icon: IconName | None = None
     is_leave: bool | None = None
     hidden: bool | None = None

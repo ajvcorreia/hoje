@@ -8,6 +8,7 @@ import { QuickAdd } from '../../events/QuickAdd';
 import { useWeekNumbers } from '../../../lib/weekNumbers';
 import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
+import { catProps } from '../../../styles/customColour';
 
 interface MonthViewProps {
   selected: string;
@@ -128,7 +129,7 @@ function MonthCell({
         <span aria-hidden="true" className="flex h-1.5 items-center gap-0.5">
           {holidays ? <span data-cat={holidays[0]?.colour} className="m-hol-dot" /> : null}
           {occurrences.slice(0, MAX_DOTS).map((o) => (
-            <span key={occurrenceKey(o)} data-cat={colourOf(o)} className="m-dot" />
+            <span key={occurrenceKey(o)} {...catProps(colourOf(o))} className="m-dot" />
           ))}
         </span>
       </button>

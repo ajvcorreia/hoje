@@ -59,6 +59,7 @@ import {
   type DayLayout,
   type LayoutInput,
 } from './layout';
+import { catProps } from '../../styles/customColour';
 
 /** Height of the sticky month header row, px. */
 export const HEAD_HEIGHT = 28;
@@ -240,12 +241,15 @@ function MonthColumnImpl({
         data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
         data-today={isToday || undefined}
         data-past={(strikePast && iso < today) || undefined}
-        data-cat={lead?.input.colour}
+        {...catProps(lead?.input.colour)}
         tabIndex={day === tabDay ? 0 : -1}
         aria-label={label}
-        style={
-          template.length > 1 ? { ...gridRow, gridTemplateColumns: template.join(' ') } : gridRow
-        }
+        style={{
+          ...catProps(lead?.input.colour).style,
+          ...(template.length > 1
+            ? { ...gridRow, gridTemplateColumns: template.join(' ') }
+            : gridRow),
+        }}
       >
         <span className="cal-num" aria-hidden="true">
           {day}
@@ -256,10 +260,10 @@ function MonthColumnImpl({
               key={`r${l}`}
               className="cal-ev"
               data-rot={l}
-              data-cat={p.input.colour}
+              {...catProps(p.input.colour)}
               data-join-next={p.joinNext || undefined}
               data-edge={nothingAfterRotated && l === t.rotated - 1 ? '' : undefined}
-              style={{ '--c': 2 + l } as CSSProperties}
+              style={{ ...catProps(p.input.colour).style, '--c': 2 + l } as CSSProperties}
             />
           ) : null,
         )}
@@ -278,10 +282,10 @@ function MonthColumnImpl({
             key={p.lane}
             className="cal-ev"
             data-slot={i}
-            data-cat={p.input.colour}
+            {...catProps(p.input.colour)}
             data-join-next={p.joinNext || undefined}
             data-edge={i === lastItem ? '' : undefined}
-            style={{ '--c': firstItemCol + i } as CSSProperties}
+            style={{ ...catProps(p.input.colour).style, '--c': firstItemCol + i } as CSSProperties}
           >
             {p.showTitle ? horizontalTitle(p.input) : ''}
           </span>
@@ -325,12 +329,13 @@ function MonthColumnImpl({
             key={seg.key}
             className="cal-vlabel"
             aria-hidden="true"
-            data-cat={seg.colour}
+            {...catProps(seg.colour)}
             data-lane={seg.lane}
             data-lines={plan?.lines.length ?? 1}
             data-past={seg.past || undefined}
             style={
               {
+                ...catProps(seg.colour).style,
                 '--vl-x': `${x}px`,
                 '--vl-w': `${tracks.lanes[seg.lane] ?? tracks.lane}px`,
                 '--seg-row': seg.row,
