@@ -21,7 +21,7 @@ from pydantic import (
     model_validator,
 )
 
-from hoje.constants import Colour
+from hoje.constants import CategoryColour, Colour
 from hoje.schemas.common import (
     MAX_EVENT_SPAN_DAYS,
     BoundedDate,
@@ -88,7 +88,7 @@ class ExportSettings(BaseModel):
 class ExportCategory(BaseModel):
     key: CategoryKey
     name: CategoryName
-    colour: Colour
+    colour: CategoryColour
     icon: IconName | None = None
     sort_order: int = Field(default=0, ge=0, le=1_000_000)
     is_leave: bool = False

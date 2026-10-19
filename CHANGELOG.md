@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Any colour for a category.** Next to the 20 named colours, the category colour picker now has a
+  custom swatch that opens the browser's colour picker (as TriggerLog does), so a category can be
+  any colour. Hoje derives a pale fill and a text colour from it for each theme, keeping the text
+  readable (WCAG AA in light and dark, AAA in the high-contrast theme), so it looks right in the
+  month grid, year view, mobile views and the daily summary email. Existing categories keep their
+  colours. Holiday calendars still use the named colours. Migration 0019 widens a check constraint;
+  take a `pg_dump` first as for any migration. An export file with a custom colour cannot be read
+  by an older Hoje.
+
 ## [1.3.26] — 2026-10-15
 
 ### Fixed

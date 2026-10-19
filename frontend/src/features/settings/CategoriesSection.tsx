@@ -15,6 +15,7 @@ import {
 import { ColourPicker } from '../categories/ColourPicker';
 import { CATEGORY_ICONS } from '../categories/icons';
 import { SettingsSection } from './SettingsSection';
+import { catProps } from '../../styles/customColour';
 
 /** Settings › Categories: rename, recolour, vacation and hide toggles, reorder, add, delete. */
 export function CategoriesSection() {
@@ -102,7 +103,7 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
       <div className="flex items-center gap-2">
         <button
           type="button"
-          data-cat={category.colour}
+          {...catProps(category.colour)}
           aria-label={`Colour of ${category.name}: ${category.colour}`}
           aria-expanded={pickerOpen}
           onClick={() => setPickerOpen((open) => !open)}
@@ -155,6 +156,7 @@ function CategoryRow({ category, canMoveUp, canMoveDown, onMove, onDelete }: Cat
       {pickerOpen ? (
         <ColourPicker
           label={`Colour for ${category.name}`}
+          custom
           value={category.colour}
           onChange={(colour) => update.mutate({ category, patch: { colour } })}
         />
@@ -265,6 +267,7 @@ function AddCategory({ categories }: { categories: Category[] }) {
       </div>
       <ColourPicker
         label="Colour for the new category"
+        custom
         value={colour ?? firstUnused}
         onChange={setColour}
       />

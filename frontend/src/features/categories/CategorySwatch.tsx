@@ -1,4 +1,5 @@
 import type { Category } from '../../api/types';
+import { catProps } from '../../styles/customColour';
 
 /**
  * Small colour square, followed by the category's glyph when one is passed (the caller leaves it
@@ -18,7 +19,7 @@ export function CategorySwatch({
     <>
       <span
         aria-hidden="true"
-        data-cat={colour ?? 'slate'}
+        {...catProps(colour ?? 'slate')}
         className={`cat-swatch inline-block size-3 shrink-0 rounded-sm ${className}`}
       />
       {icon ? (

@@ -9,6 +9,7 @@ import {
 } from '../../lib/dates';
 import { groupByDay } from '../events/occurrences';
 import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../holidays/api';
+import { catProps } from '../../styles/customColour';
 
 interface YearViewProps {
   year: number;
@@ -125,7 +126,7 @@ export function YearView({
                       data-date={iso}
                       data-today={iso === today || undefined}
                       data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
-                      data-cat={first ? colourOf.get(first.event.category_id) : undefined}
+                      {...catProps(first ? colourOf.get(first.event.category_id) : undefined)}
                       tabIndex={iso === activeFocus ? 0 : -1}
                       aria-label={dayLabel(iso, year, events.length, dayHolidays)}
                       onFocus={() => setFocusDate(iso)}
@@ -144,7 +145,7 @@ export function YearView({
                             <i
                               key={o.event_id + o.occurrence_start}
                               className="yr-dot"
-                              data-cat={colourOf.get(o.event.category_id)}
+                              {...catProps(colourOf.get(o.event.category_id))}
                             />
                           ))}
                         </span>

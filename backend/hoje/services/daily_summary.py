@@ -21,6 +21,7 @@ summary (the start of yesterday, local time, when there is none). It reads ``cre
 
 import calendar
 import datetime as dt
+import re
 import uuid
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -94,6 +95,44 @@ _CHIP: dict[str, tuple[str, str]] = {
 }
 
 Categories = dict[Any, tuple[str, str]]  # category id -> (name, colour)
+
+
+def _channel(value: float) -> float:
+    return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def _luminance(rgb: tuple[float, float, float]) -> float:
+    r, g, b = (_channel(c / 255) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _hex(rgb: tuple[float, float, float]) -> str:
+    return "#" + "".join(f"{round(max(0, min(255, c))):02x}" for c in rgb)
+
+
+def chip_colours(colour: str) -> tuple[str, str]:
+    """Light-theme (fill, text) of a category colour: a palette name or a custom ``#rrggbb``.
+
+    A custom colour gives a pale tint of itself as the fill and the colour darkened until its
+    text reaches WCAG AA (4.5:1) on that fill (same idea as frontend/src/styles/customColour.ts).
+    """
+    if colour in _CHIP:
+        return _CHIP[colour]
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", colour):
+        return _CHIP["slate"]
+    base = tuple(float(int(colour[i : i + 2], 16)) for i in (1, 3, 5))
+    fill = tuple(c + (255 - c) * 0.82 for c in base)
+    text = base
+    for _ in range(40):
+        if _contrast(text, fill) >= 4.5:
+            break
+        text = tuple(c * 0.9 for c in text)
+    return _hex(fill), _hex(text)  # type: ignore[arg-type]
 
 
 # --------------------------------------------------------------------------- pure: scheduling
@@ -218,7 +257,7 @@ def _times(event: Any, user_tz: str) -> str:
 
 def _item(event: Any, categories: Categories, when: str) -> Item:
     name, colour = categories.get(event.category_id, ("", "slate"))
-    fill, text = _CHIP.get(colour, _CHIP["slate"])
+    fill, text = chip_colours(colour)
     return Item(_clean(event.title), name, colour, when, fill, text)
 
 

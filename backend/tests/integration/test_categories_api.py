@@ -176,3 +176,41 @@ async def test_all_twenty_colours_are_accepted_on_create_and_update(alice):
         f"/categories/{cat['id']}", {"version": cat["version"], "colour": "mauve"}
     )
     assert bad.status_code == 422
+
+
+async def test_a_custom_hex_colour_is_accepted_and_stored_lower_case(alice):
+    created = await alice.post("/categories", {"name": "Mine", "colour": "#A1B2C3"})
+    assert created.status_code == 201
+    cat = created.json()
+    assert cat["colour"] == "#a1b2c3"
+
+    updated = await alice.patch(
+        f"/categories/{cat['id']}", {"version": cat["version"], "colour": "#00FF7f"}
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["colour"] == "#00ff7f"
+    listed = (await alice.get("/categories")).json()
+    assert [c["colour"] for c in listed if c["name"] == "Mine"] == ["#00ff7f"]
+
+
+@pytest.mark.parametrize("colour", ["#abc", "#12345g", "123456", "#1234567", "rgb(1,2,3)", ""])
+async def test_malformed_custom_colours_are_422(alice, colour):
+    res = await alice.post("/categories", {"name": "Bad", "colour": colour})
+
+    assert res.status_code == 422
+
+
+async def test_the_database_refuses_an_unnormalised_hex_colour(alice, db_session):
+    from sqlalchemy import update
+    from sqlalchemy.exc import IntegrityError
+
+    from hoje.models import Category
+
+    cat = await alice.make_category("Raw", colour="blue")
+
+    with pytest.raises(IntegrityError):
+        async with db_session.begin_nested():
+            await db_session.execute(
+                update(Category).where(Category.id == uuid.UUID(cat["id"])).values(colour="#ABCDEF")
+            )

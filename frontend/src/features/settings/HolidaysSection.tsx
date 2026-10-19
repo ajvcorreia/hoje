@@ -5,6 +5,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { formatShortDate, todayIso } from '../../lib/dates';
 import { describeError } from '../../lib/errors';
 import { ColourPicker } from '../categories/ColourPicker';
+import { isCategoryKey } from '../../styles/palette';
 import {
   calendarColour,
   useCalendarHolidays,
@@ -59,7 +60,9 @@ function CalendarRow({ calendar }: { calendar: HolidayCalendar }) {
         <ColourPicker
           label={`Colour for ${calendar.name} holidays`}
           value={calendarColour(calendar)}
-          onChange={(colour) => update.mutate({ id: calendar.id, patch: { colour } })}
+          onChange={(colour) => {
+            if (isCategoryKey(colour)) update.mutate({ id: calendar.id, patch: { colour } });
+          }}
         />
         <button
           type="button"

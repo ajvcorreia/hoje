@@ -2,7 +2,8 @@
  * Source of truth for the category palette. `palette.css` mirrors these values
  * (a unit test keeps them in sync). Every fill/text pair must reach WCAG AA (4.5:1);
  * the `light-contrast` theme must reach AAA (7:1).
- * The backend stores only the key, never a hex value.
+ * A category stores either one of these keys or a custom `#rrggbb` (see `customColour.ts`);
+ * holiday calendars store only keys.
  */
 export const CATEGORY_KEYS = [
   'slate',

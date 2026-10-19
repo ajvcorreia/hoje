@@ -268,28 +268,7 @@
       "Category": {
         "properties": {
           "colour": {
-            "enum": [
-              "slate",
-              "red",
-              "orange",
-              "amber",
-              "lime",
-              "green",
-              "teal",
-              "cyan",
-              "blue",
-              "indigo",
-              "violet",
-              "pink",
-              "rose",
-              "fuchsia",
-              "purple",
-              "sky",
-              "emerald",
-              "yellow",
-              "brown",
-              "gray"
-            ],
+            "description": "A palette colour name, or a custom colour as #rrggbb.",
             "title": "Colour",
             "type": "string"
           },
@@ -427,28 +406,7 @@
       "CategoryCreate": {
         "properties": {
           "colour": {
-            "enum": [
-              "slate",
-              "red",
-              "orange",
-              "amber",
-              "lime",
-              "green",
-              "teal",
-              "cyan",
-              "blue",
-              "indigo",
-              "violet",
-              "pink",
-              "rose",
-              "fuchsia",
-              "purple",
-              "sky",
-              "emerald",
-              "yellow",
-              "brown",
-              "gray"
-            ],
+            "description": "A palette colour name, or a custom colour as #rrggbb.",
             "title": "Colour",
             "type": "string"
           },
@@ -513,28 +471,7 @@
           "colour": {
             "anyOf": [
               {
-                "enum": [
-                  "slate",
-                  "red",
-                  "orange",
-                  "amber",
-                  "lime",
-                  "green",
-                  "teal",
-                  "cyan",
-                  "blue",
-                  "indigo",
-                  "violet",
-                  "pink",
-                  "rose",
-                  "fuchsia",
-                  "purple",
-                  "sky",
-                  "emerald",
-                  "yellow",
-                  "brown",
-                  "gray"
-                ],
+                "description": "A palette colour name, or a custom colour as #rrggbb.",
                 "type": "string"
               },
               {
@@ -1359,28 +1296,7 @@
       "ExportCategory": {
         "properties": {
           "colour": {
-            "enum": [
-              "slate",
-              "red",
-              "orange",
-              "amber",
-              "lime",
-              "green",
-              "teal",
-              "cyan",
-              "blue",
-              "indigo",
-              "violet",
-              "pink",
-              "rose",
-              "fuchsia",
-              "purple",
-              "sky",
-              "emerald",
-              "yellow",
-              "brown",
-              "gray"
-            ],
+            "description": "A palette colour name, or a custom colour as #rrggbb.",
             "title": "Colour",
             "type": "string"
           },

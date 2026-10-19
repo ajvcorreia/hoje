@@ -950,9 +950,9 @@ export interface components {
         Category: {
             /**
              * Colour
-             * @enum {string}
+             * @description A palette colour name, or a custom colour as #rrggbb.
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
+            colour: string;
             /** Hidden */
             hidden: boolean;
             /** Icon */
@@ -1004,9 +1004,9 @@ export interface components {
         CategoryCreate: {
             /**
              * Colour
-             * @enum {string}
+             * @description A palette colour name, or a custom colour as #rrggbb.
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
+            colour: string;
             /**
              * Hidden
              * @default false
@@ -1033,7 +1033,7 @@ export interface components {
          */
         CategoryUpdate: {
             /** Colour */
-            colour?: ("slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray") | null;
+            colour?: string | null;
             /** Hidden */
             hidden?: boolean | null;
             /** Icon */
@@ -1309,9 +1309,9 @@ export interface components {
         ExportCategory: {
             /**
              * Colour
-             * @enum {string}
+             * @description A palette colour name, or a custom colour as #rrggbb.
              */
-            colour: "slate" | "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "rose" | "fuchsia" | "purple" | "sky" | "emerald" | "yellow" | "brown" | "gray";
+            colour: string;
             /**
              * Hidden
              * @default false

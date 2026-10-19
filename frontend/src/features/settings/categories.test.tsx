@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
@@ -85,6 +85,47 @@ describe('settings › categories', () => {
     expect(api.callsTo('PATCH', `/api/v1/categories/${WORK}`)[1]?.body).toMatchObject({
       is_leave: true,
     });
+  });
+
+  it('offers a custom colour next to the palette and sends it once it settles', async () => {
+    const api = mockApi({
+      ...base,
+      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({
+        ...CATEGORIES[0],
+        ...(call.body as object),
+      }),
+    });
+    renderApp('/settings');
+    await userEvent.click(await screen.findByRole('button', { name: /Colour of Work/ }));
+    const picker = screen.getByRole('radiogroup', { name: 'Colour for Work' });
+    expect(within(picker).getAllByRole('radio')).toHaveLength(20);
+
+    const custom = within(picker).getByLabelText('Custom colour');
+    fireEvent.input(custom, { target: { value: '#12ab34' } });
+    fireEvent.input(custom, { target: { value: '#12ab35' } });
+
+    await waitFor(() => expect(api.callsTo('PATCH', `/api/v1/categories/${WORK}`)).toHaveLength(1));
+    expect(api.callsTo('PATCH', `/api/v1/categories/${WORK}`)[0]?.body).toEqual({
+      colour: '#12ab35',
+      version: 1,
+    });
+  });
+
+  it('shows a stored custom colour as its own swatch and keeps the palette unselected', async () => {
+    mockApi({
+      ...base,
+      'GET /api/v1/categories': [{ ...CATEGORIES[0], colour: '#12ab34' }, CATEGORIES[1]],
+    });
+    renderApp('/settings');
+    await userEvent.click(await screen.findByRole('button', { name: /Colour of Work: #12ab34/ }));
+    const picker = screen.getByRole('radiogroup', { name: 'Colour for Work' });
+
+    expect(within(picker).getByLabelText('Custom colour')).toHaveValue('#12ab34');
+    expect(
+      within(picker)
+        .getAllByRole('radio')
+        .filter((r) => r.getAttribute('aria-checked') === 'true'),
+    ).toHaveLength(0);
   });
 
   it('reorders with the up/down buttons', async () => {

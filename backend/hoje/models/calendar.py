@@ -18,7 +18,9 @@ class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (
         CheckConstraint("char_length(name) between 1 and 40", name="name_length"),
-        CheckConstraint(f"colour in ({_COLOUR_LIST})", name="colour"),
+        CheckConstraint(
+            f"colour in ({_COLOUR_LIST}) or colour ~ '^#[0-9a-f]{{6}}$'", name="colour"
+        ),
         Index(
             "uq_categories_user_id_lower_name",
             "user_id",
