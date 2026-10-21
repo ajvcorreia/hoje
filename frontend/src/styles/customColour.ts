@@ -48,13 +48,17 @@ function readable(text: Rgb, fill: string, limit: Rgb, min: number): string {
   return toHex(limit);
 }
 
-/** Black or white, whichever reads better on `fill`; always at least 4.5:1. */
+/**
+ * White or black text on `fill`. White is preferred: it wins unless black reads more than 1.4 times
+ * better, so red gets white text (4.0:1 against black's 5.3:1). The cost is that white can be as
+ * low as 3.9:1 on the darkest colours it is chosen for; black is never below 4.5:1.
+ */
 const ink = (fill: string): string =>
-  contrastRatio('#000000', fill) >= contrastRatio('#ffffff', fill) ? '#000000' : '#ffffff';
+  contrastRatio('#ffffff', fill) * 1.4 >= contrastRatio('#000000', fill) ? '#ffffff' : '#000000';
 
 /**
  * The fill and text of a custom colour in each theme. The colour itself is the fill (what you
- * pick is what you see) with black or white text, whichever reads better. Only the
+ * pick is what you see) with white or black text for contrast. Only the
  * light-contrast theme lightens it, because that theme promises 7:1 text, which a mid-tone
  * fill cannot give.
  */

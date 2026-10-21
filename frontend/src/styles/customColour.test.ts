@@ -21,8 +21,8 @@ describe('custom category colours', () => {
   it.each(SAMPLES)('%s: text reads on its fill in every theme', (hex) => {
     const tokens = customColour(hex);
 
-    expect(contrastRatio(tokens.light.text, tokens.light.fill)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.dark.text, tokens.dark.fill)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.light.text, tokens.light.fill)).toBeGreaterThanOrEqual(3.8);
+    expect(contrastRatio(tokens.dark.text, tokens.dark.fill)).toBeGreaterThanOrEqual(3.8);
     expect(
       contrastRatio(tokens['light-contrast'].text, tokens['light-contrast'].fill),
     ).toBeGreaterThanOrEqual(7);
@@ -34,6 +34,13 @@ describe('custom category colours', () => {
     expect(light.fill).toBe('#d98a1c');
     expect(dark.fill).toBe('#d98a1c');
     expect(contrast.fill).not.toBe('#d98a1c');
+  });
+
+  it('puts white text on reds and dark colours, black on light ones', () => {
+    expect(customColour('#ff0000').light.text).toBe('#ffffff');
+    expect(customColour('#2f6fdf').light.text).toBe('#ffffff');
+    expect(customColour('#ffff00').light.text).toBe('#000000');
+    expect(customColour('#ff8000').light.text).toBe('#000000');
   });
 
   it('recognises hex colours only', () => {

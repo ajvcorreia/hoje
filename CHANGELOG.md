@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.31] — 2026-10-21
+
+### Fixed
+
+- Text on a custom category colour is white unless black reads much better, so red now gets white
+  text. The text contrast on the darkest of those colours is about 3.9:1 (was 4.5:1 with black).
+
 ## [1.3.30] — 2026-10-21
 
 ### Security
