@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
  && go mod tidy \
  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /usr/bin/caddy .
 
-FROM caddy:2-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9 AS runtime
+FROM caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f AS runtime
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 LABEL org.opencontainers.image.title="hoje-web" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: web (Caddy + SPA)" \
