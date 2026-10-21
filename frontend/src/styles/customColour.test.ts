@@ -28,12 +28,12 @@ describe('custom category colours', () => {
     ).toBeGreaterThanOrEqual(7);
   });
 
-  it('keeps the hue: a red stays red-ish and the light fill is paler than the colour', () => {
-    const { light, dark } = customColour('#ff0000');
+  it('shows the picked colour as the fill, except in light-contrast', () => {
+    const { light, dark, 'light-contrast': contrast } = customColour('#d98a1c');
 
-    expect(light.fill).toMatch(/^#ff[0-9a-f]{2}[0-9a-f]{2}$/);
-    expect(light.fill).not.toBe('#ff0000');
-    expect(dark.fill).toMatch(/^#[0-9a-f]{2}0000$/);
+    expect(light.fill).toBe('#d98a1c');
+    expect(dark.fill).toBe('#d98a1c');
+    expect(contrast.fill).not.toBe('#d98a1c');
   });
 
   it('recognises hex colours only', () => {

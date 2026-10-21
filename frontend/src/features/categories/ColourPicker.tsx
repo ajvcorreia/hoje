@@ -31,8 +31,8 @@ const startingHex = (value: string) =>
 export function ColourPicker({ value, onChange, label, custom = false }: ColourPickerProps) {
   const customSelected = isHex(value);
   const [draft, setDraft] = useState(() => startingHex(value));
-  const sent = useRef(value);
   const send = useRef(onChange);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     send.current = onChange;
   });
@@ -43,20 +43,13 @@ export function ColourPicker({ value, onChange, label, custom = false }: ColourP
     setSeen(value);
     setDraft(startingHex(value));
   }
-  useEffect(() => {
-    sent.current = value;
-  }, [value]);
 
-  useEffect(() => {
-    if (!custom || draft === sent.current || (!customSelected && draft === startingHex(value))) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      sent.current = draft;
-      send.current(draft);
-    }, CUSTOM_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [custom, customSelected, draft, value]);
+  // Only the user's own picks are sent: each one restarts the timer, the last one goes out.
+  const pick = (hex: string) => {
+    setDraft(hex);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => send.current(hex), CUSTOM_DELAY_MS);
+  };
 
   return (
     <div role="radiogroup" aria-label={label} className="flex max-w-[21rem] flex-wrap gap-1.5">
@@ -93,7 +86,7 @@ export function ColourPicker({ value, onChange, label, custom = false }: ColourP
             type="color"
             aria-label="Custom colour"
             value={draft}
-            onChange={(e) => setDraft(e.target.value.toLowerCase())}
+            onChange={(e) => pick(e.target.value.toLowerCase())}
             className="absolute inset-0 size-full cursor-pointer opacity-0"
           />
         </label>

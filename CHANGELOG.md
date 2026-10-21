@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.29] — 2026-10-21
+
+### Fixed
+
+- A custom category colour is now shown as picked: the colour itself is the fill in the picker,
+  Settings and the calendar, in the light and dark themes, with black or white text for contrast.
+  It was being lightened (light) or darkened (dark), so it never matched the picker. The
+  light-contrast theme still lightens it, to keep its 7:1 text contrast.
+- The custom colour is sent straight from the picker's input, 350 ms after the last pick, instead
+  of by an effect that watched its state.
+
 ## [1.3.28] â€” 2026-10-19
 
 ### Fixed

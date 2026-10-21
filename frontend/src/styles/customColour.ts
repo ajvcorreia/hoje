@@ -3,11 +3,10 @@ import { contrastRatio, isCategoryKey, type CategoryColor, type ColorMode } from
 
 /**
  * A category colour is either a palette key or any `#rrggbb`. For a custom colour this derives
- * the same fill/text pair per theme that the palette hand-picks, so the calendar renders it the
- * way it renders a named colour: AA (4.5:1) in light and dark, AAA (7:1) in light-contrast.
+ * a fill/text pair per theme, the way the palette has one: the colour itself with readable text in
+ * light and dark (AA, 4.5:1), and a lightened fill in light-contrast (AAA, 7:1).
  */
 const HEX = /^#[0-9a-f]{6}$/i;
-const AA = 4.5;
 const AAA = 7;
 
 type Rgb = [number, number, number];
@@ -49,15 +48,23 @@ function readable(text: Rgb, fill: string, limit: Rgb, min: number): string {
   return toHex(limit);
 }
 
-/** The fill and text of a custom colour in each theme. */
+/** Black or white, whichever reads better on `fill`; always at least 4.5:1. */
+const ink = (fill: string): string =>
+  contrastRatio('#000000', fill) >= contrastRatio('#ffffff', fill) ? '#000000' : '#ffffff';
+
+/**
+ * The fill and text of a custom colour in each theme. The colour itself is the fill (what you
+ * pick is what you see) with black or white text, whichever reads better. Only the
+ * light-contrast theme lightens it, because that theme promises 7:1 text, which a mid-tone
+ * fill cannot give.
+ */
 export function customColour(hex: string): Record<ColorMode, CategoryColor> {
   const base = toRgb(hex);
-  const lightFill = toHex(mix(base, WHITE, 0.82));
+  const fill = toHex(base);
   const contrastFill = toHex(mix(base, WHITE, 0.75));
-  const darkFill = toHex(mix(base, BLACK, 0.62));
   return {
-    light: { fill: lightFill, text: readable(base, lightFill, BLACK, AA) },
-    dark: { fill: darkFill, text: readable(mix(base, WHITE, 0.7), darkFill, WHITE, AA) },
+    light: { fill, text: ink(fill) },
+    dark: { fill, text: ink(fill) },
     'light-contrast': { fill: contrastFill, text: readable(base, contrastFill, BLACK, AAA) },
   };
 }
