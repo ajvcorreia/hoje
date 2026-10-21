@@ -29,8 +29,11 @@ TO-DOS DUE
 
 TODAY
 =====
+{% set w = data.today_items|map(attribute='when')|map('length')|max %}
+{% set c = data.today_items|map(attribute='category')|map('length')|max + 2 %}
 {% for item in data.today_items %}
-- {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
+{% set cat = ('[' ~ item.category ~ ']') if item.category else '' %}
+{{ item.when }}{{ ' ' * (w - item.when|length) }}  {{ cat }}{{ ' ' * (c - cat|length) }}  {{ item.title }}
 
 {% endfor %}
 {% if data.today_more %}
@@ -64,8 +67,11 @@ BIRTHDAYS & HOLIDAYS TODAY
 {% set title = 'TOMORROW (' ~ tomorrow_date ~ ')' %}
 {{ title }}
 {{ '=' * (title|length) }}
+{% set w = data.tomorrow_items|map(attribute='when')|map('length')|max %}
+{% set c = data.tomorrow_items|map(attribute='category')|map('length')|max + 2 %}
 {% for item in data.tomorrow_items %}
-- {{ item.when }}: {{ item.title }}{% if item.category %} [{{ item.category }}]{% endif %}
+{% set cat = ('[' ~ item.category ~ ']') if item.category else '' %}
+{{ item.when }}{{ ' ' * (w - item.when|length) }}  {{ cat }}{{ ' ' * (c - cat|length) }}  {{ item.title }}
 
 {% endfor %}
 {% if data.tomorrow_more %}
@@ -82,8 +88,12 @@ BIRTHDAYS & HOLIDAYS TODAY
 {% set title = 'CHANGES SINCE ' ~ (data.since_label|upper) %}
 {{ title }}
 {{ '=' * (title|length) }}
+{% set leads = data.changes|map(attribute='what')|list %}
+{% set w = data.changes|map(attribute='what')|map('length')|max %}
+{% set c = data.changes|map(attribute='item')|map(attribute='category')|map('length')|max + 2 %}
 {% for change in data.changes %}
-- {{ change.what }}: {{ change.item.title }} ({{ change.item.when }}){% if change.item.category %} [{{ change.item.category }}]{% endif %}
+{% set cat = ('[' ~ change.item.category ~ ']') if change.item.category else '' %}
+{{ change.what }}{{ ' ' * (w - change.what|length) }}  {{ cat }}{{ ' ' * (c - cat|length) }}  {{ change.item.title }} ({{ change.item.when }})
 
 {% endfor %}
 {% if data.changes_more %}

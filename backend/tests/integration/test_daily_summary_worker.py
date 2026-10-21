@@ -7,6 +7,7 @@ the summary at 07:00 local, which is 06:00 UTC.
 
 import asyncio
 import datetime as dt
+import re
 import uuid
 from dataclasses import dataclass, field
 
@@ -236,7 +237,9 @@ async def test_next_day_sends_again_with_only_the_changes_since_the_last_summary
     assert len(mailer.outbox) == 2
     second = mailer.outbox[1].text
     assert "CHANGES SINCE THU 8 OCT, 07:00" in second
-    assert "Added: Fresh" in second and "Changed: Old news" in second
+    # One row per change: what happened, the category pill, then the event, in aligned columns.
+    assert re.search(r"^Added +\[Work\] +Fresh", second, re.M)
+    assert re.search(r"^Changed +\[Work\] +Old news", second, re.M)
 
 
 async def test_changes_from_before_the_previous_summary_are_not_repeated(live: Live, frozen_clock):

@@ -1,16 +1,21 @@
 {% extends "base.html.j2" %}
-{% macro event_list(items, more) %}
-                <ul style="margin:0 0 8px;padding:0;list-style:none;">
-{% for item in items %}
-                  <li style="margin:0 0 8px;">
-                    <span style="color:#57534e;">{{ item.when }}</span><br>
-                    <strong>{{ item.title }}</strong>
+{% macro row(lead, item) %}
+                    <tr>
+                      <td style="padding:0 12px 8px 0;color:#57534e;white-space:nowrap;vertical-align:top;line-height:20px;">{{ lead }}</td>
+                      <td style="padding:0 12px 8px 0;white-space:nowrap;vertical-align:top;line-height:20px;">
 {% if item.category %}
-                    <span style="display:inline-block;margin-left:6px;padding:0 8px;border-radius:10px;font-size:12px;background:{{ item.chip_fill }};color:{{ item.chip_text }};">{{ item.category }}</span>
+                        <span style="display:inline-block;min-width:80px;padding:0 8px;border-radius:10px;font-size:12px;text-align:center;background:{{ item.chip_fill }};color:{{ item.chip_text }};">{{ item.category }}</span>
 {% endif %}
-                  </li>
+                      </td>
+                      <td style="padding:0 0 8px;vertical-align:top;line-height:20px;"><strong>{{ item.title }}</strong></td>
+                    </tr>
+{% endmacro %}
+{% macro event_list(items, more) %}
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border-collapse:collapse;">
+{% for item in items %}
+{{ row(item.when, item) }}
 {% endfor %}
-                </ul>
+                </table>
 {% if more %}
                 <p style="margin:0 0 8px;color:#57534e;">...and {{ more }} more</p>
 {% endif %}
@@ -80,17 +85,11 @@
 {% endif %}
 {% set ns.n = ns.n + 1 %}
 {{ section_title('Changes since ' ~ data.since_label) }}
-                <ul style="margin:0 0 8px;padding:0;list-style:none;">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border-collapse:collapse;">
 {% for change in data.changes %}
-                  <li style="margin:0 0 8px;">
-                    <span style="color:#57534e;">{{ change.what }} &middot; {{ change.item.when }}</span><br>
-                    <strong>{{ change.item.title }}</strong>
-{% if change.item.category %}
-                    <span style="display:inline-block;margin-left:6px;padding:0 8px;border-radius:10px;font-size:12px;background:{{ change.item.chip_fill }};color:{{ change.item.chip_text }};">{{ change.item.category }}</span>
-{% endif %}
-                  </li>
+{{ row(change.what ~ ' · ' ~ change.item.when, change.item) }}
 {% endfor %}
-                </ul>
+                </table>
 {% if data.changes_more %}
                 <p style="margin:0 0 8px;color:#57534e;">...and {{ data.changes_more }} more</p>
 {% endif %}

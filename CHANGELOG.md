@@ -4,14 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.31] — 2026-10-21
+## [1.3.32] â€” 2026-10-21
+
+### Changed
+
+- The daily summary email lists each event with its category pill before the event name, in
+  aligned columns (time, category, event), in both the HTML and the plain-text version.
+
+## [1.3.31] â€” 2026-10-21
 
 ### Fixed
 
 - Text on a custom category colour is white unless black reads much better, so red now gets white
   text. The text contrast on the darkest of those colours is about 3.9:1 (was 4.5:1 with black).
 
-## [1.3.30] — 2026-10-21
+## [1.3.30] â€” 2026-10-21
 
 ### Security
 
@@ -19,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   1.3.30 has the 1.3.29 changes and the fixes: `certifi` 2026.10.19 (API image), and Go 1.26.10 and
   `klauspost/compress` 1.18.7 in the Caddy build (web image). Skip 1.3.29.
 
-## [1.3.29] — 2026-10-21
+## [1.3.29] â€” 2026-10-21
 
 ### Fixed
 
