@@ -53,7 +53,7 @@ BIRTHDAYS & HOLIDAYS TODAY
 - {{ holiday.name }} ({{ holiday.calendar }}{% if holiday.non_working %}, non-working day{% endif %})
 {% endfor %}
 {% for birthday in data.birthdays %}
-- {{ birthday.name }}'s birthday{% if birthday.age is not none %} ({{ birthday.age }}){% endif %}
+🎂 {{ birthday.name }}'s birthday{% if birthday.age is not none %} ({{ birthday.age }}){% endif %}
 
 {% endfor %}
 {% endif %}
