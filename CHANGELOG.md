@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.38] — 2026-10-22
+
+### Fixed
+
+- The day pop-up (and other pop-ups) moves up as its content grows, e.g. when adding to-dos on a
+  day near the bottom of the screen, so it is never cut off. It moves back down when items are
+  removed, and scrolls inside when taller than the screen.
+
 ## [1.3.37] — 2026-10-22
 
 ### Added

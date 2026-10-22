@@ -30,7 +30,9 @@ const MARGIN = 8;
 /**
  * Non-modal popover anchored to an element. On open it focuses `[data-autofocus]` (or the
  * first focusable child); Esc and clicks outside close it, and focus returns to the anchor.
- * It flips/clamps to stay inside the viewport.
+ * It flips/clamps to stay inside the viewport, and moves again whenever its content grows or
+ * shrinks (e.g. a to-do added at the bottom), so it is never cut off by the bottom of the screen.
+ * Taller than the viewport, it scrolls inside.
  */
 export function Popover({
   anchor,
@@ -60,11 +62,20 @@ export function Popover({
     let top = placement === 'below' ? a.bottom + GAP : a.top;
     if (top + h > window.innerHeight - MARGIN) top = window.innerHeight - h - MARGIN;
     top = Math.max(MARGIN, top);
-    setPos({ top, left });
+    setPos((prev) => (prev && prev.top === top && prev.left === left ? prev : { top, left }));
   }, [anchor, placement]);
 
   useLayoutEffect(() => {
     place();
+  }, [place]);
+
+  // Content changes size (items added or removed, errors shown): place it again.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => place());
+    observer.observe(panel);
+    return () => observer.disconnect();
   }, [place]);
 
   // Focus only once the panel is positioned: while `pos` is null it is `visibility: hidden`,
@@ -114,7 +125,7 @@ export function Popover({
       role="dialog"
       aria-labelledby={labelId}
       tabIndex={-1}
-      className={`fixed z-40 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface p-3 shadow-md outline-none ${className ?? ''}`}
+      className={`fixed z-40 max-h-[calc(100dvh-1rem)] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-border bg-surface p-3 shadow-md outline-none ${className ?? ''}`}
       style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? 'visible' : 'hidden' }}
     >
       <span id={labelId} className="sr-only">
