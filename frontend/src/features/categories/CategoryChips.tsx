@@ -23,11 +23,14 @@ import { countByCategory, formatCount, fullFormat } from './counts';
 export function CategoryChips({
   className = '',
   scroll = false,
+  column = false,
   occurrences,
 }: {
   className?: string;
   /** One horizontally scrollable row with 44 px targets (mobile) instead of wrapping. */
   scroll?: boolean;
+  /** One pill per line, for a side panel (desktop only). */
+  column?: boolean;
   /** All occurrences loaded for the shown range, NOT filtered by hidden categories. */
   occurrences?: readonly Occurrence[];
 }) {
@@ -41,12 +44,18 @@ export function CategoryChips({
   if ((!categories || categories.length === 0) && !enabledCalendar) return null;
   const chip = `inline-flex items-center gap-1.5 rounded-full border border-border text-xs ${
     scroll ? 'min-h-11 shrink-0 whitespace-nowrap px-3' : 'min-h-8 px-2.5 md:min-h-7'
-  }`;
+  } ${column ? 'w-full' : ''}`;
   return (
     <div
       role="group"
       aria-label="Show categories"
-      className={`flex gap-1 ${scroll ? 'flex-nowrap overflow-x-auto' : 'flex-wrap'} ${className}`}
+      className={`flex gap-1 ${
+        column
+          ? 'flex-col items-stretch overflow-y-auto'
+          : scroll
+            ? 'flex-nowrap overflow-x-auto'
+            : 'flex-wrap'
+      } ${className}`}
     >
       {(categories ?? []).map((category) => {
         const shown = !category.hidden;
@@ -71,7 +80,7 @@ export function CategoryChips({
             <span
               aria-hidden="true"
               data-testid="category-count"
-              className="text-[0.6875rem] tabular-nums text-text-muted"
+              className={`text-[0.6875rem] tabular-nums text-text-muted ${column ? 'ml-auto' : ''}`}
             >
               {formatCount(count)}
             </span>

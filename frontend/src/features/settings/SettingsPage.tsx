@@ -9,6 +9,7 @@ import {
   useIconsOnVertical,
   useShowCategoryIcons,
 } from '../../lib/showCategoryIcons';
+import { PILLS_POSITIONS, isPillsPosition, usePillsPosition } from '../../lib/pillsPosition';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -33,6 +34,12 @@ const LABELS: Record<Theme, string> = {
   'light-contrast': 'Light (high contrast)',
   dark: 'Dark',
 };
+const POSITION_LABELS: Record<(typeof PILLS_POSITIONS)[number], string> = {
+  top: 'Top',
+  bottom: 'Bottom',
+  left: 'Left (vertical)',
+  right: 'Right (vertical)',
+};
 const MAX_EVENT_CHOICES = Array.from(
   { length: MAX_MAX_EVENTS - MIN_MAX_EVENTS + 1 },
   (_, i) => MIN_MAX_EVENTS + i,
@@ -48,6 +55,7 @@ const SIZE_LABELS: Record<TextSize, string> = {
 export function SettingsPage() {
   const [theme, setTheme] = useTheme();
   const [textSize, setTextSize] = useTextSize();
+  const [pillsPosition, setPillsPosition] = usePillsPosition();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
@@ -101,6 +109,29 @@ export function SettingsPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="pills-position" className="block text-sm font-medium">
+              Category pills
+            </label>
+            <select
+              id="pills-position"
+              value={pillsPosition}
+              onChange={(e) => {
+                if (isPillsPosition(e.target.value)) setPillsPosition(e.target.value);
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              {PILLS_POSITIONS.map((position) => (
+                <option key={position} value={position}>
+                  {POSITION_LABELS[position]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              Where the category filter sits on the calendar, on this device. The phone layout
+              always has it on top.
+            </p>
           </div>
           <label className="mt-4 flex min-h-9 items-center gap-2 text-sm font-medium">
             <input

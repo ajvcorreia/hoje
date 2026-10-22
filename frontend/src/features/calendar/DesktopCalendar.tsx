@@ -3,6 +3,7 @@ import type { Event as HojeEvent } from '../../api/types';
 import { useAuthState } from '../../app/useAuthState';
 import { btnSecondary } from '../../components/ui/classes';
 import { describeError } from '../../lib/errors';
+import { usePillsPosition } from '../../lib/pillsPosition';
 import { useToday } from '../../lib/useToday';
 import { useCategories } from '../categories/api';
 import { CategoryChips } from '../categories/CategoryChips';
@@ -32,6 +33,7 @@ type EditorState =
 /** The calendar for screens >= 768 px: toolbar, the three views, day popover and editor. */
 export function DesktopCalendar() {
   const today = useToday();
+  const [pillsPosition] = usePillsPosition();
   const [view, setView] = useState<View>('months');
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [popover, setPopover] = useState<{ date: string; anchor: HTMLElement } | null>(null);
@@ -76,6 +78,14 @@ export function DesktopCalendar() {
     }));
     setEditor({ mode: 'edit', eventId: event.id });
   };
+
+  const sidePills = (
+    <CategoryChips
+      column
+      className="max-h-full w-48 shrink-0 self-start"
+      occurrences={occurrences.data}
+    />
+  );
 
   return (
     <section aria-labelledby="calendar-heading" className="flex min-h-0 flex-1 flex-col gap-2">
@@ -122,42 +132,59 @@ export function DesktopCalendar() {
           </button>
         </div>
 
-        <CategoryChips className="min-w-0 flex-1" occurrences={occurrences.data} />
-        <SearchBox onPick={pickSearchResult} />
+        {pillsPosition === 'top' ? (
+          <CategoryChips className="min-w-0 flex-1" occurrences={occurrences.data} />
+        ) : null}
+        <div className={pillsPosition === 'top' ? '' : 'ml-auto'}>
+          <SearchBox onPick={pickSearchResult} />
+        </div>
       </div>
 
-      {occurrences.isError ? (
-        <p role="alert" className="text-sm text-danger">
-          {describeError(occurrences.error)}
-        </p>
-      ) : null}
+      <div
+        className={`flex min-h-0 flex-1 gap-2 ${
+          pillsPosition === 'left' || pillsPosition === 'right' ? '' : 'flex-col'
+        }`}
+      >
+        {pillsPosition === 'left' ? sidePills : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          {occurrences.isError ? (
+            <p role="alert" className="text-sm text-danger">
+              {describeError(occurrences.error)}
+            </p>
+          ) : null}
 
-      {view === 'months' ? (
-        <MonthGrid
-          year={year}
-          occurrences={visible}
-          categories={categoryList}
-          weekendDays={weekendDays}
-          today={today}
-          onOpenDay={openDay}
-          scrollRequest={scrollRequest}
-          holidays={holidays}
-        />
-      ) : view === 'year' ? (
-        <YearView
-          year={year}
-          occurrences={visible}
-          categories={categoryList}
-          today={today}
-          onOpenDay={openDay}
-          holidays={holidays}
-        />
-      ) : (
-        <AgendaView
-          today={today}
-          onSelectEvent={(eventId) => setEditor({ mode: 'edit', eventId })}
-        />
-      )}
+          {view === 'months' ? (
+            <MonthGrid
+              year={year}
+              occurrences={visible}
+              categories={categoryList}
+              weekendDays={weekendDays}
+              today={today}
+              onOpenDay={openDay}
+              scrollRequest={scrollRequest}
+              holidays={holidays}
+            />
+          ) : view === 'year' ? (
+            <YearView
+              year={year}
+              occurrences={visible}
+              categories={categoryList}
+              today={today}
+              onOpenDay={openDay}
+              holidays={holidays}
+            />
+          ) : (
+            <AgendaView
+              today={today}
+              onSelectEvent={(eventId) => setEditor({ mode: 'edit', eventId })}
+            />
+          )}
+        </div>
+        {pillsPosition === 'right' ? sidePills : null}
+        {pillsPosition === 'bottom' ? (
+          <CategoryChips className="shrink-0" occurrences={occurrences.data} />
+        ) : null}
+      </div>
 
       {popover ? (
         <DayPopover

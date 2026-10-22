@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearMeasureCache } from './fitWidth';
+import { storePillsPosition } from '../../lib/pillsPosition';
 import { storeStrikePast } from '../../lib/strikePast';
 import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
@@ -1014,5 +1015,46 @@ describe('reordering the events of a day', () => {
     const alpha = await screen.findByText('Alpha');
     const bravo = screen.getByText('Bravo');
     expect(bravo.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('category pills position', () => {
+  afterEach(() => storePillsPosition('top'));
+
+  const chipsAndGrid = async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    const chips = await screen.findByRole('group', { hidden: true, name: 'Show categories' });
+    await within(chips).findByRole('button', { name: /^Home/ });
+    const grid = document.querySelector('.cal-scroll');
+    expect(grid).not.toBeNull();
+    return { chips, grid: grid as Element };
+  };
+
+  it('sit above the calendar by default', async () => {
+    const { chips, grid } = await chipsAndGrid();
+    expect(chips.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chips).not.toHaveClass('flex-col');
+  });
+
+  it('can go below the calendar', async () => {
+    storePillsPosition('bottom');
+    const { chips, grid } = await chipsAndGrid();
+    expect(chips.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(chips).not.toHaveClass('flex-col');
+  });
+
+  it('can go down the left side, one pill per line', async () => {
+    storePillsPosition('left');
+    const { chips, grid } = await chipsAndGrid();
+    expect(chips.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chips).toHaveClass('flex-col');
+  });
+
+  it('can go down the right side, one pill per line', async () => {
+    storePillsPosition('right');
+    const { chips, grid } = await chipsAndGrid();
+    expect(chips.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(chips).toHaveClass('flex-col');
   });
 });
