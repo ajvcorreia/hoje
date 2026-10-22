@@ -12,6 +12,7 @@ import { occurrencesQuery, useOccurrences } from '../../events/api';
 import { EventEditor } from '../../events/EventEditor';
 import { filterVisible, groupByDay } from '../../events/occurrences';
 import { useHolidayOverlay } from '../../holidays/api';
+import { useTodoDays } from '../../todos/api';
 import { DayView } from './DayView';
 import { dayRange, loadView, monthRange, saveView, useSwipe, type MobileView } from './mobileLib';
 import { MonthView } from './MonthView';
@@ -62,6 +63,7 @@ export function MobileCalendar() {
   );
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
   const holidays = useHolidayOverlay(Number(selected.slice(0, 4)));
+  const todos = useTodoDays();
 
   const chooseView = (next: MobileView) => {
     setView(next);
@@ -115,6 +117,7 @@ export function MobileCalendar() {
             today={today}
             weekendDays={weekendDays}
             byDay={byDay}
+            todos={todos}
             onSelect={setSelected}
             onShiftWeek={shiftWeek}
           />
@@ -155,6 +158,7 @@ export function MobileCalendar() {
             weekendDays={weekendDays}
             byDay={byDay}
             holidays={holidays}
+            todos={todos}
             onSelect={setSelected}
             onSelectEvent={openEvent}
           />

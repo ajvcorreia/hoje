@@ -12,6 +12,7 @@ import { useOccurrences } from '../events/api';
 import { EventEditor } from '../events/EventEditor';
 import { filterVisible, groupByDay } from '../events/occurrences';
 import { useHolidayOverlay } from '../holidays/api';
+import { useTodoDays } from '../todos/api';
 import { AgendaView } from './AgendaView';
 import { DayPopover } from './DayPopover';
 import { MonthGrid, type ScrollRequest } from './MonthGrid';
@@ -59,6 +60,7 @@ export function DesktopCalendar() {
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
   const categoryList = categories ?? [];
   const holidays = useHolidayOverlay(year);
+  const todos = useTodoDays();
 
   const openDay = useCallback((date: string, anchor: HTMLElement) => {
     setPopover({ date, anchor });
@@ -166,6 +168,7 @@ export function DesktopCalendar() {
               onOpenDay={openDay}
               scrollRequest={scrollRequest}
               holidays={holidays}
+              todos={todos}
             />
           ) : view === 'year' ? (
             <YearView
@@ -175,6 +178,7 @@ export function DesktopCalendar() {
               today={today}
               onOpenDay={openDay}
               holidays={holidays}
+              todos={todos}
             />
           ) : (
             <AgendaView

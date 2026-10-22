@@ -104,6 +104,13 @@ async def due(db: AsyncSession, user: User) -> list[TodoSchema]:
     return _sorted(await due_rows(db, user, today), today)
 
 
+async def open_todos(db: AsyncSession, user: User) -> list[TodoSchema]:
+    """Every open to-do (at most MAX_OPEN_TODOS), for marking their days on the calendar."""
+    today = user_today(user)
+    rows = await db.scalars(select(Todo).where(Todo.user_id == user.id, Todo.done_at.is_(None)))
+    return _sorted(list(rows), today)
+
+
 async def _load(db: AsyncSession, user: User, todo_id: uuid.UUID) -> Todo:
     todo = await db.scalar(
         select(Todo)

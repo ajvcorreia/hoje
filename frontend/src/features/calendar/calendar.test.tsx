@@ -1076,3 +1076,56 @@ describe('category pills column width', () => {
     expect(chips.style.width).toBe('15rem');
   });
 });
+
+function makeTodo(id: string, shownOn: string, dueDate: string | null = null, done = false) {
+  return {
+    id,
+    title: `To-do ${id}`,
+    day: shownOn,
+    due_date: dueDate,
+    done,
+    completed_on: done ? shownOn : null,
+    shown_on: shownOn,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+}
+
+describe('to-do markers', () => {
+  const todos = [
+    makeTodo('1', '2026-06-15'),
+    makeTodo('2', '2026-06-15', '2026-06-22'),
+    makeTodo('3', '2026-06-15', '2026-06-22'),
+    makeTodo('4', '2026-06-15', '2026-06-25', true),
+  ];
+
+  it('marks today for undated to-dos and each due date in the month grid', async () => {
+    mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos } });
+    renderApp();
+    await gridReady();
+    await waitFor(() => expect(cell('2026-06-15')).toHaveAttribute('data-todos', '1'));
+    expect(cell('2026-06-15')).toHaveAccessibleName(/, 1 to-do$/);
+    expect(cell('2026-06-22')).toHaveAttribute('data-todos', '2');
+    expect(cell('2026-06-22')).toHaveAccessibleName(/, 2 to-dos$/);
+    expect(cell('2026-06-25')).not.toHaveAttribute('data-todos');
+    expect(cell('2026-06-16')).not.toHaveAttribute('data-todos');
+  });
+
+  it('marks the same days in the year view', async () => {
+    mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos } });
+    renderApp();
+    await gridReady();
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Year' }));
+    const june = await screen.findByRole('region', { hidden: true, name: 'June 2026' });
+    const due = await within(june).findByRole('button', { name: /22 June 2026, 2 to-dos/ });
+    expect(due).toHaveAttribute('data-todos', '2');
+    expect(within(june).getByRole('button', { name: /15 June 2026, 1 to-do$/ })).toBeVisible();
+  });
+
+  it('shows no marker without open to-dos', async () => {
+    mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos: [] } });
+    renderApp();
+    await gridReady();
+    expect(document.querySelector('[data-todos]')).toBeNull();
+  });
+});

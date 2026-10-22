@@ -10,6 +10,7 @@ import {
 import { groupByDay } from '../events/occurrences';
 import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../holidays/api';
 import { catProps } from '../../styles/customColour';
+import { NO_TODO_DAYS, todoAria, type TodoDays } from '../todos/todoDays';
 
 interface YearViewProps {
   year: number;
@@ -20,6 +21,8 @@ interface YearViewProps {
   onOpenDay(date: string, anchor: HTMLElement): void;
   /** Holidays of enabled calendars (and synced birthdays) by date. */
   holidays?: ReadonlyMap<string, HolidayDay[]>;
+  /** Open to-dos per day: those days get the to-do marker. */
+  todos?: TodoDays;
 }
 
 const MAX_DOTS = 3;
@@ -42,6 +45,7 @@ export function YearView({
   today,
   onOpenDay,
   holidays = NO_HOLIDAYS,
+  todos = NO_TODO_DAYS,
 }: YearViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const colourOf = useMemo(() => new Map(categories.map((c) => [c.id, c.colour])), [categories]);
@@ -118,6 +122,7 @@ export function YearView({
                   const first = events[0];
                   const dots = Math.min(MAX_DOTS, Math.max(0, events.length - 1));
                   const dayHolidays = holidays.get(iso);
+                  const dayTodos = todos.get(iso);
                   return (
                     <button
                       key={iso}
@@ -126,9 +131,12 @@ export function YearView({
                       data-date={iso}
                       data-today={iso === today || undefined}
                       data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
+                      data-todos={dayTodos || undefined}
                       {...catProps(first ? colourOf.get(first.event.category_id) : undefined)}
                       tabIndex={iso === activeFocus ? 0 : -1}
-                      aria-label={dayLabel(iso, year, events.length, dayHolidays)}
+                      aria-label={
+                        dayLabel(iso, year, events.length, dayHolidays) + todoAria(dayTodos)
+                      }
                       onFocus={() => setFocusDate(iso)}
                     >
                       <span aria-hidden="true">{Number(iso.slice(8))}</span>

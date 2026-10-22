@@ -32,6 +32,13 @@ async def todos_due(db: DbSession, user: CurrentUser) -> TodoList:
     return TodoList(todos=await service.due(db, user))
 
 
+@router.get("/open", response_model=TodoList, summary="Every open to-do")
+async def todos_open(db: DbSession, user: CurrentUser) -> TodoList:
+    """All open to-dos whatever their day, so the calendar can mark today (undated ones) and
+    each due date."""
+    return TodoList(todos=await service.open_todos(db, user))
+
+
 @router.post("", response_model=Todo, status_code=201, summary="Create a to-do")
 async def todos_create(body: TodoCreate, db: DbSession, user: CurrentUser) -> Todo:
     todo = await service.create(db, user, body)

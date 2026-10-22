@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.37] — 2026-10-22
+
+### Added
+
+- To-do markers on the calendar: a day is marked when open to-dos are due on it, and today is
+  marked when there are open to-dos without a due date. Desktop months and year views show a
+  small corner triangle; the phone week strip and month show a small square by the event dots.
+  Screen readers hear the count ("2 to-dos").
+- `GET /api/v1/todos/open`: every open to-do, whatever its day.
+
 ## [1.3.36] — 2026-10-22
 
 ### Added

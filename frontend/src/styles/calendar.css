@@ -458,6 +458,40 @@
   background: var(--ev-text);
 }
 
+/*
+ * To-do marker: a small triangle in the top-left corner of a day with open to-dos (due that day,
+ * or undated and listed today). It draws over the cell and never changes its size.
+ */
+.cal-cell[data-todos]::before,
+.yr-day[data-todos]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  border-top: 7px solid var(--text);
+  border-right: 7px solid transparent;
+  pointer-events: none;
+}
+
+.cal-cell[data-today][data-todos]::before {
+  border-top-color: var(--accent-contrast);
+}
+
+.yr-day[data-cat][data-todos]::before {
+  border-top-color: var(--ev-text);
+}
+
+/* On phones: a small open square (a check box) next to the event dots, in the text colour. */
+.m-todo {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+}
+
 /* "Strike through past days" preference: diagonal stripes over the whole day, in the colour chosen
    in Settings. Drawn above the events (pointer-events: none) so coloured events are marked too. */
 .cal-cell[data-past]::after {

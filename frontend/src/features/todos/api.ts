@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { api, unwrap } from '../../api/client';
 import type { Todo, TodoCreate, TodoUpdate } from '../../api/types';
+import { NO_TODO_DAYS, todoDays, type TodoDays } from './todoDays';
 
-/** Root of every to-do query: `['todos', 'range', from, to]` and `['todos', 'due']`. */
+/** Root of every to-do query: `['todos', 'range', from, to]`, `['todos', 'due']`, `['todos', 'open']`. */
 export const TODOS_KEY = ['todos'] as const;
 
 /** To-dos listed on the days `[from, to]` (open ones carry over to today, done ones stay). */
@@ -20,6 +22,20 @@ export function useDueTodos() {
     queryKey: [...TODOS_KEY, 'due'] as const,
     queryFn: async () => unwrap(await api.GET('/api/v1/todos/due')).todos,
   });
+}
+
+/** Every open to-do, whatever its day. */
+export function useOpenTodos() {
+  return useQuery({
+    queryKey: [...TODOS_KEY, 'open'] as const,
+    queryFn: async () => unwrap(await api.GET('/api/v1/todos/open')).todos,
+  });
+}
+
+/** Open to-dos per day to mark on the calendar (see {@link todoDays}). */
+export function useTodoDays(): TodoDays {
+  const { data } = useOpenTodos();
+  return useMemo(() => (data ? todoDays(data) : NO_TODO_DAYS), [data]);
 }
 
 const refresh = (qc: QueryClient) => qc.invalidateQueries({ queryKey: TODOS_KEY });

@@ -272,3 +272,36 @@ describe('mobile calendar', () => {
     await waitFor(() => expect(day('2026-10-31')).not.toBeNull());
   });
 });
+
+function makeTodo(id: string, shownOn: string, dueDate: string | null = null, done = false) {
+  return {
+    id,
+    title: `To-do ${id}`,
+    day: shownOn,
+    due_date: dueDate,
+    done,
+    completed_on: done ? shownOn : null,
+    shown_on: shownOn,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+}
+
+describe('mobile to-do markers', () => {
+  it('marks today (undated to-dos) and due dates in the week strip', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/todos/open': {
+        todos: [makeTodo('1', '2026-10-02'), makeTodo('2', '2026-10-02', '2026-09-30')],
+      },
+    });
+    renderApp();
+    await dayViewReady();
+    await waitFor(() =>
+      expect(within(day('2026-10-02') as HTMLElement).getByTestId('todo-mark')).toBeTruthy(),
+    );
+    expect(day('2026-10-02')).toHaveAccessibleName(/, 1 to-do$/);
+    expect(within(day('2026-09-30') as HTMLElement).getByTestId('todo-mark')).toBeTruthy();
+    expect(within(day('2026-10-01') as HTMLElement).queryByTestId('todo-mark')).toBeNull();
+  });
+});

@@ -9,6 +9,7 @@ import { useWeekNumbers } from '../../../lib/weekNumbers';
 import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../../holidays/api';
 import { HolidayCards } from '../../holidays/HolidayList';
 import { catProps } from '../../../styles/customColour';
+import { NO_TODO_DAYS, todoAria, type TodoDays } from '../../todos/todoDays';
 
 interface MonthViewProps {
   selected: string;
@@ -16,6 +17,8 @@ interface MonthViewProps {
   weekendDays: readonly number[];
   byDay: ReadonlyMap<string, Occurrence[]>;
   holidays?: ReadonlyMap<string, HolidayDay[]>;
+  /** Open to-dos per day: those days get the to-do marker. */
+  todos?: TodoDays;
   onSelect(date: string): void;
   onSelectEvent(eventId: string): void;
 }
@@ -29,6 +32,7 @@ export function MonthView({
   weekendDays,
   byDay,
   holidays = NO_HOLIDAYS,
+  todos = NO_TODO_DAYS,
   onSelect,
   onSelectEvent,
 }: MonthViewProps) {
@@ -66,6 +70,7 @@ export function MonthView({
                   today={day === today}
                   weekend={isWeekend(day, weekendDays)}
                   holidays={holidays.get(day)}
+                  todos={todos.get(day)}
                   onSelect={onSelect}
                 />
               ),
@@ -89,6 +94,7 @@ interface MonthCellProps {
   today: boolean;
   weekend: boolean;
   holidays: HolidayDay[] | undefined;
+  todos: number | undefined;
   onSelect(date: string): void;
 }
 
@@ -100,6 +106,7 @@ function MonthCell({
   today,
   weekend,
   holidays,
+  todos,
   onSelect,
 }: MonthCellProps) {
   const count = occurrences.length;
@@ -111,7 +118,7 @@ function MonthCell({
         data-date={day}
         aria-label={`${format(parseIso(day), 'EEEE d MMMM')}, ${count} ${count === 1 ? 'event' : 'events'}${
           holidays ? `, ${overlayAria(holidays, ', ')}` : ''
-        }`}
+        }${todoAria(todos)}`}
         aria-current={today ? 'date' : undefined}
         aria-pressed={selected}
         onClick={() => onSelect(day)}
@@ -127,6 +134,7 @@ function MonthCell({
       >
         <span aria-hidden="true">{Number(day.slice(8, 10))}</span>
         <span aria-hidden="true" className="flex h-1.5 items-center gap-0.5">
+          {todos ? <span data-testid="todo-mark" className="m-todo" /> : null}
           {holidays ? <span data-cat={holidays[0]?.colour} className="m-hol-dot" /> : null}
           {occurrences.slice(0, MAX_DOTS).map((o) => (
             <span key={occurrenceKey(o)} {...catProps(colourOf(o))} className="m-dot" />

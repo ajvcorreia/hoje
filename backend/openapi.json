@@ -3586,7 +3586,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.36"
+    "version": "1.3.37"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8328,6 +8328,68 @@
           }
         },
         "summary": "Open to-dos due today or overdue",
+        "tags": [
+          "todos"
+        ]
+      }
+    },
+    "/api/v1/todos/open": {
+      "get": {
+        "description": "All open to-dos whatever their day, so the calendar can mark today (undated ones) and\neach due date.",
+        "operationId": "todos_open",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Every open to-do",
         "tags": [
           "todos"
         ]

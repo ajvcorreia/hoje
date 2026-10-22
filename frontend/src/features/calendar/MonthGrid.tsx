@@ -37,6 +37,7 @@ import {
   overlayAria,
   type HolidayDay,
 } from '../holidays/api';
+import { NO_TODO_DAYS, todoAria, type TodoDays } from '../todos/todoDays';
 import {
   DEFAULT_FIT_FONTS,
   clearMeasureCache,
@@ -89,6 +90,8 @@ interface MonthGridProps {
   scrollRequest: ScrollRequest | null;
   /** Holidays of enabled calendars by date (empty when the Holidays chip is off). */
   holidays?: ReadonlyMap<string, HolidayDay[]>;
+  /** Open to-dos per day: those days get the to-do marker. */
+  todos?: TodoDays;
 }
 
 /** One month laid out for the current fonts and row height, with the geometry it needs. */
@@ -106,6 +109,8 @@ interface MonthColumnProps {
   fit: MonthFit;
   /** This month's holidays by date. */
   holidays: ReadonlyMap<string, HolidayDay[]>;
+  /** This month's open to-dos per date. */
+  todos: TodoDays;
   /** Preferred font size (px) of rotated labels: sets `--vl-size`, the label shrinks only to fit. */
   verticalSize: number;
   weekendDays: number[];
@@ -127,6 +132,7 @@ function MonthColumnImpl({
   month,
   fit,
   holidays,
+  todos,
   verticalSize,
   weekendDays,
   today,
@@ -210,10 +216,11 @@ function MonthColumnImpl({
     const iso = `${prefix}${pad(day)}`;
     const isToday = iso === today;
     const dayHolidays = holidays.get(iso);
+    const dayTodos = todos.get(iso);
     const lead = d.rotated.find((p) => p) ?? d.items[0];
     const label = `${formatDayHeading(iso)} ${year}${
       d.total > 0 ? `, ${d.total} ${d.total === 1 ? 'event' : 'events'}` : ''
-    }${dayHolidays ? `, ${overlayAria(dayHolidays)}` : ''}`;
+    }${dayHolidays ? `, ${overlayAria(dayHolidays)}` : ''}${todoAria(dayTodos)}`;
     // Day number | rotated columns | overlay | one track per event | chip. Columns are numbered
     // from 1 (the day number); every item names its own column, so a spacer column left by a
     // free rotated lane never shifts the others.
@@ -240,6 +247,7 @@ function MonthColumnImpl({
         data-weekend={weekend}
         data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
         data-today={isToday || undefined}
+        data-todos={dayTodos || undefined}
         data-past={(strikePast && iso < today) || undefined}
         {...catProps(lead?.input.colour)}
         tabIndex={day === tabDay ? 0 : -1}
@@ -398,6 +406,7 @@ export function MonthGrid({
   onOpenDay,
   scrollRequest,
   holidays = NO_HOLIDAYS,
+  todos = NO_TODO_DAYS,
 }: MonthGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -446,6 +455,14 @@ export function MonthGrid({
     }
     return buckets;
   }, [holidays, year]);
+  const todosByMonth = useMemo(() => {
+    const buckets = Array.from({ length: 12 }, () => new Map<string, number>());
+    for (const [date, count] of todos) {
+      if (!date.startsWith(`${year}-`)) continue;
+      buckets[Number(date.slice(5, 7)) - 1]?.set(date, count);
+    }
+    return buckets;
+  }, [todos, year]);
   const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
 
   useEffect(() => {
@@ -684,6 +701,7 @@ export function MonthGrid({
             month={month}
             fit={fit}
             holidays={holidaysByMonth[month] ?? NO_HOLIDAYS}
+            todos={todosByMonth[month] ?? NO_TODO_DAYS}
             verticalSize={verticalSize}
             weekendDays={weekendDays}
             today={today}

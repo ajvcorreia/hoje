@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { btnSecondary } from '../../../components/ui/classes';
 import { isWeekend, parseIso } from '../../../lib/dates';
+import { NO_TODO_DAYS, todoAria, type TodoDays } from '../../todos/todoDays';
 import { weekDays } from './mobileLib';
 
 interface WeekStripProps {
@@ -10,6 +11,8 @@ interface WeekStripProps {
   weekendDays: readonly number[];
   /** Visible occurrences per ISO day. */
   byDay: ReadonlyMap<string, Occurrence[]>;
+  /** Open to-dos per day: those days get the to-do marker. */
+  todos?: TodoDays;
   onSelect(date: string): void;
   /** Moves the selection by whole weeks. */
   onShiftWeek(direction: -1 | 1): void;
@@ -23,6 +26,7 @@ export function WeekStrip({
   today,
   weekendDays,
   byDay,
+  todos = NO_TODO_DAYS,
   onSelect,
   onShiftWeek,
 }: WeekStripProps) {
@@ -43,11 +47,12 @@ export function WeekStrip({
           const count = byDay.get(day)?.length ?? 0;
           const isSelected = day === selected;
           const isToday = day === today;
+          const dayTodos = todos.get(day);
           return (
             <li key={day} className="min-w-0">
               <button
                 type="button"
-                aria-label={`${format(date, 'EEEE d MMMM')}, ${plural(count)}`}
+                aria-label={`${format(date, 'EEEE d MMMM')}, ${plural(count)}${todoAria(dayTodos)}`}
                 aria-current={isToday ? 'date' : undefined}
                 aria-pressed={isSelected}
                 data-date={day}
@@ -66,7 +71,8 @@ export function WeekStrip({
                 <span aria-hidden="true" className="text-base font-semibold tabular-nums">
                   {format(date, 'd')}
                 </span>
-                <span aria-hidden="true" className="flex h-1.5 items-center">
+                <span aria-hidden="true" className="flex h-1.5 items-center gap-0.5">
+                  {dayTodos ? <span data-testid="todo-mark" className="m-todo" /> : null}
                   {count > 0 ? (
                     <span
                       data-testid="week-dot"

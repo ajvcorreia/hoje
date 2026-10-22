@@ -86,6 +86,21 @@ async def test_due_lists_open_todos_due_today_or_overdue_only(alice):
     assert [t["title"] for t in resp.json()["todos"]] == ["Overdue", "Today"]
 
 
+async def test_open_lists_every_open_todo_whatever_its_day(alice):
+    await alice.post("/todos", {"title": "Old", "day": "2026-01-03"})
+    await alice.post("/todos", {"title": "Later", "day": "2027-05-01", "due_date": "2027-06-01"})
+    finished = (await alice.post("/todos", {"title": "Done"})).json()
+    await alice.patch(f"/todos/{finished['id']}", {"done": True})
+    resp = await alice.get("/todos/open")
+    assert resp.status_code == 200
+    assert sorted(t["title"] for t in resp.json()["todos"]) == ["Later", "Old"]
+
+
+async def test_open_is_per_user(alice, bob):
+    await alice.post("/todos", {"title": "Mine"})
+    assert (await bob.get("/todos/open")).json()["todos"] == []
+
+
 async def test_a_due_date_does_not_move_the_todo(alice):
     todo = (await alice.post("/todos", {"title": "Plan", "due_date": "2026-10-25"})).json()
     assert todo["day"] == "2026-10-08" and todo["shown_on"] == "2026-10-08"
