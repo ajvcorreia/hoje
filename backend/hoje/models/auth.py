@@ -12,6 +12,7 @@ from sqlalchemy import (
     LargeBinary,
     SmallInteger,
     String,
+    Text,
     Time,
     text,
 )
@@ -50,6 +51,8 @@ class User(Base):
     show_category_icons: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     icons_in_calendar: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     icons_on_vertical: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
+    # The colour theme, on every device; NULL until the user picks one (devices keep their own).
+    theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Wall-clock send time in ``timezone``.
     daily_summary_time: Mapped[time] = mapped_column(
@@ -72,6 +75,9 @@ class User(Base):
         CheckConstraint("max_events_per_day between 1 and 6", name="max_events_per_day"),
         CheckConstraint("vertical_text_size between 8 and 32", name="vertical_text_size"),
         CheckConstraint("past_stripe_colour ~ '^#[0-9a-fA-F]{6}$'", name="past_stripe_colour"),
+        CheckConstraint(
+            "theme in ('system', 'light', 'light-contrast', 'dim', 'dark')", name="theme"
+        ),
     )
 
 

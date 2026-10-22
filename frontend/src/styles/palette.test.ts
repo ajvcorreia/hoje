@@ -130,3 +130,48 @@ describe('light-contrast tokens', () => {
     expect(token('surface')).toBe('#ffffff');
   });
 });
+
+describe('dim tokens', () => {
+  const rule = block(tokensCss, ":root[data-theme='dim']");
+  const token = (name: string) => {
+    const m = new RegExp(`--${name}: (#[0-9a-f]{6});`, 'i').exec(rule);
+    if (!m?.[1]) throw new Error(`Missing token ${name}`);
+    return m[1];
+  };
+
+  it('is a dark colour scheme that the OS dark media query leaves alone', () => {
+    expect(rule).toContain('color-scheme: dark;');
+    expect(tokensCss).toContain(":not([data-theme='dim'])");
+    expect(css).toContain(":root[data-theme='dim']");
+  });
+
+  it('is lighter than the dark theme', () => {
+    const dark = block(tokensCss, ":root[data-theme='dark']");
+    const darkSurface = /--surface: (#[0-9a-f]{6});/i.exec(dark)?.[1] ?? '#000000';
+    expect(contrastRatio(token('surface'), '#000000')).toBeGreaterThan(
+      contrastRatio(darkSurface, '#000000'),
+    );
+  });
+
+  it.each([
+    ['text', 'surface'],
+    ['text', 'surface-muted'],
+    ['text', 'today'],
+    ['text', 'weekend'],
+    ['text', 'bg'],
+    ['text-muted', 'surface'],
+    ['text-muted', 'surface-muted'],
+    ['text-muted', 'weekend'],
+    ['text-muted', 'today'],
+    ['accent', 'surface'],
+    ['danger', 'surface'],
+    ['danger', 'surface-muted'],
+    ['accent-contrast', 'accent'],
+  ])('%s on %s reaches AA (4.5:1)', (fg, bg) => {
+    expect(contrastRatio(token(fg), token(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the month outline a 3:1 boundary against the surface', () => {
+    expect(contrastRatio(token('month-outline'), token('surface'))).toBeGreaterThanOrEqual(3);
+  });
+});

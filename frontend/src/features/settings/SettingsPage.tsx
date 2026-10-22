@@ -33,6 +33,7 @@ const LABELS: Record<Theme, string> = {
   system: 'System',
   light: 'Light',
   'light-contrast': 'Light (high contrast)',
+  dim: 'Dim (greys and blues)',
   dark: 'Dark',
 };
 const POSITION_LABELS: Record<(typeof PILLS_POSITIONS)[number], string> = {

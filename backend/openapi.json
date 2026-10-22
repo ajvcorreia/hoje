@@ -2798,6 +2798,24 @@
             "title": "Show Category Icons",
             "type": "boolean"
           },
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "system",
+                  "light",
+                  "light-contrast",
+                  "dim",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -2919,6 +2937,24 @@
               }
             ],
             "title": "Show Category Icons"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "system",
+                  "light",
+                  "light-contrast",
+                  "dim",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
           },
           "timezone": {
             "anyOf": [
@@ -3550,7 +3586,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.35"
+    "version": "1.3.36"
   },
   "openapi": "3.1.0",
   "paths": {

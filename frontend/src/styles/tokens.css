@@ -1,4 +1,4 @@
-/* Semantic design tokens. Light by default; dark via data-theme or prefers-color-scheme. */
+/* Semantic design tokens. Light by default; dark via data-theme or prefers-color-scheme; dim on request. */
 :root {
   color-scheme: light;
   --bg: #f6f7f9;
@@ -17,7 +17,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='light-contrast']) {
+  :root:not([data-theme='light']):not([data-theme='light-contrast']):not([data-theme='dim']) {
     color-scheme: dark;
     --bg: #111418;
     --surface: #181c21;
@@ -50,6 +50,27 @@
   --today: #1c2a44;
   --weekend: #1b1f24;
   --danger: #ff7b72;
+}
+
+/*
+ * Dim: a lighter dark theme in slate greys with blue accents. Text pairs reach WCAG AA (4.5:1);
+ * categories use the dark palette (palette.css), whose fills read on these surfaces too.
+ */
+:root[data-theme='dim'] {
+  color-scheme: dark;
+  --bg: #263041;
+  --surface: #2e394c;
+  --surface-muted: #36435a;
+  --border: #475670;
+  --border-strong: #5d6e8a;
+  --month-outline: #8796b0;
+  --text: #e8edf5;
+  --text-muted: #aab6c8;
+  --accent: #82b1ff;
+  --accent-contrast: #0f1a2e;
+  --today: #314468;
+  --weekend: #2a3446;
+  --danger: #ff9890;
 }
 
 /*

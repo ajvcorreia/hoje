@@ -15,6 +15,9 @@ from hoje.schemas.common import (
     WeekendDays,
 )
 
+# The colour themes; the frontend keeps the same list in src/lib/theme.ts.
+Theme = Literal["system", "light", "light-contrast", "dim", "dark"]
+
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
 
@@ -32,6 +35,8 @@ class Me(BaseModel):
     show_category_icons: bool
     icons_in_calendar: bool
     icons_on_vertical: bool
+    # None until chosen: each device keeps its own theme until one is saved to the account.
+    theme: Theme | None = None
     daily_summary_enabled: bool
     daily_summary_time: str  # "HH:MM" in `timezone`
     daily_summary_last_sent_at: datetime | None = None
@@ -54,6 +59,7 @@ class MeUpdate(BaseModel):
     show_category_icons: bool | None = None
     icons_in_calendar: bool | None = None
     icons_on_vertical: bool | None = None
+    theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None
 

@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.36] — 2026-10-22
+
+### Added
+
+- A Dim theme: a lighter dark mode in slate greys with blue accents (Settings › Appearance ›
+  Theme). Its text reaches WCAG AA (4.5:1); categories use the dark palette.
+- The theme is stored on the account (`users.theme`, migration 0020), so it follows the user to
+  every device. Until one is saved, the first device that loads takes the account its own choice
+  (unless it follows the system). Each device still keeps a local copy for the first paint.
+
+### Upgrade notes
+
+- Database migration 0020 adds the nullable `users.theme` column. Take a `pg_dump` first.
+
 ## [1.3.35] — 2026-10-22
 
 ### Added

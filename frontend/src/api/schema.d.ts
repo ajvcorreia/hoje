@@ -1909,6 +1909,8 @@ export interface components {
             past_stripe_colour: string;
             /** Show Category Icons */
             show_category_icons: boolean;
+            /** Theme */
+            theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
             timezone: string;
             /** Totp Enabled */
@@ -1934,6 +1936,8 @@ export interface components {
             past_stripe_colour?: string | null;
             /** Show Category Icons */
             show_category_icons?: boolean | null;
+            /** Theme */
+            theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
             timezone?: string | null;
             /** Vertical Text Size */

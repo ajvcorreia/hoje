@@ -11,7 +11,8 @@
     --ev-text: var(--cc-dark-text);
   }
 }
-:root[data-theme='dark'] [data-cat='custom'] {
+:root[data-theme='dark'] [data-cat='custom'],
+:root[data-theme='dim'] [data-cat='custom'] {
   --ev-fill: var(--cc-dark-fill);
   --ev-text: var(--cc-dark-text);
 }

@@ -39,8 +39,9 @@ describe('theme persistence', () => {
     expect(() => storeTheme('light')).not.toThrow();
   });
 
-  it('lists the four themes including high-contrast light', () => {
-    expect([...THEMES]).toEqual(['system', 'light', 'light-contrast', 'dark']);
+  it('lists the five themes including high-contrast light and dim', () => {
+    expect([...THEMES]).toEqual(['system', 'light', 'light-contrast', 'dim', 'dark']);
+    expect(isTheme('dim')).toBe(true);
     expect(isTheme('light-contrast')).toBe(true);
     expect(isTheme('contrast')).toBe(false);
   });

@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { waitFor } from '@testing-library/react';
 import { ME, authState, mockApi, problem, renderApp } from '../test/utils';
 
 const authed = {
@@ -69,5 +70,48 @@ describe('AppShell', () => {
     await userEvent.selectOptions(await screen.findByLabelText('Theme'), 'Light (high contrast)');
     expect(document.documentElement).toHaveAttribute('data-theme', 'light-contrast');
     expect(window.localStorage.getItem('hoje.theme')).toBe('light-contrast');
+  });
+});
+
+describe('theme on the account', () => {
+  const patchMe = (call: { body: unknown }) => ({ ...ME, ...(call.body as object) });
+
+  it('saves the chosen theme to the account', async () => {
+    const api = mockApi({ ...authed, 'PATCH /api/v1/me': patchMe });
+    renderApp('/settings');
+    await userEvent.selectOptions(await screen.findByLabelText('Theme'), 'Dim (greys and blues)');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dim');
+    expect(window.localStorage.getItem('hoje.theme')).toBe('dim');
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ theme: 'dim' });
+  });
+
+  it("applies the account's theme on a device that had another one", async () => {
+    window.localStorage.setItem('hoje.theme', 'light');
+    const user = { ...ME, theme: 'dim' };
+    const api = mockApi({
+      ...authed,
+      'GET /api/v1/auth/state': authState({ user }),
+      'GET /api/v1/me': user,
+    });
+    renderApp();
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dim'));
+    expect(window.localStorage.getItem('hoje.theme')).toBe('dim');
+    expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(0);
+  });
+
+  it("gives an account without a theme this device's choice, once", async () => {
+    window.localStorage.setItem('hoje.theme', 'dark');
+    const api = mockApi({ ...authed, 'PATCH /api/v1/me': patchMe });
+    renderApp();
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ theme: 'dark' });
+  });
+
+  it('leaves an account without a theme alone when this device follows the system', async () => {
+    const api = mockApi(authed);
+    renderApp();
+    await screen.findByRole('banner');
+    expect(api.callsTo('PATCH', '/api/v1/me')).toHaveLength(0);
   });
 });

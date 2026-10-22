@@ -87,7 +87,8 @@
   }
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+:root[data-theme='dim'] {
   --cat-slate-fill: #334155;
   --cat-slate-text: #e2e8f0;
   --cat-red-fill: #7f1d1d;

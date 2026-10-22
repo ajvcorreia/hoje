@@ -7,6 +7,7 @@ import { useRealtime } from '../features/realtime/useRealtime';
 import { CalendarIcon, SettingsIcon } from './icons';
 import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
+import { useThemeSync } from './useTheme';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calendar', Icon: CalendarIcon, end: true },
@@ -79,6 +80,7 @@ export function AppShell() {
   // The calendar fills the viewport on desktop (no page scroll, no width cap).
   const isCalendar = useLocation().pathname === '/';
   useRealtime();
+  useThemeSync();
   return (
     <ToastProvider>
       <Shell isCalendar={isCalendar} />

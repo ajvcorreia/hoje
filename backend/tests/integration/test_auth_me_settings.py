@@ -73,6 +73,19 @@ async def test_patch_me_updates_vertical_text_size_persistently(api):
     assert (await api.client.get("/api/v1/me")).json()["vertical_text_size"] == 24
 
 
+async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
+    await api.register_ok()
+    assert (await api.client.get("/api/v1/me")).json()["theme"] is None
+
+    resp = await patch_me(api, {"theme": "dim"})
+
+    assert resp.status_code == 200
+    assert resp.json()["theme"] == "dim"
+    assert resp.json()["vertical_text_size"] == 12
+    assert (await api.client.get("/api/v1/me")).json()["theme"] == "dim"
+    assert (await patch_me(api, {"theme": "light-contrast"})).json()["theme"] == "light-contrast"
+
+
 @pytest.mark.parametrize(
     "body",
     [
@@ -83,6 +96,7 @@ async def test_patch_me_updates_vertical_text_size_persistently(api):
         {"max_events_per_day": 7},
         {"vertical_text_size": 7},
         {"vertical_text_size": 33},
+        {"theme": "neon"},
     ],
     ids=[
         "unknown-timezone",
@@ -92,6 +106,7 @@ async def test_patch_me_updates_vertical_text_size_persistently(api):
         "max-events-seven",
         "vertical-size-seven",
         "vertical-size-33",
+        "unknown-theme",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):
