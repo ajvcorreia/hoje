@@ -4,6 +4,7 @@ import { useAuthState } from '../../app/useAuthState';
 import { btnSecondary } from '../../components/ui/classes';
 import { describeError } from '../../lib/errors';
 import { usePillsPosition } from '../../lib/pillsPosition';
+import { usePillsWidth } from '../../lib/pillsWidth';
 import { useToday } from '../../lib/useToday';
 import { useCategories } from '../categories/api';
 import { CategoryChips } from '../categories/CategoryChips';
@@ -34,6 +35,7 @@ type EditorState =
 export function DesktopCalendar() {
   const today = useToday();
   const [pillsPosition] = usePillsPosition();
+  const [pillsWidth] = usePillsWidth();
   const [view, setView] = useState<View>('months');
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [popover, setPopover] = useState<{ date: string; anchor: HTMLElement } | null>(null);
@@ -82,7 +84,8 @@ export function DesktopCalendar() {
   const sidePills = (
     <CategoryChips
       column
-      className="max-h-full w-48 shrink-0 self-start"
+      className="max-h-full shrink-0 self-start"
+      style={{ width: `${pillsWidth}rem` }}
       occurrences={occurrences.data}
     />
   );

@@ -1,8 +1,9 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearMeasureCache } from './fitWidth';
 import { storePillsPosition } from '../../lib/pillsPosition';
+import { storePillsWidth } from '../../lib/pillsWidth';
 import { storeStrikePast } from '../../lib/strikePast';
 import { storeWeekNumbers } from '../../lib/weekNumbers';
 import { ME, authState, mockApi, renderApp } from '../../test/utils';
@@ -1056,5 +1057,22 @@ describe('category pills position', () => {
     const { chips, grid } = await chipsAndGrid();
     expect(chips.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     expect(chips).toHaveClass('flex-col');
+  });
+});
+
+describe('category pills column width', () => {
+  afterEach(() => {
+    storePillsPosition('top');
+    storePillsWidth(10);
+  });
+
+  it('is 10 rem by default and follows the setting', async () => {
+    storePillsPosition('left');
+    mockApi(baseRoutes());
+    renderApp();
+    const chips = await screen.findByRole('group', { hidden: true, name: 'Show categories' });
+    expect(chips.style.width).toBe('10rem');
+    act(() => storePillsWidth(15));
+    expect(chips.style.width).toBe('15rem');
   });
 });

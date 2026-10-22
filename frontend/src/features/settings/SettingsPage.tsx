@@ -10,6 +10,7 @@ import {
   useShowCategoryIcons,
 } from '../../lib/showCategoryIcons';
 import { PILLS_POSITIONS, isPillsPosition, usePillsPosition } from '../../lib/pillsPosition';
+import { MAX_PILLS_WIDTH, MIN_PILLS_WIDTH, usePillsWidth } from '../../lib/pillsWidth';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -56,6 +57,7 @@ export function SettingsPage() {
   const [theme, setTheme] = useTheme();
   const [textSize, setTextSize] = useTextSize();
   const [pillsPosition, setPillsPosition] = usePillsPosition();
+  const [pillsWidth, setPillsWidth] = usePillsWidth();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
@@ -128,6 +130,26 @@ export function SettingsPage() {
                 </option>
               ))}
             </select>
+            {pillsPosition === 'left' || pillsPosition === 'right' ? (
+              <div className="mt-3 flex min-h-9 items-center gap-3 text-sm">
+                <label htmlFor="pills-width" className="font-medium">
+                  Column width
+                </label>
+                <input
+                  id="pills-width"
+                  type="range"
+                  min={MIN_PILLS_WIDTH}
+                  max={MAX_PILLS_WIDTH}
+                  step={1}
+                  value={pillsWidth}
+                  onChange={(e) => setPillsWidth(Number(e.target.value))}
+                  className="min-w-0 flex-1"
+                />
+                <output htmlFor="pills-width" className="w-12 tabular-nums text-text-muted">
+                  {pillsWidth} rem
+                </output>
+              </div>
+            ) : null}
             <p className="mt-1 text-xs text-text-muted">
               Where the category filter sits on the calendar, on this device. The phone layout
               always has it on top.

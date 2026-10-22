@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.35] — 2026-10-22
+
+### Added
+
+- Settings › Appearance › Category pills: a Column width slider (7 to 20 rem, per device) when the
+  pills are on the left or right. The default is now 10 rem (it was 12), and long category names are
+  cut off with an ellipsis in the column instead of widening it.
+
 ## [1.3.34] — 2026-10-22
 
 ### Added

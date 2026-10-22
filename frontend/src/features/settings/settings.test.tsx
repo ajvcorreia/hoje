@@ -496,3 +496,26 @@ describe('category icon scope settings', () => {
     await waitFor(() => expect(vertical).toBeDisabled());
   });
 });
+
+describe('category pills setting', () => {
+  afterEach(() => window.localStorage.clear());
+
+  it('sets the position, and the column width only for the side positions', async () => {
+    mockApi({ ...base, 'GET /api/v1/me': ME });
+    renderApp('/settings');
+    const position = await screen.findByLabelText('Category pills');
+    expect(position).toHaveValue('top');
+    expect(screen.queryByLabelText('Column width')).toBeNull();
+
+    await userEvent.selectOptions(position, 'left');
+    expect(window.localStorage.getItem('hoje.pillsPosition')).toBe('left');
+    const width = await screen.findByLabelText('Column width');
+    expect(width).toHaveValue('10');
+
+    fireEvent.change(width, { target: { value: '14' } });
+    expect(window.localStorage.getItem('hoje.pillsWidth')).toBe('14');
+
+    await userEvent.selectOptions(position, 'bottom');
+    expect(screen.queryByLabelText('Column width')).toBeNull();
+  });
+});

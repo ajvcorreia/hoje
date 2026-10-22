@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import type { Occurrence } from '../../api/types';
 import { useShowHolidays } from '../../lib/showHolidays';
 import { calendarColour, useHolidayCalendars } from '../holidays/api';
@@ -24,6 +24,7 @@ export function CategoryChips({
   className = '',
   scroll = false,
   column = false,
+  style,
   occurrences,
 }: {
   className?: string;
@@ -31,6 +32,7 @@ export function CategoryChips({
   scroll?: boolean;
   /** One pill per line, for a side panel (desktop only). */
   column?: boolean;
+  style?: CSSProperties;
   /** All occurrences loaded for the shown range, NOT filtered by hidden categories. */
   occurrences?: readonly Occurrence[];
 }) {
@@ -49,6 +51,7 @@ export function CategoryChips({
     <div
       role="group"
       aria-label="Show categories"
+      style={style}
       className={`flex gap-1 ${
         column
           ? 'flex-col items-stretch overflow-y-auto'
@@ -76,7 +79,9 @@ export function CategoryChips({
               icon={iconOf(category.id)}
               className={shown ? '' : 'opacity-40'}
             />
-            <span className={shown ? '' : 'line-through'}>{category.name}</span>
+            <span className={`${column ? 'min-w-0 truncate' : ''} ${shown ? '' : 'line-through'}`}>
+              {category.name}
+            </span>
             <span
               aria-hidden="true"
               data-testid="category-count"
