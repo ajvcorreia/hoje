@@ -53,7 +53,7 @@ function readable(text: Rgb, fill: string, limit: Rgb, min: number): string {
  * better, so red gets white text (4.0:1 against black's 5.3:1). The cost is that white can be as
  * low as 3.9:1 on the darkest colours it is chosen for; black is never below 4.5:1.
  */
-const ink = (fill: string): string =>
+export const ink = (fill: string): string =>
   contrastRatio('#ffffff', fill) * 1.4 >= contrastRatio('#000000', fill) ? '#ffffff' : '#000000';
 
 /**

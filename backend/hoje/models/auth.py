@@ -53,6 +53,10 @@ class User(Base):
     icons_on_vertical: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     # How calendar days with open to-dos are marked: ring, bar, badge or triangle.
     todo_marker: Mapped[str] = mapped_column(Text, default="ring", server_default=text("'ring'"))
+    # Its colour: 'auto' (the theme's amber) or a #rrggbb picked by the user.
+    todo_marker_colour: Mapped[str] = mapped_column(
+        Text, default="auto", server_default=text("'auto'")
+    )
     # The colour theme, on every device; NULL until the user picks one (devices keep their own).
     theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
@@ -81,6 +85,10 @@ class User(Base):
             "theme in ('system', 'light', 'light-contrast', 'dim', 'dark')", name="theme"
         ),
         CheckConstraint("todo_marker in ('ring', 'bar', 'badge', 'triangle')", name="todo_marker"),
+        CheckConstraint(
+            "todo_marker_colour = 'auto' or todo_marker_colour ~ '^#[0-9a-fA-F]{6}$'",
+            name="todo_marker_colour",
+        ),
     )
 
 

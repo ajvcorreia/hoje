@@ -476,6 +476,34 @@ describe('to-do marker setting', () => {
     );
     expect(select).toHaveValue('badge');
   });
+
+  it('saves a picked marker colour and goes back to the theme colour', async () => {
+    let me = { ...ME, todo_marker: 'ring', todo_marker_colour: 'auto' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const input = await screen.findByLabelText('Marker colour');
+    expect(input).toHaveValue('#d97706');
+    expect(screen.getByText('Theme colour (amber)')).toBeVisible();
+    fireEvent.input(input, { target: { value: '#2563eb' } });
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({
+        todo_marker_colour: '#2563eb',
+      }),
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Use the theme colour' }));
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[1]?.body).toEqual({ todo_marker_colour: 'auto' }),
+    );
+    expect(await screen.findByText('Theme colour (amber)')).toBeVisible();
+  });
 });
 
 describe('category icons', () => {

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.41] — 2026-10-23
+
+### Added
+
+- The colour of the to-do marker (ring, bar, badge or triangle) can be picked in Settings, and is saved on the account (`users.todo_marker_colour`, migration 0022). "Use the theme colour" goes back to the theme's amber; the badge count switches between white and black text to stay readable.
+
 ## [1.3.40] — 2026-10-23
 
 ### Security

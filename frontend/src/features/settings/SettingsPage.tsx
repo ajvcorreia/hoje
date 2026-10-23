@@ -12,7 +12,16 @@ import {
 import { PILLS_POSITIONS, isPillsPosition, usePillsPosition } from '../../lib/pillsPosition';
 import { MAX_PILLS_WIDTH, MIN_PILLS_WIDTH, usePillsWidth } from '../../lib/pillsWidth';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
-import { TODO_MARKERS, isTodoMarker, useTodoMarker, type TodoMarker } from '../../lib/todoMarker';
+import {
+  AUTO_TODO_MARKER_COLOUR,
+  DEFAULT_TODO_MARKER_HEX,
+  TODO_MARKERS,
+  isTodoMarker,
+  useTodoMarker,
+  useTodoMarkerColour,
+  type TodoMarker,
+} from '../../lib/todoMarker';
+import { isHex } from '../../styles/customColour';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { useTheme } from '../../app/useTheme';
@@ -70,6 +79,7 @@ export function SettingsPage() {
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
   const [todoMarker, setTodoMarker] = useTodoMarker();
+  const [todoColour, setTodoColour] = useTodoMarkerColour();
   const [showIcons, setShowIcons] = useShowCategoryIcons();
   const [iconsInCalendar, setIconsInCalendar] = useIconsInCalendar();
   const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
@@ -223,6 +233,29 @@ export function SettingsPage() {
               How the Months and Year views mark days with open to-dos (due that day, or without a
               due date on today). Saved to your account.
             </p>
+            <div className="mt-2 flex min-h-9 items-center gap-2 text-sm">
+              <label htmlFor="todo-marker-colour" className="font-medium">
+                Marker colour
+              </label>
+              <input
+                id="todo-marker-colour"
+                type="color"
+                value={isHex(todoColour) ? todoColour : DEFAULT_TODO_MARKER_HEX}
+                onChange={(e) => setTodoColour(e.target.value.toLowerCase())}
+                className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5"
+              />
+              {isHex(todoColour) ? (
+                <button
+                  type="button"
+                  className="text-xs text-text-muted underline"
+                  onClick={() => setTodoColour(AUTO_TODO_MARKER_COLOUR)}
+                >
+                  Use the theme colour
+                </button>
+              ) : (
+                <span className="text-xs text-text-muted">Theme colour (amber)</span>
+              )}
+            </div>
           </div>
           <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
             <input

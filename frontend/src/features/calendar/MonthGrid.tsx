@@ -26,7 +26,7 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { usePastStripeColour } from '../../lib/pastStripeColour';
-import { useTodoMarker } from '../../lib/todoMarker';
+import { todoMarkerStyle, useTodoMarker, useTodoMarkerColour } from '../../lib/todoMarker';
 import { useCategoryIcon } from '../categories/icons';
 import { useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -415,6 +415,7 @@ export function MonthGrid({
   const [strikePast] = useStrikePast();
   const [pastStripe] = usePastStripeColour();
   const [todoMarker] = useTodoMarker();
+  const [todoColour] = useTodoMarkerColour();
   const iconOf = useCategoryIcon('calendar');
   const verticalIconOf = useCategoryIcon('vertical');
   const [maxEvents] = useMaxEvents();
@@ -653,6 +654,7 @@ export function MonthGrid({
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
     '--past-stripe': pastStripe,
+    ...todoMarkerStyle(todoColour),
     gridTemplateColumns: `var(--gutter-w) ${fits.map((f) => `minmax(${columnMin(f)}, 1fr)`).join(' ')}`,
     width: `max(100%, calc(var(--gutter-w) + ${fits.map(columnMin).join(' + ')}))`,
   } as CSSProperties;

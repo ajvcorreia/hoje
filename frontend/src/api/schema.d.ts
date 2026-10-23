@@ -1940,6 +1940,11 @@ export interface components {
              * @enum {string}
              */
             todo_marker: "ring" | "bar" | "badge" | "triangle";
+            /**
+             * Todo Marker Colour
+             * @default auto
+             */
+            todo_marker_colour: string;
             /** Totp Enabled */
             totp_enabled: boolean;
             /** Vertical Text Size */
@@ -1969,6 +1974,8 @@ export interface components {
             timezone?: string | null;
             /** Todo Marker */
             todo_marker?: ("ring" | "bar" | "badge" | "triangle") | null;
+            /** Todo Marker Colour */
+            todo_marker_colour?: "auto" | string | null;
             /** Vertical Text Size */
             vertical_text_size?: number | null;
             /** Weekend Days */

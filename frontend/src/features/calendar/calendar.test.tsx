@@ -1148,6 +1148,21 @@ describe('to-do markers', () => {
     );
   });
 
+  it('colours the markers with the colour picked on the account', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/auth/state': authState({
+        user: { ...ME, last_category_id: WORK, todo_marker_colour: '#2563eb' },
+      }),
+      'GET /api/v1/todos/open': { todos },
+    });
+    renderApp();
+    await gridReady();
+    const grid = screen.getByRole('group', { hidden: true, name: 'Calendar 2026' });
+    expect(grid.style.getPropertyValue('--todo')).toBe('#2563eb');
+    expect(grid.style.getPropertyValue('--todo-text')).toBe('#ffffff');
+  });
+
   it('shows no marker without open to-dos', async () => {
     mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos: [] } });
     renderApp();
