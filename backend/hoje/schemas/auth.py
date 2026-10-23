@@ -17,6 +17,8 @@ from hoje.schemas.common import (
 
 # The colour themes; the frontend keeps the same list in src/lib/theme.ts.
 Theme = Literal["system", "light", "light-contrast", "dim", "dark"]
+# How calendar days with open to-dos are marked; the frontend list is in src/lib/todoMarker.ts.
+TodoMarker = Literal["ring", "bar", "badge", "triangle"]
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -35,6 +37,7 @@ class Me(BaseModel):
     show_category_icons: bool
     icons_in_calendar: bool
     icons_on_vertical: bool
+    todo_marker: TodoMarker = "ring"
     # None until chosen: each device keeps its own theme until one is saved to the account.
     theme: Theme | None = None
     daily_summary_enabled: bool
@@ -59,6 +62,7 @@ class MeUpdate(BaseModel):
     show_category_icons: bool | None = None
     icons_in_calendar: bool | None = None
     icons_on_vertical: bool | None = None
+    todo_marker: TodoMarker | None = None
     theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None

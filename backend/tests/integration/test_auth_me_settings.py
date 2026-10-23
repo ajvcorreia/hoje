@@ -73,6 +73,15 @@ async def test_patch_me_updates_vertical_text_size_persistently(api):
     assert (await api.client.get("/api/v1/me")).json()["vertical_text_size"] == 24
 
 
+async def test_todo_marker_defaults_to_ring_and_follows_the_account(api):
+    await api.register_ok()
+    assert (await api.client.get("/api/v1/me")).json()["todo_marker"] == "ring"
+    for marker in ("bar", "badge", "triangle", "ring"):
+        resp = await patch_me(api, {"todo_marker": marker})
+        assert resp.status_code == 200, resp.text
+        assert (await api.client.get("/api/v1/me")).json()["todo_marker"] == marker
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None
@@ -97,6 +106,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"vertical_text_size": 7},
         {"vertical_text_size": 33},
         {"theme": "neon"},
+        {"todo_marker": "star"},
     ],
     ids=[
         "unknown-timezone",
@@ -107,6 +117,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "vertical-size-seven",
         "vertical-size-33",
         "unknown-theme",
+        "unknown-todo-marker",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):

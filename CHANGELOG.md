@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.39] — 2026-10-23
+
+### Added
+
+- A "To-do marker" setting (Settings › Appearance): a ring around the day number (the
+  default), a coloured bar on the left, a badge with the count, or a corner triangle. It is
+  saved on the account (`users.todo_marker`, migration 0021), so it follows the user.
+
+### Changed
+
+- To-do markers in the Months and Year views are amber and larger, so they stand out from the
+  today highlight and event colours in every theme.
+
 ## [1.3.38] — 2026-10-22
 
 ### Fixed

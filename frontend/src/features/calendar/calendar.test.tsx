@@ -1122,6 +1122,32 @@ describe('to-do markers', () => {
     expect(within(june).getByRole('button', { name: /15 June 2026, 1 to-do$/ })).toBeVisible();
   });
 
+  it('uses the marker style saved on the account, ring by default', async () => {
+    mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos } });
+    renderApp();
+    await gridReady();
+    expect(screen.getByRole('group', { hidden: true, name: 'Calendar 2026' })).toHaveAttribute(
+      'data-todo-marker',
+      'ring',
+    );
+  });
+
+  it('follows a marker style chosen on the account', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/auth/state': authState({
+        user: { ...ME, last_category_id: WORK, todo_marker: 'badge' },
+      }),
+      'GET /api/v1/todos/open': { todos },
+    });
+    renderApp();
+    await gridReady();
+    expect(screen.getByRole('group', { hidden: true, name: 'Calendar 2026' })).toHaveAttribute(
+      'data-todo-marker',
+      'badge',
+    );
+  });
+
   it('shows no marker without open to-dos', async () => {
     mockApi({ ...baseRoutes(), 'GET /api/v1/todos/open': { todos: [] } });
     renderApp();

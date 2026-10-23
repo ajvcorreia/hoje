@@ -12,6 +12,7 @@ import {
 import { PILLS_POSITIONS, isPillsPosition, usePillsPosition } from '../../lib/pillsPosition';
 import { MAX_PILLS_WIDTH, MIN_PILLS_WIDTH, usePillsWidth } from '../../lib/pillsWidth';
 import { DEFAULT_PAST_STRIPE_COLOUR, usePastStripeColour } from '../../lib/pastStripeColour';
+import { TODO_MARKERS, isTodoMarker, useTodoMarker, type TodoMarker } from '../../lib/todoMarker';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { useTheme } from '../../app/useTheme';
@@ -42,6 +43,12 @@ const POSITION_LABELS: Record<(typeof PILLS_POSITIONS)[number], string> = {
   left: 'Left (vertical)',
   right: 'Right (vertical)',
 };
+const TODO_MARKER_LABELS: Record<TodoMarker, string> = {
+  ring: 'Ring around the day number',
+  bar: 'Coloured bar on the left',
+  badge: 'Badge with the count',
+  triangle: 'Corner triangle',
+};
 const MAX_EVENT_CHOICES = Array.from(
   { length: MAX_MAX_EVENTS - MIN_MAX_EVENTS + 1 },
   (_, i) => MIN_MAX_EVENTS + i,
@@ -62,6 +69,7 @@ export function SettingsPage() {
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
   const [strikePast, setStrikePast] = useStrikePast();
   const [pastStripe, setPastStripe] = usePastStripeColour();
+  const [todoMarker, setTodoMarker] = useTodoMarker();
   const [showIcons, setShowIcons] = useShowCategoryIcons();
   const [iconsInCalendar, setIconsInCalendar] = useIconsInCalendar();
   const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
@@ -192,6 +200,29 @@ export function SettingsPage() {
             >
               Reset
             </button>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="todo-marker" className="block text-sm font-medium">
+              To-do marker
+            </label>
+            <select
+              id="todo-marker"
+              value={todoMarker}
+              onChange={(e) => {
+                if (isTodoMarker(e.target.value)) setTodoMarker(e.target.value);
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              {TODO_MARKERS.map((marker) => (
+                <option key={marker} value={marker}>
+                  {TODO_MARKER_LABELS[marker]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              How the Months and Year views mark days with open to-dos (due that day, or without a
+              due date on today). Saved to your account.
+            </p>
           </div>
           <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
             <input

@@ -26,6 +26,7 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { useStrikePast } from '../../lib/strikePast';
 import { usePastStripeColour } from '../../lib/pastStripeColour';
+import { useTodoMarker } from '../../lib/todoMarker';
 import { useCategoryIcon } from '../categories/icons';
 import { useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -413,6 +414,7 @@ export function MonthGrid({
   const [weeks] = useWeekNumbers();
   const [strikePast] = useStrikePast();
   const [pastStripe] = usePastStripeColour();
+  const [todoMarker] = useTodoMarker();
   const iconOf = useCategoryIcon('calendar');
   const verticalIconOf = useCategoryIcon('vertical');
   const [maxEvents] = useMaxEvents();
@@ -679,6 +681,7 @@ export function MonthGrid({
         role="group"
         aria-label={`Calendar ${year}`}
         className="cal-grid"
+        data-todo-marker={todoMarker}
         style={style}
       >
         <div className="cal-gutter" aria-hidden="true">

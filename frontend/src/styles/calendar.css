@@ -459,27 +459,98 @@
 }
 
 /*
- * To-do marker: a small triangle in the top-left corner of a day with open to-dos (due that day,
- * or undated and listed today). It draws over the cell and never changes its size.
+ * To-do markers on days with open to-dos (due that day, or undated and listed today). The user
+ * picks the style (Settings, stored on the account); the views set it as data-todo-marker. All
+ * of them draw over the cell and never change its size. --todo is amber, at least 3:1 on the
+ * background in every theme, with --todo-text readable on it.
  */
-.cal-cell[data-todos]::before,
-.yr-day[data-todos]::before {
+:root {
+  --todo: #d97706;
+  --todo-text: #1c1917;
+}
+
+:root[data-theme='light-contrast'] {
+  --todo: #92400e;
+  --todo-text: #ffffff;
+}
+
+:root[data-theme='dark'],
+:root[data-theme='dim'] {
+  --todo: #fbbf24;
+  --todo-text: #1c1917;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='light-contrast']):not([data-theme='dim']) {
+    --todo: #fbbf24;
+    --todo-text: #1c1917;
+  }
+}
+
+/* Ring: an amber outline around the day number (around the blue box on today). */
+[data-todo-marker='ring'] .cal-cell[data-todos] .cal-num {
+  box-shadow: inset 0 0 0 2px var(--todo);
+}
+
+[data-todo-marker='ring'] .yr-day[data-todos] {
+  box-shadow: inset 0 0 0 2px var(--todo);
+}
+
+[data-todo-marker='ring'] .yr-day[data-today][data-todos] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    inset 0 0 0 3.5px var(--todo);
+}
+
+/* Bar: an amber stripe down the left edge of the day. */
+[data-todo-marker='bar'] .cal-cell[data-todos]::before,
+[data-todo-marker='bar'] .yr-day[data-todos]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 3px;
+  background: var(--todo);
+  pointer-events: none;
+}
+
+/* Badge: the number of to-dos in an amber pill in the top-right corner. */
+[data-todo-marker='badge'] .cal-cell[data-todos]::before,
+[data-todo-marker='badge'] .yr-day[data-todos]::before {
+  content: attr(data-todos);
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 9999px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  color: var(--todo-text);
+  background: var(--todo);
+  box-shadow: 0 0 0 1px var(--surface);
+  pointer-events: none;
+}
+
+/* Triangle: a larger amber corner, top left, edged so it shows on any fill. */
+[data-todo-marker='triangle'] .cal-cell[data-todos]::before,
+[data-todo-marker='triangle'] .yr-day[data-todos]::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
-  border-top: 7px solid var(--text);
-  border-right: 7px solid transparent;
+  border-top: 11px solid var(--todo);
+  border-right: 11px solid transparent;
+  filter: drop-shadow(0.5px 0.5px 0 var(--surface));
   pointer-events: none;
-}
-
-.cal-cell[data-today][data-todos]::before {
-  border-top-color: var(--accent-contrast);
-}
-
-.yr-day[data-cat][data-todos]::before {
-  border-top-color: var(--ev-text);
 }
 
 /* On phones: a small open square (a check box) next to the event dots, in the text colour. */
@@ -587,6 +658,19 @@
 
 :root[data-theme='light-contrast'] .yr-day[data-today] {
   box-shadow: inset 0 0 0 2.5px var(--accent);
+}
+
+/* The ring to-do marker outranks the outlines above, keeping them inside it. */
+:root[data-theme='light-contrast'] [data-todo-marker='ring'] .yr-day[data-todos] {
+  box-shadow:
+    inset 0 0 0 2.5px var(--todo),
+    inset 0 0 0 3.5px var(--ev-text, transparent);
+}
+
+:root[data-theme='light-contrast'] [data-todo-marker='ring'] .yr-day[data-today][data-todos] {
+  box-shadow:
+    inset 0 0 0 2.5px var(--accent),
+    inset 0 0 0 5px var(--todo);
 }
 
 :root[data-theme='light-contrast'] .m-hol-dot {

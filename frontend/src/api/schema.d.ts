@@ -1934,6 +1934,12 @@ export interface components {
             theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
             timezone: string;
+            /**
+             * Todo Marker
+             * @default ring
+             * @enum {string}
+             */
+            todo_marker: "ring" | "bar" | "badge" | "triangle";
             /** Totp Enabled */
             totp_enabled: boolean;
             /** Vertical Text Size */
@@ -1961,6 +1967,8 @@ export interface components {
             theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
             timezone?: string | null;
+            /** Todo Marker */
+            todo_marker?: ("ring" | "bar" | "badge" | "triangle") | null;
             /** Vertical Text Size */
             vertical_text_size?: number | null;
             /** Weekend Days */

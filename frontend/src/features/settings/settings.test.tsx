@@ -445,6 +445,39 @@ describe('past days stripe colour setting', () => {
   });
 });
 
+describe('to-do marker setting', () => {
+  it('defaults to the ring and saves a choice on the user', async () => {
+    let me = { ...ME, todo_marker: 'ring' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('To-do marker');
+    expect(select).toHaveValue('ring');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'Ring around the day number',
+      'Coloured bar on the left',
+      'Badge with the count',
+      'Corner triangle',
+    ]);
+    await userEvent.selectOptions(select, 'badge');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ todo_marker: 'badge' }),
+    );
+    expect(select).toHaveValue('badge');
+  });
+});
+
 describe('category icons', () => {
   it('saves the show category icons switch on the user', async () => {
     let me = { ...ME, show_category_icons: true };
