@@ -818,6 +818,44 @@ describe('strike through past days', () => {
     await gridReady();
     expect(document.querySelector('.cal-cell[data-past]')).toBeNull();
   });
+
+  const withPast = (past: object) => ({
+    ...baseRoutes(),
+    'GET /api/v1/auth/state': authState({
+      user: { ...ME, last_category_id: WORK, ...past },
+    }),
+  });
+
+  it('follows the account over this device, with its style and strength', async () => {
+    storeStrikePast(false);
+    mockApi(withPast({ strike_past: true, past_style: 'cross', past_strength: 'strong' }));
+    renderApp();
+    await gridReady();
+    expect(cell('2026-06-14')).toHaveAttribute('data-past');
+    const grid = screen.getByRole('group', { hidden: true, name: 'Calendar 2026' });
+    expect(grid).toHaveAttribute('data-past-style', 'cross');
+    expect(grid).toHaveAttribute('data-past-strength', 'strong');
+  });
+
+  it('stays off when the account says off, whatever this device had', async () => {
+    storeStrikePast(true);
+    mockApi(withPast({ strike_past: false }));
+    renderApp();
+    await gridReady();
+    expect(document.querySelector('.cal-cell[data-past]')).toBeNull();
+  });
+
+  it('marks past days in the year view too', async () => {
+    mockApi(withPast({ strike_past: true }));
+    renderApp();
+    await gridReady();
+    await userEvent.click(screen.getByRole('button', { hidden: true, name: 'Year' }));
+    const june = await screen.findByRole('region', { hidden: true, name: 'June 2026' });
+    const day = (d: number) => june.querySelector(`[data-date="2026-06-${d}"]`);
+    expect(day(14)).toHaveAttribute('data-past');
+    expect(day(15)).not.toHaveAttribute('data-past');
+    expect(document.querySelector('[data-past-style="stripes"]')).not.toBeNull();
+  });
 });
 
 describe('max events per day setting', () => {

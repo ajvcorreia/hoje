@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.44] — 2026-10-26
+
+### Added
+
+- "Strike through past days" has a style (diagonal stripes, cross-hatch, single diagonal line, cross, or fade) and a strength (light, medium, strong), and now also marks past days in the Year view and on phones.
+- The switch, style and strength are saved on the account (`users.strike_past`, `past_style`, `past_strength`, migration 0023). Until the switch is first flipped, each device keeps its own earlier choice.
+
 ## [1.3.43] — 2026-10-26
 
 ### Security

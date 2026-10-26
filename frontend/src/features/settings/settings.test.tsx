@@ -270,16 +270,60 @@ describe('events per day setting', () => {
 });
 
 describe('strike through past days setting', () => {
-  it('is off by default and persists when switched on', async () => {
+  const withMe = (initial: object) => {
+    let me = { ...ME, ...initial };
+    return mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+  };
+
+  it('is off by default and saves the switch on the account and this device', async () => {
     window.localStorage.removeItem('hoje.strikePast');
-    mockApi({ ...base, 'GET /api/v1/me': ME });
+    const api = withMe({ strike_past: null });
     renderApp('/settings');
     const box = await screen.findByLabelText('Strike through past days');
     expect(box).not.toBeChecked();
     await userEvent.click(box);
     expect(box).toBeChecked();
     expect(window.localStorage.getItem('hoje.strikePast')).toBe('on');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ strike_past: true }),
+    );
     await userEvent.click(box);
+    window.localStorage.removeItem('hoje.strikePast');
+  });
+
+  it('saves the style and strength on the account', async () => {
+    const api = withMe({ strike_past: true, past_style: 'stripes', past_strength: 'medium' });
+    renderApp('/settings');
+    const style = await screen.findByLabelText('Past days style');
+    expect(style).toHaveValue('stripes');
+    expect(
+      within(style)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'Diagonal stripes',
+      'Cross-hatch',
+      'Single diagonal line',
+      'Cross (X)',
+      'Fade the day',
+    ]);
+    await userEvent.selectOptions(style, 'crosshatch');
+    await userEvent.selectOptions(screen.getByLabelText('Strength'), 'light');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me').map((c) => c.body)).toEqual([
+        { past_style: 'crosshatch' },
+        { past_strength: 'light' },
+      ]),
+    );
+    expect(style).toHaveValue('crosshatch');
   });
 });
 

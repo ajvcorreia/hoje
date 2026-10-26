@@ -24,8 +24,7 @@ import {
   monthName,
 } from '../../lib/dates';
 import { useWeekNumbers } from '../../lib/weekNumbers';
-import { useStrikePast } from '../../lib/strikePast';
-import { usePastStripeColour } from '../../lib/pastStripeColour';
+import { usePastDays } from '../../lib/pastDays';
 import { todoMarkerStyle, useTodoMarker, useTodoMarkerColour } from '../../lib/todoMarker';
 import { useCategoryIcon } from '../categories/icons';
 import { useMaxEvents } from '../../lib/maxEvents';
@@ -412,8 +411,8 @@ export function MonthGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [weeks] = useWeekNumbers();
-  const [strikePast] = useStrikePast();
-  const [pastStripe] = usePastStripeColour();
+  const past = usePastDays();
+  const strikePast = past.strike;
   const [todoMarker] = useTodoMarker();
   const [todoColour] = useTodoMarkerColour();
   const iconOf = useCategoryIcon('calendar');
@@ -653,7 +652,7 @@ export function MonthGrid({
   const style = {
     '--row-h': `${rowHeight}px`,
     '--head-h': `${HEAD_HEIGHT}px`,
-    '--past-stripe': pastStripe,
+    ...past.vars,
     ...todoMarkerStyle(todoColour),
     gridTemplateColumns: `var(--gutter-w) ${fits.map((f) => `minmax(${columnMin(f)}, 1fr)`).join(' ')}`,
     width: `max(100%, calc(var(--gutter-w) + ${fits.map(columnMin).join(' + ')}))`,
@@ -684,6 +683,7 @@ export function MonthGrid({
         aria-label={`Calendar ${year}`}
         className="cal-grid"
         data-todo-marker={todoMarker}
+        {...past.attrs}
         style={style}
       >
         <div className="cal-gutter" aria-hidden="true">

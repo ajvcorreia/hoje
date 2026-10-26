@@ -2,7 +2,10 @@ import { createBooleanPreference } from './booleanPreference';
 
 export const STRIKE_PAST_KEY = 'hoje.strikePast';
 
-/** Strike through every day before today in the month grid (per device; off by default). */
+/**
+ * This device's "Strike through past days" switch (off by default): used until the choice is saved
+ * on the account, see `useStrikePastSetting` in pastDays.ts.
+ */
 const strikePast = createBooleanPreference(STRIKE_PAST_KEY, false);
 
 export const readStrikePast = strikePast.read;

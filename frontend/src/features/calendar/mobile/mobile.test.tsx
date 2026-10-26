@@ -287,6 +287,29 @@ function makeTodo(id: string, shownOn: string, dueDate: string | null = null, do
   };
 }
 
+describe('mobile past days', () => {
+  it('strikes through the days before today when switched on', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/auth/state': authState({
+        user: { ...ME, last_category_id: WORK, strike_past: true, past_style: 'fade' },
+      }),
+    });
+    renderApp();
+    await dayViewReady();
+    await waitFor(() => expect(day('2026-10-01')).toHaveAttribute('data-past'));
+    expect(day('2026-10-02')).not.toHaveAttribute('data-past');
+    expect(document.querySelector('[data-past-style="fade"]')).not.toBeNull();
+  });
+
+  it('marks nothing when off', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await dayViewReady();
+    expect(document.querySelector('[data-past]')).toBeNull();
+  });
+});
+
 describe('mobile to-do markers', () => {
   it('marks today (undated to-dos) and due dates in the week strip', async () => {
     mockApi({

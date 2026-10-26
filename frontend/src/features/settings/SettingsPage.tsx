@@ -3,7 +3,17 @@ import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
-import { useStrikePast } from '../../lib/strikePast';
+import {
+  PAST_STRENGTHS,
+  PAST_STYLES,
+  isPastStrength,
+  isPastStyle,
+  usePastStrength,
+  usePastStyle,
+  useStrikePastSetting,
+  type PastStrength,
+  type PastStyle,
+} from '../../lib/pastDays';
 import {
   useIconsInCalendar,
   useIconsOnVertical,
@@ -52,6 +62,18 @@ const POSITION_LABELS: Record<(typeof PILLS_POSITIONS)[number], string> = {
   left: 'Left (vertical)',
   right: 'Right (vertical)',
 };
+const PAST_STYLE_LABELS: Record<PastStyle, string> = {
+  stripes: 'Diagonal stripes',
+  crosshatch: 'Cross-hatch',
+  line: 'Single diagonal line',
+  cross: 'Cross (X)',
+  fade: 'Fade the day',
+};
+const PAST_STRENGTH_LABELS: Record<PastStrength, string> = {
+  light: 'Light',
+  medium: 'Medium',
+  strong: 'Strong',
+};
 const TODO_MARKER_LABELS: Record<TodoMarker, string> = {
   ring: 'Ring around the day number',
   bar: 'Coloured bar on the left',
@@ -76,7 +98,9 @@ export function SettingsPage() {
   const [pillsPosition, setPillsPosition] = usePillsPosition();
   const [pillsWidth, setPillsWidth] = usePillsWidth();
   const [weekNumbers, setWeekNumbers] = useWeekNumbers();
-  const [strikePast, setStrikePast] = useStrikePast();
+  const [strikePast, setStrikePast] = useStrikePastSetting();
+  const [pastStyle, setPastStyle] = usePastStyle();
+  const [pastStrength, setPastStrength] = usePastStrength();
   const [pastStripe, setPastStripe] = usePastStripeColour();
   const [todoMarker, setTodoMarker] = useTodoMarker();
   const [todoColour, setTodoColour] = useTodoMarkerColour();
@@ -192,6 +216,42 @@ export function SettingsPage() {
             />
             Strike through past days
           </label>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 pl-6 text-sm">
+            <label htmlFor="past-style" className="flex items-center gap-2 font-medium">
+              Past days style
+              <select
+                id="past-style"
+                value={pastStyle}
+                onChange={(e) => {
+                  if (isPastStyle(e.target.value)) setPastStyle(e.target.value);
+                }}
+                className={`${inputClass} w-auto font-normal`}
+              >
+                {PAST_STYLES.map((style) => (
+                  <option key={style} value={style}>
+                    {PAST_STYLE_LABELS[style]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="past-strength" className="flex items-center gap-2 font-medium">
+              Strength
+              <select
+                id="past-strength"
+                value={pastStrength}
+                onChange={(e) => {
+                  if (isPastStrength(e.target.value)) setPastStrength(e.target.value);
+                }}
+                className={`${inputClass} w-auto font-normal`}
+              >
+                {PAST_STRENGTHS.map((strength) => (
+                  <option key={strength} value={strength}>
+                    {PAST_STRENGTH_LABELS[strength]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="mt-2 flex min-h-9 items-center gap-2 pl-6 text-sm">
             <label htmlFor="past-stripe-colour" className="font-medium">
               Past days stripe colour
@@ -211,6 +271,10 @@ export function SettingsPage() {
               Reset
             </button>
           </div>
+          <p className="mt-1 pl-6 text-xs text-text-muted">
+            Marks the days before today in the Months, Year and phone views. Fade does not use the
+            colour. Saved to your account.
+          </p>
           <div className="mt-4">
             <label htmlFor="todo-marker" className="block text-sm font-medium">
               To-do marker

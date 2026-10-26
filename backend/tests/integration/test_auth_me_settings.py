@@ -92,6 +92,21 @@ async def test_todo_marker_colour_follows_the_theme_until_picked(api):
     assert back.json()["todo_marker_colour"] == "auto"
 
 
+async def test_past_days_options_are_unset_or_default_until_chosen(api):
+    await api.register_ok()
+    me = (await api.client.get("/api/v1/me")).json()
+    assert (me["strike_past"], me["past_style"], me["past_strength"]) == (None, "stripes", "medium")
+    resp = await patch_me(
+        api, {"strike_past": True, "past_style": "cross", "past_strength": "strong"}
+    )
+    assert resp.status_code == 200, resp.text
+    me = (await api.client.get("/api/v1/me")).json()
+    assert (me["strike_past"], me["past_style"], me["past_strength"]) == (True, "cross", "strong")
+    for style in ("crosshatch", "line", "fade", "stripes"):
+        assert (await patch_me(api, {"past_style": style})).json()["past_style"] == style
+    assert (await patch_me(api, {"strike_past": False})).json()["strike_past"] is False
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None
@@ -118,6 +133,8 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"theme": "neon"},
         {"todo_marker": "star"},
         {"todo_marker_colour": "red"},
+        {"past_style": "zigzag"},
+        {"past_strength": "max"},
     ],
     ids=[
         "unknown-timezone",
@@ -130,6 +147,8 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "unknown-theme",
         "unknown-todo-marker",
         "todo-marker-colour-name",
+        "unknown-past-style",
+        "unknown-past-strength",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):

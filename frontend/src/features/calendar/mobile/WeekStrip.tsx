@@ -4,6 +4,7 @@ import { btnSecondary } from '../../../components/ui/classes';
 import { isWeekend, parseIso } from '../../../lib/dates';
 import { NO_TODO_DAYS, todoAria, type TodoDays } from '../../todos/todoDays';
 import { weekDays } from './mobileLib';
+import { useStrikePastSetting } from '../../../lib/pastDays';
 
 interface WeekStripProps {
   selected: string;
@@ -31,6 +32,7 @@ export function WeekStrip({
   onShiftWeek,
 }: WeekStripProps) {
   const days = weekDays(selected);
+  const [strikePast] = useStrikePastSetting();
   return (
     <div className="flex items-center gap-1">
       <button
@@ -56,8 +58,9 @@ export function WeekStrip({
                 aria-current={isToday ? 'date' : undefined}
                 aria-pressed={isSelected}
                 data-date={day}
+                data-past={(strikePast && day < today) || undefined}
                 onClick={() => onSelect(day)}
-                className={`flex min-h-14 w-full flex-col items-center justify-center rounded-md border text-xs ${
+                className={`m-day relative flex min-h-14 w-full flex-col items-center justify-center rounded-md border text-xs ${
                   isSelected
                     ? 'border-accent bg-accent text-accent-contrast'
                     : isToday

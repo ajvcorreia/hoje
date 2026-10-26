@@ -21,6 +21,9 @@ Theme = Literal["system", "light", "light-contrast", "dim", "dark"]
 TodoMarker = Literal["ring", "bar", "badge", "triangle"]
 # 'auto' follows the theme (amber); otherwise the colour the user picked.
 TodoMarkerColour = Literal["auto"] | PastStripeColour
+# How past days are marked; the frontend lists are in src/lib/pastDays.ts.
+PastStyle = Literal["stripes", "crosshatch", "line", "cross", "fade"]
+PastStrength = Literal["light", "medium", "strong"]
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -36,6 +39,10 @@ class Me(BaseModel):
     max_events_per_day: int
     vertical_text_size: int
     past_stripe_colour: str
+    # None until chosen: each device keeps its own switch until one is saved to the account.
+    strike_past: bool | None = None
+    past_style: PastStyle = "stripes"
+    past_strength: PastStrength = "medium"
     show_category_icons: bool
     icons_in_calendar: bool
     icons_on_vertical: bool
@@ -62,6 +69,9 @@ class MeUpdate(BaseModel):
     max_events_per_day: MaxEventsPerDay | None = None
     vertical_text_size: VerticalTextSize | None = None
     past_stripe_colour: PastStripeColour | None = None
+    strike_past: bool | None = None
+    past_style: PastStyle | None = None
+    past_strength: PastStrength | None = None
     show_category_icons: bool | None = None
     icons_in_calendar: bool | None = None
     icons_on_vertical: bool | None = None

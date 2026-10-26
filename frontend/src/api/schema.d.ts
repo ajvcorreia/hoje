@@ -1926,10 +1926,24 @@ export interface components {
             last_category_id?: string | null;
             /** Max Events Per Day */
             max_events_per_day: number;
+            /**
+             * Past Strength
+             * @default medium
+             * @enum {string}
+             */
+            past_strength: "light" | "medium" | "strong";
             /** Past Stripe Colour */
             past_stripe_colour: string;
+            /**
+             * Past Style
+             * @default stripes
+             * @enum {string}
+             */
+            past_style: "stripes" | "crosshatch" | "line" | "cross" | "fade";
             /** Show Category Icons */
             show_category_icons: boolean;
+            /** Strike Past */
+            strike_past?: boolean | null;
             /** Theme */
             theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
@@ -1964,10 +1978,16 @@ export interface components {
             icons_on_vertical?: boolean | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
+            /** Past Strength */
+            past_strength?: ("light" | "medium" | "strong") | null;
             /** Past Stripe Colour */
             past_stripe_colour?: string | null;
+            /** Past Style */
+            past_style?: ("stripes" | "crosshatch" | "line" | "cross" | "fade") | null;
             /** Show Category Icons */
             show_category_icons?: boolean | null;
+            /** Strike Past */
+            strike_past?: boolean | null;
             /** Theme */
             theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */

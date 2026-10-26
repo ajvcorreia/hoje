@@ -10,6 +10,7 @@ import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../.
 import { HolidayCards } from '../../holidays/HolidayList';
 import { catProps } from '../../../styles/customColour';
 import { NO_TODO_DAYS, todoAria, type TodoDays } from '../../todos/todoDays';
+import { useStrikePastSetting } from '../../../lib/pastDays';
 
 interface MonthViewProps {
   selected: string;
@@ -38,6 +39,7 @@ export function MonthView({
 }: MonthViewProps) {
   const { data: categories } = useCategories();
   const [showWeeks] = useWeekNumbers();
+  const [strikePast] = useStrikePastSetting();
   const cols = showWeeks ? 'grid-cols-[1.5rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7';
   const byId = categoryMap(categories);
   const [year, month] = splitIso(selected);
@@ -68,6 +70,7 @@ export function MonthView({
                   colourOf={(o) => byId.get(o.event.category_id)?.colour ?? 'slate'}
                   selected={day === selected}
                   today={day === today}
+                  past={strikePast && day < today}
                   weekend={isWeekend(day, weekendDays)}
                   holidays={holidays.get(day)}
                   todos={todos.get(day)}
@@ -92,6 +95,8 @@ interface MonthCellProps {
   colourOf(o: Occurrence): string;
   selected: boolean;
   today: boolean;
+  /** Before today, with "Strike through past days" on. */
+  past: boolean;
   weekend: boolean;
   holidays: HolidayDay[] | undefined;
   todos: number | undefined;
@@ -104,6 +109,7 @@ function MonthCell({
   colourOf,
   selected,
   today,
+  past,
   weekend,
   holidays,
   todos,
@@ -121,8 +127,9 @@ function MonthCell({
         }${todoAria(todos)}`}
         aria-current={today ? 'date' : undefined}
         aria-pressed={selected}
+        data-past={past || undefined}
         onClick={() => onSelect(day)}
-        className={`flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-md border text-sm tabular-nums ${
+        className={`m-day relative flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-md border text-sm tabular-nums ${
           selected
             ? 'border-accent bg-accent text-accent-contrast'
             : today

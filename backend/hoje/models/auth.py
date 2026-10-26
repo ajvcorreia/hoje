@@ -48,6 +48,15 @@ class User(Base):
     past_stripe_colour: Mapped[str] = mapped_column(
         String(7), default="#9ca3af", server_default=text("'#9ca3af'")
     )
+    # Mark days before today: NULL until chosen (each device keeps its own switch until then),
+    # drawn in past_style at past_strength.
+    strike_past: Mapped[bool | None]
+    past_style: Mapped[str] = mapped_column(
+        Text, default="stripes", server_default=text("'stripes'")
+    )
+    past_strength: Mapped[str] = mapped_column(
+        Text, default="medium", server_default=text("'medium'")
+    )
     show_category_icons: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     icons_in_calendar: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     icons_on_vertical: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
@@ -81,6 +90,10 @@ class User(Base):
         CheckConstraint("max_events_per_day between 1 and 6", name="max_events_per_day"),
         CheckConstraint("vertical_text_size between 8 and 32", name="vertical_text_size"),
         CheckConstraint("past_stripe_colour ~ '^#[0-9a-fA-F]{6}$'", name="past_stripe_colour"),
+        CheckConstraint(
+            "past_style in ('stripes', 'crosshatch', 'line', 'cross', 'fade')", name="past_style"
+        ),
+        CheckConstraint("past_strength in ('light', 'medium', 'strong')", name="past_strength"),
         CheckConstraint(
             "theme in ('system', 'light', 'light-contrast', 'dim', 'dark')", name="theme"
         ),

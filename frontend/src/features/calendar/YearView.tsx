@@ -12,6 +12,7 @@ import { NO_HOLIDAYS, isNonWorkingDay, overlayAria, type HolidayDay } from '../h
 import { catProps } from '../../styles/customColour';
 import { NO_TODO_DAYS, todoAria, type TodoDays } from '../todos/todoDays';
 import { todoMarkerStyle, useTodoMarker, useTodoMarkerColour } from '../../lib/todoMarker';
+import { usePastDays } from '../../lib/pastDays';
 
 interface YearViewProps {
   year: number;
@@ -58,6 +59,7 @@ export function YearView({
   const [focusDate, setFocusDate] = useState(defaultFocus);
   const [todoMarker] = useTodoMarker();
   const [todoColour] = useTodoMarkerColour();
+  const past = usePastDays();
   const activeFocus = focusDate.startsWith(`${year}-`) ? focusDate : defaultFocus;
 
   const onClick = useCallback(
@@ -98,7 +100,8 @@ export function YearView({
       role="presentation"
       className="min-h-0 flex-1 overflow-y-auto"
       data-todo-marker={todoMarker}
-      style={todoMarkerStyle(todoColour)}
+      {...past.attrs}
+      style={{ ...todoMarkerStyle(todoColour), ...past.vars }}
       onClick={onClick}
       onKeyDown={onKeyDown}
     >
@@ -135,6 +138,7 @@ export function YearView({
                       className="yr-day"
                       data-date={iso}
                       data-today={iso === today || undefined}
+                      data-past={(past.strike && iso < today) || undefined}
                       data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
                       data-todos={dayTodos || undefined}
                       {...catProps(first ? colourOf.get(first.event.category_id) : undefined)}

@@ -563,18 +563,95 @@
   border-radius: 1px;
 }
 
-/* "Strike through past days" preference: diagonal stripes over the whole day, in the colour chosen
-   in Settings. Drawn above the events (pointer-events: none) so coloured events are marked too. */
-.cal-cell[data-past]::after {
+/* "Strike through past days": the views mark days before today with data-past, and their root
+   carries the style and strength from Settings (data-past-style, data-past-strength) and the
+   colour (--past-stripe). Drawn above the events (pointer-events: none) so coloured events are
+   marked too. Strength sets the colour's opacity, the line width and the stripe spacing. */
+[data-past-strength='light'] {
+  --past-mix: 35%;
+  --past-w: 1px;
+  --past-gap: 9px;
+  --past-fade: 40%;
+}
+
+[data-past-strength='medium'] {
+  --past-mix: 55%;
+  --past-w: 2px;
+  --past-gap: 7px;
+  --past-fade: 60%;
+}
+
+[data-past-strength='strong'] {
+  --past-mix: 85%;
+  --past-w: 3px;
+  --past-gap: 5px;
+  --past-fade: 80%;
+}
+
+[data-past-style] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
+  --past-c: color-mix(in srgb, var(--past-stripe, #9ca3af) var(--past-mix, 55%), transparent);
+  --past-lo: calc(50% - var(--past-w, 2px));
+  --past-hi: calc(50% + var(--past-w, 2px));
+
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: inherit;
+}
+
+[data-past-style='stripes'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background: repeating-linear-gradient(
     135deg,
-    color-mix(in srgb, var(--past-stripe, #9ca3af) 55%, transparent) 0 2px,
-    transparent 2px 7px
+    var(--past-c) 0 var(--past-w, 2px),
+    transparent var(--past-w, 2px) var(--past-gap, 7px)
   );
+}
+
+[data-past-style='crosshatch'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--past-c) 0 var(--past-w, 2px),
+      transparent var(--past-w, 2px) var(--past-gap, 7px)
+    ),
+    repeating-linear-gradient(
+      45deg,
+      var(--past-c) 0 var(--past-w, 2px),
+      transparent var(--past-w, 2px) var(--past-gap, 7px)
+    );
+}
+
+/* One line from the bottom-left to the top-right corner. */
+[data-past-style='line'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
+  background: linear-gradient(
+    to top right,
+    transparent var(--past-lo),
+    var(--past-c) var(--past-lo) var(--past-hi),
+    transparent var(--past-hi)
+  );
+}
+
+/* Both diagonals: an X through the day. */
+[data-past-style='cross'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
+  background:
+    linear-gradient(
+      to top right,
+      transparent var(--past-lo),
+      var(--past-c) var(--past-lo) var(--past-hi),
+      transparent var(--past-hi)
+    ),
+    linear-gradient(
+      to bottom right,
+      transparent var(--past-lo),
+      var(--past-c) var(--past-lo) var(--past-hi),
+      transparent var(--past-hi)
+    );
+}
+
+/* No lines: the day is washed out with the page colour (the stripe colour is not used). */
+[data-past-style='fade'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
+  background: color-mix(in srgb, var(--surface) var(--past-fade, 60%), transparent);
 }
 
 .cal-vlabel[data-past] .cal-vlabel-text {

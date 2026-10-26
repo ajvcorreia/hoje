@@ -13,6 +13,7 @@ import { EventEditor } from '../../events/EventEditor';
 import { filterVisible, groupByDay } from '../../events/occurrences';
 import { useHolidayOverlay } from '../../holidays/api';
 import { useTodoDays } from '../../todos/api';
+import { usePastDays } from '../../../lib/pastDays';
 import { DayView } from './DayView';
 import { dayRange, loadView, monthRange, saveView, useSwipe, type MobileView } from './mobileLib';
 import { MonthView } from './MonthView';
@@ -64,6 +65,7 @@ export function MobileCalendar() {
   const byDay = useMemo(() => groupByDay(visible, from, to), [visible, from, to]);
   const holidays = useHolidayOverlay(Number(selected.slice(0, 4)));
   const todos = useTodoDays();
+  const past = usePastDays();
 
   const chooseView = (next: MobileView) => {
     setView(next);
@@ -77,7 +79,12 @@ export function MobileCalendar() {
   const openEvent = (eventId: string) => setSheet({ kind: 'edit', eventId });
 
   return (
-    <section aria-labelledby="calendar-heading" className="space-y-3 pb-20">
+    <section
+      aria-labelledby="calendar-heading"
+      className="space-y-3 pb-20"
+      {...past.attrs}
+      style={past.vars}
+    >
       <h1 id="calendar-heading" className="sr-only">
         Calendar
       </h1>
