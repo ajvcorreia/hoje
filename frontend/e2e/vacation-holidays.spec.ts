@@ -33,7 +33,7 @@ test('holidays show in the grid and vacation days are counted in working days', 
   const allowance = page.getByLabel('Allowance (days)');
   await allowance.fill('22');
   await allowance.press('Enter');
-  await expect(page.getByText('Saved')).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
 
   const vacation = (await api.categories()).find((c) => c.name === 'Vacation');
   expect(vacation).toBeTruthy();
