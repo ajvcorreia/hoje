@@ -122,6 +122,71 @@ describe('TodoSection', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Delete to-do Remove me' }));
     await waitFor(() => expect(api.callsTo('DELETE', path)).toHaveLength(1));
   });
+
+  it('edits the title and due date, sending only what changed', async () => {
+    let item = todo({ title: 'Pay rent', due_date: '2099-01-02' });
+    const path = `/api/v1/todos/${String(item.id)}`;
+    const api = mockApi({
+      'GET /api/v1/todos': () => ({ todos: [item] }),
+      [`PATCH ${path}`]: (call) => (item = { ...item, ...(call.body as object) }),
+    });
+    renderSection(todayIso());
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit to-do Pay rent' }));
+    const title = screen.getByLabelText('To-do');
+    expect(title).toHaveFocus();
+    expect(screen.getByLabelText('Due date')).toHaveValue('2099-01-02');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Pay the rent');
+    await userEvent.clear(screen.getByLabelText('Due date'));
+    await userEvent.type(screen.getByLabelText('Due date'), '2099-05-06');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.callsTo('PATCH', path)).toHaveLength(1));
+    expect(api.callsTo('PATCH', path)[0]?.body).toEqual({
+      title: 'Pay the rent',
+      due_date: '2099-05-06',
+    });
+    expect(await screen.findByText('Pay the rent')).toBeInTheDocument();
+    expect(screen.queryByLabelText('To-do')).not.toBeInTheDocument();
+  });
+
+  it('clears the due date', async () => {
+    const item = todo({ title: 'Call mum', due_date: '2099-01-02' });
+    const path = `/api/v1/todos/${String(item.id)}`;
+    const api = mockApi({
+      'GET /api/v1/todos': { todos: [item] },
+      [`PATCH ${path}`]: { ...item, due_date: null },
+    });
+    renderSection(todayIso());
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit to-do Call mum' }));
+    await userEvent.clear(screen.getByLabelText('Due date'));
+    await userEvent.type(screen.getByLabelText('To-do'), '{Enter}');
+    await waitFor(() => expect(api.callsTo('PATCH', path)).toHaveLength(1));
+    expect(api.callsTo('PATCH', path)[0]?.body).toEqual({ due_date: null });
+  });
+
+  it('sends nothing when cancelled, unchanged, or emptied', async () => {
+    const item = todo({ title: 'Keep me' });
+    const path = `/api/v1/todos/${String(item.id)}`;
+    const api = mockApi({ 'GET /api/v1/todos': { todos: [item] } });
+    renderSection(todayIso());
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit to-do Keep me' }));
+    await userEvent.type(screen.getByLabelText('To-do'), ' later{Escape}');
+    expect(screen.queryByLabelText('To-do')).not.toBeInTheDocument();
+    expect(screen.getByText('Keep me')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit to-do Keep me' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.queryByLabelText('To-do')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit to-do Keep me' }));
+    await userEvent.clear(screen.getByLabelText('To-do'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByLabelText('To-do')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(api.callsTo('PATCH', path)).toHaveLength(0);
+  });
 });
 
 describe('live sync', () => {

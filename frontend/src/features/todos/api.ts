@@ -54,7 +54,7 @@ export interface UpdateTodoVariables {
   patch: TodoUpdate;
 }
 
-/** `PATCH /todos/{id}`. Checking a box is applied to every cached list at once. */
+/** `PATCH /todos/{id}`. The change is applied to every cached list at once. */
 export function useUpdateTodo() {
   const qc = useQueryClient();
   return useMutation({
@@ -69,12 +69,15 @@ export function useUpdateTodo() {
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: TODOS_KEY });
       const snapshot = qc.getQueriesData<Todo[]>({ queryKey: TODOS_KEY });
-      const done = patch.done;
-      if (done !== undefined && done !== null) {
+      const changes: Partial<Todo> = {};
+      if (patch.title != null) changes.title = patch.title;
+      if (patch.due_date !== undefined) changes.due_date = patch.due_date;
+      if (patch.done != null) changes.done = patch.done;
+      if (Object.keys(changes).length > 0) {
         for (const [key, data] of snapshot) {
           qc.setQueryData<Todo[] | undefined>(
             key,
-            data?.map((t) => (t.id === id ? { ...t, done } : t)),
+            data?.map((t) => (t.id === id ? { ...t, ...changes } : t)),
           );
         }
       }
