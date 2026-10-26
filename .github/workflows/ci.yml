@@ -117,6 +117,9 @@ jobs:
           tags: hoje/api:ci
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
+          # Always rebuild the final stage, so its OS upgrade picks up today's security fixes
+          # instead of a cached layer from whenever it first ran.
+          no-cache-filters: runtime
       - name: Scan API image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -135,6 +138,7 @@ jobs:
           tags: hoje/web:ci
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
+          no-cache-filters: runtime
       - name: Scan web image
         if: needs.detect.outputs.frontend == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.43] — 2026-10-26
+
+### Security
+
+- The images always rebuild their final stage, so its OS upgrade picks up the latest security fixes instead of reusing a cached layer (brotli CVE-2026-111497, curl CVE-2026-92392). 1.3.42 published no images because of this.
+
 ## [1.3.42] — 2026-10-26
 
 ### Added

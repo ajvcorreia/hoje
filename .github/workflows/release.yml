@@ -100,6 +100,9 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
+          # Always rebuild the final stage, so its OS upgrade picks up today's security fixes
+          # instead of a cached layer from whenever it first ran.
+          no-cache-filters: runtime
 
       # Scan the pushed digest itself. A failure here leaves an untagged digest in the registry
       # and no tag moves.
