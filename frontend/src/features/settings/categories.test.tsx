@@ -178,4 +178,32 @@ describe('settings › categories', () => {
       `?reassign_to=${HOME}`,
     );
   });
+
+  it('searches the icon groups and takes any pasted emoji', async () => {
+    const api = mockApi({
+      ...base,
+      [`PATCH /api/v1/categories/${WORK}`]: (call) => ({
+        ...CATEGORIES[0],
+        ...(call.body as object),
+      }),
+    });
+    renderApp('/settings');
+    await userEvent.click(await screen.findByRole('button', { name: 'Icon of Work: none' }));
+    const picker = screen.getByRole('group', { name: 'Icon for Work' });
+    expect(within(picker).getByRole('region', { name: 'Sport' })).toBeInTheDocument();
+    await userEvent.type(within(picker).getByLabelText('Search icons for Work'), 'birthday');
+    expect(within(picker).queryByRole('region', { name: 'Sport' })).not.toBeInTheDocument();
+    await userEvent.click(within(picker).getByRole('button', { name: 'birthday' }));
+    const patches = () => api.callsTo('PATCH', `/api/v1/categories/${WORK}`);
+    await waitFor(() => expect(patches()[0]?.body).toEqual({ icon: '🎂', version: 1 }));
+
+    const own = within(picker).getByLabelText('Any emoji for Work');
+    await userEvent.type(own, 'abc');
+    await userEvent.click(within(picker).getByRole('button', { name: 'Use' }));
+    expect(await within(picker).findByRole('alert')).toHaveTextContent("That isn't an emoji.");
+    expect(patches()).toHaveLength(1);
+    fireEvent.change(own, { target: { value: '🦄' } });
+    await userEvent.click(within(picker).getByRole('button', { name: 'Use' }));
+    await waitFor(() => expect(patches()[1]?.body).toMatchObject({ icon: '🦄' }));
+  });
 });

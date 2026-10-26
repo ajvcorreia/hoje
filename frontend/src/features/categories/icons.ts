@@ -6,34 +6,6 @@ import {
 } from '../../lib/showCategoryIcons';
 import { categoryMap, useCategories } from './api';
 
-/** Glyphs offered when editing a category; any emoji pasted in the field works too. */
-export const CATEGORY_ICONS = [
-  '🏖️',
-  '🎉',
-  '❗',
-  '📅',
-  '👥',
-  '✈️',
-  '💰',
-  '🏠',
-  '🚗',
-  '🎂',
-  '🎓',
-  '💼',
-  '🏥',
-  '🛒',
-  '🍽️',
-  '🎬',
-  '🎵',
-  '⚽',
-  '📞',
-  '✉️',
-  '🔧',
-  '🐾',
-  '❤️',
-  '⭐',
-] as const;
-
 /** Prefixes a title with the glyph, when there is one. */
 export function withIcon(icon: string | null | undefined, title: string): string {
   return icon ? `${icon} ${title}` : title;

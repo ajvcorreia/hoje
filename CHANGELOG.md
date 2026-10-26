@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.42] — 2026-10-26
+
+### Added
+
+- A much bigger category icon picker in Settings › Categories: about 200 emoji in groups (travel, work, family, health, sport, food, nature, symbols…), a search box, and a field to paste any other emoji (flags and combined emoji included).
+
 ## [1.3.41] — 2026-10-23
 
 ### Added
