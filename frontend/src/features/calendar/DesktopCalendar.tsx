@@ -6,7 +6,7 @@ import { describeError } from '../../lib/errors';
 import { usePillsPosition } from '../../lib/pillsPosition';
 import { usePillsWidth } from '../../lib/pillsWidth';
 import { useToday } from '../../lib/useToday';
-import { useCategories } from '../categories/api';
+import { useCalendarCategories } from '../categories/api';
 import { CategoryChips } from '../categories/CategoryChips';
 import { useOccurrences } from '../events/api';
 import { EventEditor } from '../events/EventEditor';
@@ -48,7 +48,7 @@ export function DesktopCalendar() {
 
   const { data: auth } = useAuthState();
   const weekendDays = auth?.user?.weekend_days ?? DEFAULT_WEEKEND;
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
   const occurrences = useOccurrences(from, to);

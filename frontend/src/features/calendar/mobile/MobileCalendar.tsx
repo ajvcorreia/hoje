@@ -6,7 +6,7 @@ import { btnSecondary } from '../../../components/ui/classes';
 import { addDaysIso, addMonthsIso, parseIso } from '../../../lib/dates';
 import { useToday } from '../../../lib/useToday';
 import { describeError } from '../../../lib/errors';
-import { useCategories } from '../../categories/api';
+import { useCalendarCategories } from '../../categories/api';
 import { CategoryChips } from '../../categories/CategoryChips';
 import { occurrencesQuery, useOccurrences } from '../../events/api';
 import { EventEditor } from '../../events/EventEditor';
@@ -43,7 +43,7 @@ export function MobileCalendar() {
 
   const { data: auth } = useAuthState();
   const weekendDays = auth?.user?.weekend_days ?? DEFAULT_WEEKEND;
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
 
   const rangeFor = view === 'day' ? dayRange : monthRange;
   const { from, to } = rangeFor(selected);

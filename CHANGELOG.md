@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.46] — 2026-10-26
+
+### Added
+
+- "One colour for all events" (Settings → Appearance): every event in the calendar views, agenda, search, day lists and category pills is drawn in one chosen colour (palette or custom) instead of its category's. The category colours are kept and come back when it is switched off; holidays keep their own colours. Saved on the account (`users.single_colour`, `single_colour_value`, migration 0024).
+
 ## [1.3.45] — 2026-10-26
 
 ### Added

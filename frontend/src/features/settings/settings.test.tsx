@@ -550,6 +550,36 @@ describe('to-do marker setting', () => {
   });
 });
 
+describe('one colour for all events', () => {
+  it('switches on and saves a picked colour on the account', async () => {
+    let me = { ...ME, single_colour: false, single_colour_value: 'blue' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('One colour for all events');
+    expect(box).not.toBeChecked();
+    expect(screen.queryByRole('radiogroup', { name: 'Colour for all events' })).toBeNull();
+    await userEvent.click(box);
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ single_colour: true }),
+    );
+    const group = await screen.findByRole('radiogroup', { name: 'Colour for all events' });
+    await userEvent.click(within(group).getByRole('radio', { name: /violet/i }));
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[1]?.body).toEqual({
+        single_colour_value: 'violet',
+      }),
+    );
+  });
+});
+
 describe('category icons', () => {
   it('saves the show category icons switch on the user', async () => {
     let me = { ...ME, show_category_icons: true };

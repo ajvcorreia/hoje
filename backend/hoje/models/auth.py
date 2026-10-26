@@ -19,8 +19,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import CITEXT, INET
 from sqlalchemy.orm import Mapped, mapped_column
 
+from hoje.constants import COLOURS
 from hoje.db import Base
 from hoje.models._types import CreatedAt, UpdatedAt, UuidPk
+
+_COLOUR_LIST = ",".join(f"'{c}'" for c in COLOURS)
 
 
 class User(Base):
@@ -66,6 +69,11 @@ class User(Base):
     todo_marker_colour: Mapped[str] = mapped_column(
         Text, default="auto", server_default=text("'auto'")
     )
+    # Draw every event in `single_colour_value` instead of its category's colour (which is kept).
+    single_colour: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    single_colour_value: Mapped[str] = mapped_column(
+        Text, default="blue", server_default=text("'blue'")
+    )
     # The colour theme, on every device; NULL until the user picks one (devices keep their own).
     theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
@@ -101,6 +109,10 @@ class User(Base):
         CheckConstraint(
             "todo_marker_colour = 'auto' or todo_marker_colour ~ '^#[0-9a-fA-F]{6}$'",
             name="todo_marker_colour",
+        ),
+        CheckConstraint(
+            f"single_colour_value in ({_COLOUR_LIST}) or single_colour_value ~ '^#[0-9a-f]{{6}}$'",
+            name="single_colour_value",
         ),
     )
 

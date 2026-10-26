@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { parseIso } from '../../../lib/dates';
-import { categoryMap, useCategories } from '../../categories/api';
+import { categoryMap, useCalendarCategories } from '../../categories/api';
 import { useCategoryIcon, withIcon } from '../../categories/icons';
 import { QuickAdd } from '../../events/QuickAdd';
 import { ReminderBell } from '../../events/ReminderBell';
@@ -24,7 +24,7 @@ interface DayViewProps {
 
 /** The selected day's heading and its events as stacked cards. */
 export function DayView({ date, occurrences, loading, holidays, onSelectEvent }: DayViewProps) {
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const byId = categoryMap(categories);
   const iconOf = useCategoryIcon('calendar');
   return (

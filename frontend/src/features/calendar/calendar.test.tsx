@@ -858,6 +858,28 @@ describe('strike through past days', () => {
   });
 });
 
+describe('one colour for all events', () => {
+  const withMe = (extra: object) => ({
+    ...baseRoutes([makeEvent('e1', 'Standup', '2026-06-16', '2026-06-16', { category_id: WORK })]),
+    'GET /api/v1/auth/state': authState({ user: { ...ME, last_category_id: WORK, ...extra } }),
+  });
+  const pill = () => screen.getByText('Standup').closest('[data-cat]');
+
+  it('draws events in their category colour while off', async () => {
+    mockApi(withMe({ single_colour: false, single_colour_value: 'violet' }));
+    renderApp();
+    await gridReady();
+    await waitFor(() => expect(pill()).toHaveAttribute('data-cat', 'teal'));
+  });
+
+  it('draws every event in the chosen colour while on', async () => {
+    mockApi(withMe({ single_colour: true, single_colour_value: 'violet' }));
+    renderApp();
+    await gridReady();
+    await waitFor(() => expect(pill()).toHaveAttribute('data-cat', 'violet'));
+  });
+});
+
 describe('max events per day setting', () => {
   const withLimit = (n: number, events: ReturnType<typeof makeEvent>[]) => ({
     ...baseRoutes(events),

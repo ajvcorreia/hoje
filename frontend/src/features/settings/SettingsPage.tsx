@@ -31,7 +31,9 @@ import {
   useTodoMarkerColour,
   type TodoMarker,
 } from '../../lib/todoMarker';
+import { useSingleColour, useSingleColourValue } from '../../lib/singleColour';
 import { isHex } from '../../styles/customColour';
+import { ColourPicker } from '../categories/ColourPicker';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
 import { useTheme } from '../../app/useTheme';
@@ -104,6 +106,8 @@ export function SettingsPage() {
   const [pastStripe, setPastStripe] = usePastStripeColour();
   const [todoMarker, setTodoMarker] = useTodoMarker();
   const [todoColour, setTodoColour] = useTodoMarkerColour();
+  const [singleColour, setSingleColour] = useSingleColour();
+  const [singleColourValue, setSingleColourValue] = useSingleColourValue();
   const [showIcons, setShowIcons] = useShowCategoryIcons();
   const [iconsInCalendar, setIconsInCalendar] = useIconsInCalendar();
   const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
@@ -320,6 +324,32 @@ export function SettingsPage() {
                 <span className="text-xs text-text-muted">Theme colour (amber)</span>
               )}
             </div>
+          </div>
+          <div className="mt-4">
+            <label className="flex min-h-9 items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={singleColour}
+                onChange={(e) => setSingleColour(e.target.checked)}
+                className="size-4"
+              />
+              One colour for all events
+            </label>
+            {singleColour ? (
+              <div className="mt-1 pl-6">
+                <ColourPicker
+                  label="Colour for all events"
+                  custom
+                  value={singleColourValue}
+                  onChange={setSingleColourValue}
+                />
+              </div>
+            ) : null}
+            <p className="mt-1 pl-6 text-xs text-text-muted">
+              Draws every event in this colour instead of its category&apos;s. The category colours
+              are kept and come back when this is off. Holidays keep their own colours. Saved to
+              your account.
+            </p>
           </div>
           <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">
             <input

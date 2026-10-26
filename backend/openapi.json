@@ -2820,6 +2820,16 @@
             "title": "Show Category Icons",
             "type": "boolean"
           },
+          "single_colour": {
+            "default": false,
+            "title": "Single Colour",
+            "type": "boolean"
+          },
+          "single_colour_value": {
+            "default": "blue",
+            "title": "Single Colour Value",
+            "type": "string"
+          },
           "strike_past": {
             "anyOf": [
               {
@@ -3020,6 +3030,29 @@
               }
             ],
             "title": "Show Category Icons"
+          },
+          "single_colour": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Single Colour"
+          },
+          "single_colour_value": {
+            "anyOf": [
+              {
+                "description": "A palette colour name, or a custom colour as #rrggbb.",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Single Colour Value"
           },
           "strike_past": {
             "anyOf": [
@@ -3713,7 +3746,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.45"
+    "version": "1.3.46"
   },
   "openapi": "3.1.0",
   "paths": {

@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from '../../api/client';
 import type { Category, CategoryCreate } from '../../api/types';
 import { useAuthState } from '../../app/useAuthState';
+import { useSingleColour, useSingleColourValue } from '../../lib/singleColour';
 
 export const CATEGORIES_KEY = ['categories'] as const;
 
@@ -16,6 +18,21 @@ export function useCategories() {
         .slice()
         .sort(bySortOrder),
   });
+}
+
+/**
+ * The categories as the calendar draws them. With "One colour for all events" on, each one takes
+ * that colour; the stored colours are untouched (settings and the event editor use
+ * {@link useCategories} and still show them).
+ */
+export function useCalendarCategories(): { data: Category[] | undefined } {
+  const { data } = useCategories();
+  const [single] = useSingleColour();
+  const [colour] = useSingleColourValue();
+  return useMemo(
+    () => ({ data: single && data ? data.map((c) => ({ ...c, colour })) : data }),
+    [data, single, colour],
+  );
 }
 
 /** Lookup by id; stable while the category list is unchanged. */

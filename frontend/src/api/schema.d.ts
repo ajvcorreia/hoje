@@ -1942,6 +1942,16 @@ export interface components {
             past_style: "stripes" | "crosshatch" | "line" | "cross" | "fade";
             /** Show Category Icons */
             show_category_icons: boolean;
+            /**
+             * Single Colour
+             * @default false
+             */
+            single_colour: boolean;
+            /**
+             * Single Colour Value
+             * @default blue
+             */
+            single_colour_value: string;
             /** Strike Past */
             strike_past?: boolean | null;
             /** Theme */
@@ -1986,6 +1996,10 @@ export interface components {
             past_style?: ("stripes" | "crosshatch" | "line" | "cross" | "fade") | null;
             /** Show Category Icons */
             show_category_icons?: boolean | null;
+            /** Single Colour */
+            single_colour?: boolean | null;
+            /** Single Colour Value */
+            single_colour_value?: string | null;
             /** Strike Past */
             strike_past?: boolean | null;
             /** Theme */

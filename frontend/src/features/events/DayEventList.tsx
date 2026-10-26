@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Occurrence } from '../../api/types';
-import { categoryMap, useCategories } from '../categories/api';
+import { categoryMap, useCalendarCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { useCategoryIcon } from '../categories/icons';
 import { formatTimeRange } from './occurrences';
@@ -49,7 +49,7 @@ const MOVE_BUTTON =
  * moved up and down; names are never truncated.
  */
 export function DayEventList({ date, occurrences, onSelect, onReorder }: DayEventListProps) {
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const byId = categoryMap(categories);
   const iconOf = useCategoryIcon('calendar');
   const listRef = useRef<HTMLUListElement>(null);

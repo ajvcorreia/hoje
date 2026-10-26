@@ -2,7 +2,7 @@ import { useMemo, type CSSProperties } from 'react';
 import type { Occurrence } from '../../api/types';
 import { useShowHolidays } from '../../lib/showHolidays';
 import { calendarColour, useHolidayCalendars } from '../holidays/api';
-import { useCategories, useUpdateCategory } from './api';
+import { useCalendarCategories, useUpdateCategory } from './api';
 import { CategorySwatch } from './CategorySwatch';
 import { useCategoryIcon } from './icons';
 import { countByCategory, formatCount, fullFormat } from './counts';
@@ -36,7 +36,7 @@ export function CategoryChips({
   /** All occurrences loaded for the shown range, NOT filtered by hidden categories. */
   occurrences?: readonly Occurrence[];
 }) {
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const { data: calendars } = useHolidayCalendars();
   const update = useUpdateCategory();
   const [showHolidays, setShowHolidays] = useShowHolidays();

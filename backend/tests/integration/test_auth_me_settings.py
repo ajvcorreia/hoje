@@ -107,6 +107,19 @@ async def test_past_days_options_are_unset_or_default_until_chosen(api):
     assert (await patch_me(api, {"strike_past": False})).json()["strike_past"] is False
 
 
+async def test_single_colour_is_off_until_chosen_and_keeps_its_colour(api):
+    await api.register_ok()
+    me = (await api.client.get("/api/v1/me")).json()
+    assert (me["single_colour"], me["single_colour_value"]) == (False, "blue")
+    resp = await patch_me(api, {"single_colour": True, "single_colour_value": "#2563EB"})
+    assert resp.status_code == 200, resp.text
+    assert (resp.json()["single_colour"], resp.json()["single_colour_value"]) == (True, "#2563eb")
+    resp = await patch_me(api, {"single_colour_value": "violet"})
+    assert resp.json()["single_colour_value"] == "violet"
+    off = (await patch_me(api, {"single_colour": False})).json()
+    assert (off["single_colour"], off["single_colour_value"]) == (False, "violet")
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None
@@ -135,6 +148,8 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"todo_marker_colour": "red"},
         {"past_style": "zigzag"},
         {"past_strength": "max"},
+        {"single_colour_value": "nope"},
+        {"single_colour_value": "#12345"},
     ],
     ids=[
         "unknown-timezone",
@@ -149,6 +164,8 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "todo-marker-colour-name",
         "unknown-past-style",
         "unknown-past-strength",
+        "single-colour-name",
+        "single-colour-short-hex",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):

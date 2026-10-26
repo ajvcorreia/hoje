@@ -4,7 +4,7 @@ import type { Occurrence } from '../../api/types';
 import { describeError } from '../../lib/errors';
 import { addMonthsIso, formatShortDate, parseIso } from '../../lib/dates';
 import { btnSecondary } from '../../components/ui/classes';
-import { categoryMap, useCategories } from '../categories/api';
+import { categoryMap, useCalendarCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { useCategoryIcon } from '../categories/icons';
 import { useOccurrences } from '../events/api';
@@ -45,7 +45,7 @@ export function AgendaView({ today, onSelectEvent }: AgendaViewProps) {
   const [months, setMonths] = useState(STEP_MONTHS);
   const to = addMonthsIso(today, months);
   const { data, isPending, isError, error } = useOccurrences(today, to);
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const byId = categoryMap(categories);
   const iconOf = useCategoryIcon('calendar');
   const groups = useMemo(

@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from hoje.constants import CategoryColour
 from hoje.schemas.common import (
     DailySummaryTime,
     MaxEventsPerDay,
@@ -48,6 +49,9 @@ class Me(BaseModel):
     icons_on_vertical: bool
     todo_marker: TodoMarker = "ring"
     todo_marker_colour: str = "auto"
+    # On: every event is drawn in `single_colour_value`; the category colours are kept.
+    single_colour: bool = False
+    single_colour_value: str = "blue"
     # None until chosen: each device keeps its own theme until one is saved to the account.
     theme: Theme | None = None
     daily_summary_enabled: bool
@@ -77,6 +81,8 @@ class MeUpdate(BaseModel):
     icons_on_vertical: bool | None = None
     todo_marker: TodoMarker | None = None
     todo_marker_colour: TodoMarkerColour | None = None
+    single_colour: bool | None = None
+    single_colour_value: CategoryColour | None = None
     theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None

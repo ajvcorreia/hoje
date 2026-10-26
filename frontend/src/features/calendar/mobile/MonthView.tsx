@@ -1,7 +1,7 @@
 import { format, getISOWeek } from 'date-fns';
 import type { Occurrence } from '../../../api/types';
 import { WEEKDAY_LETTERS, isWeekend, monthMatrix, parseIso, splitIso } from '../../../lib/dates';
-import { categoryMap, useCategories } from '../../categories/api';
+import { categoryMap, useCalendarCategories } from '../../categories/api';
 import { DayEventList } from '../../events/DayEventList';
 import { occurrenceKey } from '../../events/occurrences';
 import { QuickAdd } from '../../events/QuickAdd';
@@ -37,7 +37,7 @@ export function MonthView({
   onSelect,
   onSelectEvent,
 }: MonthViewProps) {
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const [showWeeks] = useWeekNumbers();
   const [strikePast] = useStrikePastSetting();
   const cols = showWeeks ? 'grid-cols-[1.5rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7';

@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { Event as HojeEvent } from '../../api/types';
 import { inputClass } from '../../components/ui/classes';
 import { formatShortDate } from '../../lib/dates';
-import { categoryMap, useCategories } from '../categories/api';
+import { categoryMap, useCalendarCategories } from '../categories/api';
 import { CategorySwatch } from '../categories/CategorySwatch';
 import { useCategoryIcon } from '../categories/icons';
 import { useSearchEvents } from '../events/api';
@@ -18,7 +18,7 @@ export function SearchBox({ onPick }: SearchBoxProps) {
   const [text, setText] = useState('');
   const [term, setTerm] = useState('');
   const [open, setOpen] = useState(false);
-  const { data: categories } = useCategories();
+  const { data: categories } = useCalendarCategories();
   const byId = categoryMap(categories);
   const iconOf = useCategoryIcon('calendar');
 
