@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.48] — 2026-10-28
+
+### Security
+
+- dnspython 2.9.0 in the API image (CVE-2026-114605) and go-jose v4.1.6 in the web image's Caddy build (CVE-2026-116587). 1.3.47 failed the image scan on these and published no images; this release carries its changes.
+
 ## [1.3.47] — 2026-10-28
 
 ### Added

@@ -23,6 +23,7 @@ RUN printf '%s\n' 'package main' \
  && go mod init hoje/caddy
 RUN --mount=type=cache,target=/go/pkg/mod \
     go get github.com/caddyserver/caddy/v2@${CADDY_VERSION} \
+        github.com/go-jose/go-jose/v4@v4.1.6 \
         github.com/klauspost/compress@v1.18.7 \
         golang.org/x/crypto@v0.57.0 \
         golang.org/x/net@v0.60.0 \
