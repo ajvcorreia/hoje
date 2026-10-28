@@ -1938,6 +1938,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Join Vertical Events
+             * @default false
+             */
+            join_vertical_events: boolean;
             /** Last Category Id */
             last_category_id?: string | null;
             /** Max Events Per Day */
@@ -2008,6 +2013,8 @@ export interface components {
             icons_in_calendar?: boolean | null;
             /** Icons On Vertical */
             icons_on_vertical?: boolean | null;
+            /** Join Vertical Events */
+            join_vertical_events?: boolean | null;
             /** Max Events Per Day */
             max_events_per_day?: number | null;
             /** Past Strength */

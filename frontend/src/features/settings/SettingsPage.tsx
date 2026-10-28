@@ -43,6 +43,7 @@ import { isHex } from '../../styles/customColour';
 import { ColourPicker } from '../categories/ColourPicker';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
+import { useJoinVertical } from '../../lib/joinVertical';
 import { useTheme } from '../../app/useTheme';
 import { useTextSize } from '../../app/useTextSize';
 import { inputClass } from '../../components/ui/classes';
@@ -130,6 +131,7 @@ export function SettingsPage() {
   const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
   const [maxEvents, setMaxEvents] = useMaxEvents();
   const [verticalSize, setVerticalSize] = useVerticalTextSize();
+  const [joinVertical, setJoinVertical] = useJoinVertical();
   // Links like /settings#vacation: scroll to the section once the page is there.
   const { hash } = useLocation();
   useEffect(() => {
@@ -506,6 +508,19 @@ export function SettingsPage() {
               Shrinks automatically when the name does not fit the event's height
             </p>
           </div>
+          <label className="mt-4 flex min-h-9 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={joinVertical}
+              onChange={(e) => setJoinVertical(e.target.checked)}
+              className="size-4"
+            />
+            Join vertical events into one box
+          </label>
+          <p className="mt-1 pl-6 text-xs text-text-muted">
+            A vertical event spanning several days is drawn as one block, without gaps between the
+            days. Saved to your account.
+          </p>
         </SettingsSection>
         <CategoriesSection />
         <VacationSection />

@@ -74,6 +74,8 @@ class User(Base):
     single_colour_value: Mapped[str] = mapped_column(
         Text, default="blue", server_default=text("'blue'")
     )
+    # Draw each multi-day vertical event as one box, without gaps between its days.
+    join_vertical_events: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # A thin outline around events: 'category' (each category's own colour) or a #rrggbb.
     event_outline: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     event_outline_colour: Mapped[str] = mapped_column(

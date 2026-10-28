@@ -140,6 +140,15 @@ async def test_event_outline_is_off_with_the_category_colour_until_chosen(api):
     assert (back["event_outline"], back["event_outline_colour"]) == (True, "category")
 
 
+async def test_join_vertical_events_is_off_until_switched_on(api):
+    await api.register_ok()
+    assert (await api.client.get("/api/v1/me")).json()["join_vertical_events"] is False
+    resp = await patch_me(api, {"join_vertical_events": True})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["join_vertical_events"] is True
+    assert (await api.client.get("/api/v1/me")).json()["join_vertical_events"] is True
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None

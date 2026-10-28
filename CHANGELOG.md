@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.50] — 2026-10-28
+
+### Added
+
+- Join vertical events into one box (Settings → Appearance): a vertical event spanning several days is drawn as one continuous block in the Months view, without gaps or day dividers between its days, rounded only at its outer corners (and outlined as a whole when outlines are on). Saved on the account (`users.join_vertical_events`, migration 0027).
+
 ## [1.3.49] — 2026-10-28
 
 ### Added

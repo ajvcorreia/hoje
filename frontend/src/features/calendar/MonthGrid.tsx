@@ -26,6 +26,7 @@ import {
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import { usePastDays } from '../../lib/pastDays';
 import { todoMarkerStyle, useTodoMarker, useTodoMarkerColour } from '../../lib/todoMarker';
+import { useJoinVertical } from '../../lib/joinVertical';
 import { useCategoryIcon } from '../categories/icons';
 import { useMaxEvents } from '../../lib/maxEvents';
 import { useVerticalTextSize } from '../../lib/verticalTextSize';
@@ -419,6 +420,7 @@ export function MonthGrid({
   const strikePast = past.strike;
   const [todoMarker] = useTodoMarker();
   const [todoColour] = useTodoMarkerColour();
+  const [joinVertical] = useJoinVertical();
   const iconOf = useCategoryIcon('calendar');
   const verticalIconOf = useCategoryIcon('vertical');
   const [maxEvents] = useMaxEvents();
@@ -687,6 +689,7 @@ export function MonthGrid({
         aria-label={`Calendar ${year}`}
         className="cal-grid"
         data-todo-marker={todoMarker}
+        data-join-vertical={joinVertical || undefined}
         {...past.attrs}
         style={style}
       >

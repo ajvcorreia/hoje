@@ -585,6 +585,29 @@ describe('corners setting', () => {
   });
 });
 
+describe('join vertical events setting', () => {
+  it('is off by default and saves the switch on the account', async () => {
+    let me = { ...ME, join_vertical_events: false };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('Join vertical events into one box');
+    expect(box).not.toBeChecked();
+    await userEvent.click(box);
+    expect(box).toBeChecked();
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ join_vertical_events: true }),
+    );
+  });
+});
+
 describe('event outline setting', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('data-event-outline');

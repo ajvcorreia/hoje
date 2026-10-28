@@ -2796,6 +2796,11 @@
             "title": "Id",
             "type": "string"
           },
+          "join_vertical_events": {
+            "default": false,
+            "title": "Join Vertical Events",
+            "type": "boolean"
+          },
           "last_category_id": {
             "anyOf": [
               {
@@ -3027,6 +3032,17 @@
               }
             ],
             "title": "Icons On Vertical"
+          },
+          "join_vertical_events": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Vertical Events"
           },
           "max_events_per_day": {
             "anyOf": [
@@ -3813,7 +3829,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.49"
+    "version": "1.3.50"
   },
   "openapi": "3.1.0",
   "paths": {

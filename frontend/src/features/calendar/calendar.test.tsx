@@ -122,6 +122,27 @@ describe('month grid', () => {
     expect(cell('2026-02-14')).not.toHaveAttribute('data-last');
   });
 
+  it('keeps vertical events in per-day pieces by default', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    expect(document.querySelector('.cal-grid')).not.toHaveAttribute('data-join-vertical');
+  });
+
+  it('joins vertical events into one box when the account says so', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/auth/state': authState({
+        user: { ...ME, last_category_id: WORK, join_vertical_events: true },
+      }),
+    });
+    renderApp();
+    await gridReady();
+    await waitFor(() =>
+      expect(document.querySelector('.cal-grid')).toHaveAttribute('data-join-vertical'),
+    );
+  });
+
   it('highlights the weekday of the hovered row and clears it on leave', async () => {
     mockApi(baseRoutes());
     renderApp();

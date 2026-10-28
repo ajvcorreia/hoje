@@ -59,6 +59,7 @@ class Me(BaseModel):
     corner_radius: CornerRadius = "medium"
     event_outline: bool = False
     event_outline_colour: str = "category"
+    join_vertical_events: bool = False
     # None until chosen: each device keeps its own theme until one is saved to the account.
     theme: Theme | None = None
     daily_summary_enabled: bool
@@ -93,6 +94,7 @@ class MeUpdate(BaseModel):
     corner_radius: CornerRadius | None = None
     event_outline: bool | None = None
     event_outline_colour: EventOutlineColour | None = None
+    join_vertical_events: bool | None = None
     theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None

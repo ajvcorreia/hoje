@@ -884,3 +884,22 @@
   outline: 1.5px solid var(--ev-outline, var(--ev-text));
   outline-offset: -1.5px;
 }
+
+/*
+ * Join vertical events (Settings, stored on the account): each rotated block's label already
+ * spans all of its days, so it takes the event's fill and corners and covers the per-day pieces
+ * and the day dividers between them: one box, no gaps.
+ */
+.cal-grid[data-join-vertical] .cal-vlabel {
+  background: var(--ev-fill);
+  border-radius: var(--radius-md);
+}
+
+:root[data-theme='light-contrast'] .cal-grid[data-join-vertical] .cal-vlabel {
+  box-shadow: inset 0 0 0 1px var(--ev-text);
+}
+
+:root[data-event-outline] .cal-grid[data-join-vertical] .cal-vlabel {
+  outline: 1.5px solid var(--ev-outline, var(--ev-text));
+  outline-offset: -1.5px;
+}
