@@ -33,6 +33,12 @@ import {
   type TodoMarker,
 } from '../../lib/todoMarker';
 import { useSingleColour, useSingleColourValue } from '../../lib/singleColour';
+import {
+  CATEGORY_OUTLINE,
+  DEFAULT_OUTLINE_HEX,
+  useEventOutline,
+  useEventOutlineColour,
+} from '../../lib/eventOutline';
 import { isHex } from '../../styles/customColour';
 import { ColourPicker } from '../categories/ColourPicker';
 import { MAX_MAX_EVENTS, MIN_MAX_EVENTS, useMaxEvents } from '../../lib/maxEvents';
@@ -117,6 +123,8 @@ export function SettingsPage() {
   const [todoColour, setTodoColour] = useTodoMarkerColour();
   const [singleColour, setSingleColour] = useSingleColour();
   const [singleColourValue, setSingleColourValue] = useSingleColourValue();
+  const [outline, setOutline] = useEventOutline();
+  const [outlineColour, setOutlineColour] = useEventOutlineColour();
   const [showIcons, setShowIcons] = useShowCategoryIcons();
   const [iconsInCalendar, setIconsInCalendar] = useIconsInCalendar();
   const [iconsOnVertical, setIconsOnVertical] = useIconsOnVertical();
@@ -381,6 +389,46 @@ export function SettingsPage() {
               Draws every event in this colour instead of its category&apos;s. The category colours
               are kept and come back when this is off. Holidays keep their own colours. Saved to
               your account.
+            </p>
+          </div>
+          <div className="mt-4">
+            <label className="flex min-h-9 items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={outline}
+                onChange={(e) => setOutline(e.target.checked)}
+                className="size-4"
+              />
+              Outline events
+            </label>
+            {outline ? (
+              <div className="flex min-h-9 items-center gap-2 pl-6 text-sm">
+                <label htmlFor="event-outline-colour" className="font-medium">
+                  Outline colour
+                </label>
+                <input
+                  id="event-outline-colour"
+                  type="color"
+                  value={isHex(outlineColour) ? outlineColour : DEFAULT_OUTLINE_HEX}
+                  onChange={(e) => setOutlineColour(e.target.value.toLowerCase())}
+                  className="h-8 w-12 cursor-pointer rounded-sm border border-border bg-transparent p-0.5"
+                />
+                {isHex(outlineColour) ? (
+                  <button
+                    type="button"
+                    className="text-xs text-text-muted underline"
+                    onClick={() => setOutlineColour(CATEGORY_OUTLINE)}
+                  >
+                    Use each category&apos;s colour
+                  </button>
+                ) : (
+                  <span className="text-xs text-text-muted">Each category&apos;s colour</span>
+                )}
+              </div>
+            ) : null}
+            <p className="mt-1 pl-6 text-xs text-text-muted">
+              A thin line around every event in the Months, Year and phone views. Saved to your
+              account.
             </p>
           </div>
           <label className="mt-2 flex min-h-9 items-center gap-2 text-sm font-medium">

@@ -585,6 +585,52 @@ describe('corners setting', () => {
   });
 });
 
+describe('event outline setting', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-event-outline');
+    document.documentElement.style.removeProperty('--ev-outline');
+  });
+
+  it('switches the outline on, picks a colour and goes back to the category colours', async () => {
+    let me = { ...ME, event_outline: false, event_outline_colour: 'category' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const box = await screen.findByLabelText('Outline events');
+    expect(screen.queryByLabelText('Outline colour')).toBeNull();
+    expect(document.documentElement).not.toHaveAttribute('data-event-outline');
+
+    await userEvent.click(box);
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-event-outline'));
+    expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ event_outline: true });
+    expect(screen.getByText("Each category's colour")).toBeVisible();
+    expect(document.documentElement.style.getPropertyValue('--ev-outline')).toBe('');
+
+    fireEvent.input(screen.getByLabelText('Outline colour'), { target: { value: '#1d4ed8' } });
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue('--ev-outline')).toBe('#1d4ed8'),
+    );
+    expect(api.callsTo('PATCH', '/api/v1/me')[1]?.body).toEqual({
+      event_outline_colour: '#1d4ed8',
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: "Use each category's colour" }));
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue('--ev-outline')).toBe(''),
+    );
+    expect(api.callsTo('PATCH', '/api/v1/me')[2]?.body).toEqual({
+      event_outline_colour: 'category',
+    });
+  });
+});
+
 describe('one colour for all events', () => {
   it('switches on and saves a picked colour on the account', async () => {
     let me = { ...ME, single_colour: false, single_colour_value: 'blue' };

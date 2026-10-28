@@ -129,6 +129,17 @@ async def test_corner_radius_defaults_to_medium_and_follows_the_account(api):
         assert resp.json()["corner_radius"] == radius
 
 
+async def test_event_outline_is_off_with_the_category_colour_until_chosen(api):
+    await api.register_ok()
+    me = (await api.client.get("/api/v1/me")).json()
+    assert (me["event_outline"], me["event_outline_colour"]) == (False, "category")
+    resp = await patch_me(api, {"event_outline": True, "event_outline_colour": "#1d4ed8"})
+    assert resp.status_code == 200, resp.text
+    assert (resp.json()["event_outline"], resp.json()["event_outline_colour"]) == (True, "#1d4ed8")
+    back = (await patch_me(api, {"event_outline_colour": "category"})).json()
+    assert (back["event_outline"], back["event_outline_colour"]) == (True, "category")
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None
@@ -160,6 +171,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"single_colour_value": "nope"},
         {"single_colour_value": "#12345"},
         {"corner_radius": "huge"},
+        {"event_outline_colour": "red"},
     ],
     ids=[
         "unknown-timezone",
@@ -177,6 +189,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "single-colour-name",
         "single-colour-short-hex",
         "unknown-corner-radius",
+        "event-outline-colour-name",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):

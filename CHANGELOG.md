@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.49] — 2026-10-28
+
+### Added
+
+- Outline events (Settings → Appearance): a thin line around every event in the Months, Year and phone views, in a picked colour or each category's own colour. Saved on the account (`users.event_outline`, `event_outline_colour`, migration 0026).
+
+### Changed
+
+- The Months view follows the Corners setting: each month's block of days is rounded (outline, first and last day, week numbers) and event pills take the same radius as buttons.
+
 ## [1.3.48] — 2026-10-28
 
 ### Security

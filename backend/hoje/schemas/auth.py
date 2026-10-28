@@ -27,6 +27,8 @@ PastStyle = Literal["stripes", "crosshatch", "line", "cross", "fade"]
 PastStrength = Literal["light", "medium", "strong"]
 # How round the corners are; the frontend list is in src/lib/corners.ts.
 CornerRadius = Literal["none", "small", "medium", "large", "xlarge"]
+# 'category' outlines each event in its category's own colour; otherwise the colour picked.
+EventOutlineColour = Literal["category"] | PastStripeColour
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -55,6 +57,8 @@ class Me(BaseModel):
     single_colour: bool = False
     single_colour_value: str = "blue"
     corner_radius: CornerRadius = "medium"
+    event_outline: bool = False
+    event_outline_colour: str = "category"
     # None until chosen: each device keeps its own theme until one is saved to the account.
     theme: Theme | None = None
     daily_summary_enabled: bool
@@ -87,6 +91,8 @@ class MeUpdate(BaseModel):
     single_colour: bool | None = None
     single_colour_value: CategoryColour | None = None
     corner_radius: CornerRadius | None = None
+    event_outline: bool | None = None
+    event_outline_colour: EventOutlineColour | None = None
     theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None

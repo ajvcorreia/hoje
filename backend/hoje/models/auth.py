@@ -74,6 +74,11 @@ class User(Base):
     single_colour_value: Mapped[str] = mapped_column(
         Text, default="blue", server_default=text("'blue'")
     )
+    # A thin outline around events: 'category' (each category's own colour) or a #rrggbb.
+    event_outline: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    event_outline_colour: Mapped[str] = mapped_column(
+        Text, default="category", server_default=text("'category'")
+    )
     # How round the corners are across the app: none, small, medium, large or xlarge.
     corner_radius: Mapped[str] = mapped_column(
         Text, default="medium", server_default=text("'medium'")
@@ -121,6 +126,10 @@ class User(Base):
         CheckConstraint(
             "corner_radius in ('none', 'small', 'medium', 'large', 'xlarge')",
             name="corner_radius",
+        ),
+        CheckConstraint(
+            "event_outline_colour = 'category' or event_outline_colour ~ '^#[0-9a-fA-F]{6}$'",
+            name="event_outline_colour",
         ),
     )
 

@@ -112,6 +112,16 @@ describe('month grid', () => {
     expect(document.querySelectorAll('[data-month="0"] .cal-empty')).toHaveLength(37 - 31);
   });
 
+  it('marks the first and last day of each month, for its rounded corners', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    expect(cell('2026-02-01')).toHaveAttribute('data-first');
+    expect(cell('2026-02-28')).toHaveAttribute('data-last');
+    expect(cell('2026-02-14')).not.toHaveAttribute('data-first');
+    expect(cell('2026-02-14')).not.toHaveAttribute('data-last');
+  });
+
   it('highlights the weekday of the hovered row and clears it on leave', async () => {
     mockApi(baseRoutes());
     renderApp();

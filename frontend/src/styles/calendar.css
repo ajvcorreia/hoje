@@ -163,6 +163,36 @@
   height: calc(var(--m-len) * var(--row-h));
   pointer-events: none;
   border: 2px solid var(--month-outline);
+  border-radius: var(--m-radius);
+}
+
+/*
+ * Corners (Settings): each month's block of days is rounded like the rest of the app. Its
+ * outline is, and the first and last day (and week number) take the matching corners, which
+ * clips the day's content. With week numbers on, the week column holds the left corners.
+ */
+.cal-col {
+  --m-radius: var(--radius-lg);
+}
+.cal-cell[data-first] {
+  border-top-left-radius: var(--m-radius);
+  border-top-right-radius: var(--m-radius);
+}
+.cal-cell[data-last] {
+  border-bottom-left-radius: var(--m-radius);
+  border-bottom-right-radius: var(--m-radius);
+}
+.cal-col[data-weeks] .cal-cell[data-first] {
+  border-top-left-radius: 0;
+}
+.cal-col[data-weeks] .cal-cell[data-last] {
+  border-bottom-left-radius: 0;
+}
+.cal-wk[data-first] {
+  border-top-left-radius: var(--m-radius);
+}
+.cal-wk[data-last] {
+  border-bottom-left-radius: var(--m-radius);
 }
 
 .cal-col[data-weeks] {
@@ -313,7 +343,7 @@
   box-sizing: border-box;
   min-width: 0;
   padding: 0 4px;
-  border-radius: calc(3px * var(--corner-scale));
+  border-radius: var(--radius-md);
   line-height: calc(var(--row-h) - 1px);
   white-space: nowrap;
   color: var(--ev-text);
@@ -842,4 +872,15 @@
     color-mix(in srgb, var(--accent) 12%, transparent),
     color-mix(in srgb, var(--accent) 12%, transparent)
   );
+}
+
+/*
+ * Event outline (Settings, stored on the account): useEventOutlineSync sets data-event-outline on
+ * <html> and, for a picked colour, --ev-outline; otherwise each event takes its category's text
+ * colour. An outline (not a border or shadow) never changes layout and leaves the today ring,
+ * to-do markers and theme shadows alone; a focused day keeps its focus ring instead.
+ */
+:root[data-event-outline] :is(.cal-ev, .yr-day[data-cat], .m-card):not(:focus-visible) {
+  outline: 1.5px solid var(--ev-outline, var(--ev-text));
+  outline-offset: -1.5px;
 }

@@ -9,6 +9,7 @@ import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
 import { useThemeSync } from './useTheme';
 import { useCornersSync } from '../lib/corners';
+import { useEventOutlineSync } from '../lib/eventOutline';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calendar', Icon: CalendarIcon, end: true },
@@ -83,6 +84,7 @@ export function AppShell() {
   useRealtime();
   useThemeSync();
   useCornersSync();
+  useEventOutlineSync();
   return (
     <ToastProvider>
       <Shell isCalendar={isCalendar} />

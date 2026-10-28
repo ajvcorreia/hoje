@@ -1919,6 +1919,16 @@ export interface components {
              * Format: email
              */
             email: string;
+            /**
+             * Event Outline
+             * @default false
+             */
+            event_outline: boolean;
+            /**
+             * Event Outline Colour
+             * @default category
+             */
+            event_outline_colour: string;
             /** Icons In Calendar */
             icons_in_calendar: boolean;
             /** Icons On Vertical */
@@ -1990,6 +2000,10 @@ export interface components {
             daily_summary_enabled?: boolean | null;
             /** Daily Summary Time */
             daily_summary_time?: string | null;
+            /** Event Outline */
+            event_outline?: boolean | null;
+            /** Event Outline Colour */
+            event_outline_colour?: "category" | string | null;
             /** Icons In Calendar */
             icons_in_calendar?: boolean | null;
             /** Icons On Vertical */

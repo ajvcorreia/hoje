@@ -183,6 +183,8 @@ function MonthColumnImpl({
         <div
           key={`w${day}`}
           className="cal-wk"
+          data-first={day === 1 || undefined}
+          data-last={day + len > dim || undefined}
           data-week={getISOWeek(new Date(year, month, day))}
           title={`Week ${getISOWeek(new Date(year, month, day))}`}
           style={{ gridRow: `${row + 2} / span ${len}` }}
@@ -243,6 +245,8 @@ function MonthColumnImpl({
         type="button"
         className="cal-cell"
         data-date={iso}
+        data-first={day === 1 || undefined}
+        data-last={day === dim || undefined}
         data-row={row}
         data-weekend={weekend}
         data-holiday-off={isNonWorkingDay(dayHolidays) || undefined}
