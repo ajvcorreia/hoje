@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
+import { CORNERS, isCorners, useCorners, type Corners } from '../../lib/corners';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import {
@@ -51,6 +52,13 @@ import { HolidaysSection } from './HolidaysSection';
 import { SettingsSection } from './SettingsSection';
 import { VacationSection } from './VacationSection';
 
+const CORNER_LABELS: Record<Corners, string> = {
+  none: 'Square',
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large',
+  xlarge: 'Extra large',
+};
 const LABELS: Record<Theme, string> = {
   system: 'System',
   light: 'Light',
@@ -96,6 +104,7 @@ const SIZE_LABELS: Record<TextSize, string> = {
 
 export function SettingsPage() {
   const [theme, setTheme] = useTheme();
+  const [corners, setCorners] = useCorners();
   const [textSize, setTextSize] = useTextSize();
   const [pillsPosition, setPillsPosition] = usePillsPosition();
   const [pillsWidth, setPillsWidth] = usePillsWidth();
@@ -141,6 +150,29 @@ export function SettingsPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="corners" className="block text-sm font-medium">
+              Corners
+            </label>
+            <select
+              id="corners"
+              value={corners}
+              onChange={(e) => {
+                if (isCorners(e.target.value)) setCorners(e.target.value);
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              {CORNERS.map((c) => (
+                <option key={c} value={c}>
+                  {CORNER_LABELS[c]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              How round buttons, fields, cards, dialogs and calendar events are. Saved to your
+              account.
+            </p>
           </div>
           <div className="mt-4">
             <label htmlFor="text-size" className="block text-sm font-medium">
@@ -265,7 +297,7 @@ export function SettingsPage() {
               type="color"
               value={pastStripe}
               onChange={(e) => setPastStripe(e.target.value)}
-              className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5"
+              className="h-8 w-12 cursor-pointer rounded-sm border border-border bg-transparent p-0.5"
             />
             <button
               type="button"
@@ -310,7 +342,7 @@ export function SettingsPage() {
                 type="color"
                 value={isHex(todoColour) ? todoColour : DEFAULT_TODO_MARKER_HEX}
                 onChange={(e) => setTodoColour(e.target.value.toLowerCase())}
-                className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                className="h-8 w-12 cursor-pointer rounded-sm border border-border bg-transparent p-0.5"
               />
               {isHex(todoColour) ? (
                 <button

@@ -120,6 +120,15 @@ async def test_single_colour_is_off_until_chosen_and_keeps_its_colour(api):
     assert (off["single_colour"], off["single_colour_value"]) == (False, "violet")
 
 
+async def test_corner_radius_defaults_to_medium_and_follows_the_account(api):
+    await api.register_ok()
+    assert (await api.client.get("/api/v1/me")).json()["corner_radius"] == "medium"
+    for radius in ("none", "small", "large", "xlarge", "medium"):
+        resp = await patch_me(api, {"corner_radius": radius})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["corner_radius"] == radius
+
+
 async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
     await api.register_ok()
     assert (await api.client.get("/api/v1/me")).json()["theme"] is None
@@ -150,6 +159,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"past_strength": "max"},
         {"single_colour_value": "nope"},
         {"single_colour_value": "#12345"},
+        {"corner_radius": "huge"},
     ],
     ids=[
         "unknown-timezone",
@@ -166,6 +176,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "unknown-past-strength",
         "single-colour-name",
         "single-colour-short-hex",
+        "unknown-corner-radius",
     ],
 )
 async def test_patch_me_rejects_invalid_values(api, body):

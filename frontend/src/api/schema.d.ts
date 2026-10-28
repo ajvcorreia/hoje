@@ -1898,6 +1898,12 @@ export interface components {
         /** Me */
         Me: {
             /**
+             * Corner Radius
+             * @default medium
+             * @enum {string}
+             */
+            corner_radius: "none" | "small" | "medium" | "large" | "xlarge";
+            /**
              * Created At
              * Format: date-time
              */
@@ -1978,6 +1984,8 @@ export interface components {
         };
         /** MeUpdate */
         MeUpdate: {
+            /** Corner Radius */
+            corner_radius?: ("none" | "small" | "medium" | "large" | "xlarge") | null;
             /** Daily Summary Enabled */
             daily_summary_enabled?: boolean | null;
             /** Daily Summary Time */

@@ -8,6 +8,7 @@ import { CalendarIcon, SettingsIcon } from './icons';
 import { UserMenu } from './UserMenu';
 import { useAuthState } from './useAuthState';
 import { useThemeSync } from './useTheme';
+import { useCornersSync } from '../lib/corners';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calendar', Icon: CalendarIcon, end: true },
@@ -81,6 +82,7 @@ export function AppShell() {
   const isCalendar = useLocation().pathname === '/';
   useRealtime();
   useThemeSync();
+  useCornersSync();
   return (
     <ToastProvider>
       <Shell isCalendar={isCalendar} />

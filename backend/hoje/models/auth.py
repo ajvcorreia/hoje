@@ -74,6 +74,10 @@ class User(Base):
     single_colour_value: Mapped[str] = mapped_column(
         Text, default="blue", server_default=text("'blue'")
     )
+    # How round the corners are across the app: none, small, medium, large or xlarge.
+    corner_radius: Mapped[str] = mapped_column(
+        Text, default="medium", server_default=text("'medium'")
+    )
     # The colour theme, on every device; NULL until the user picks one (devices keep their own).
     theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
@@ -113,6 +117,10 @@ class User(Base):
         CheckConstraint(
             f"single_colour_value in ({_COLOUR_LIST}) or single_colour_value ~ '^#[0-9a-f]{{6}}$'",
             name="single_colour_value",
+        ),
+        CheckConstraint(
+            "corner_radius in ('none', 'small', 'medium', 'large', 'xlarge')",
+            name="corner_radius",
         ),
     )
 

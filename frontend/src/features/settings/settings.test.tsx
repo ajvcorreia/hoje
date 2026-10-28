@@ -550,6 +550,41 @@ describe('to-do marker setting', () => {
   });
 });
 
+describe('corners setting', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-corners');
+    window.localStorage.removeItem('hoje.corners');
+  });
+
+  it('applies the account corner size and saves a new one', async () => {
+    let me = { ...ME, corner_radius: 'large' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('Corners');
+    expect(select).toHaveValue('large');
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-corners', 'large'));
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Square', 'Small', 'Medium', 'Large', 'Extra large']);
+    await userEvent.selectOptions(select, 'none');
+    expect(document.documentElement).toHaveAttribute('data-corners', 'none');
+    expect(window.localStorage.getItem('hoje.corners')).toBe('none');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ corner_radius: 'none' }),
+    );
+  });
+});
+
 describe('one colour for all events', () => {
   it('switches on and saves a picked colour on the account', async () => {
     let me = { ...ME, single_colour: false, single_colour_value: 'blue' };

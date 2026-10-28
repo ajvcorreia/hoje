@@ -25,6 +25,8 @@ TodoMarkerColour = Literal["auto"] | PastStripeColour
 # How past days are marked; the frontend lists are in src/lib/pastDays.ts.
 PastStyle = Literal["stripes", "crosshatch", "line", "cross", "fade"]
 PastStrength = Literal["light", "medium", "strong"]
+# How round the corners are; the frontend list is in src/lib/corners.ts.
+CornerRadius = Literal["none", "small", "medium", "large", "xlarge"]
 
 NewPassword = Field(min_length=10, max_length=256)
 ExistingPassword = Field(min_length=1, max_length=256)
@@ -52,6 +54,7 @@ class Me(BaseModel):
     # On: every event is drawn in `single_colour_value`; the category colours are kept.
     single_colour: bool = False
     single_colour_value: str = "blue"
+    corner_radius: CornerRadius = "medium"
     # None until chosen: each device keeps its own theme until one is saved to the account.
     theme: Theme | None = None
     daily_summary_enabled: bool
@@ -83,6 +86,7 @@ class MeUpdate(BaseModel):
     todo_marker_colour: TodoMarkerColour | None = None
     single_colour: bool | None = None
     single_colour_value: CategoryColour | None = None
+    corner_radius: CornerRadius | None = None
     theme: Theme | None = None
     daily_summary_enabled: bool | None = None
     daily_summary_time: DailySummaryTime | None = None

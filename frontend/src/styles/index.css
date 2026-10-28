@@ -3,6 +3,37 @@
 @import './palette.css';
 @import './calendar.css';
 
+/*
+ * Corners: every radius is Tailwind's default times --corner-scale, which the user picks
+ * (Settings, stored on the account; main.tsx and useCornersSync set data-corners on <html>).
+ * rounded-full stays a pill whatever the setting.
+ */
+@theme {
+  --radius-xs: calc(0.125rem * var(--corner-scale));
+  --radius-sm: calc(0.25rem * var(--corner-scale));
+  --radius-md: calc(0.375rem * var(--corner-scale));
+  --radius-lg: calc(0.5rem * var(--corner-scale));
+  --radius-xl: calc(0.75rem * var(--corner-scale));
+  --radius-2xl: calc(1rem * var(--corner-scale));
+  --radius-3xl: calc(1.5rem * var(--corner-scale));
+}
+
+:root {
+  --corner-scale: 1;
+}
+:root[data-corners='none'] {
+  --corner-scale: 0;
+}
+:root[data-corners='small'] {
+  --corner-scale: 0.5;
+}
+:root[data-corners='large'] {
+  --corner-scale: 1.75;
+}
+:root[data-corners='xlarge'] {
+  --corner-scale: 2.5;
+}
+
 /* Map CSS variables into Tailwind utilities (bg-surface, text-muted, border-border, bg-cat-red-fill, ...). */
 @theme inline {
   --color-bg: var(--bg);

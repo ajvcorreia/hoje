@@ -2731,6 +2731,18 @@
       },
       "Me": {
         "properties": {
+          "corner_radius": {
+            "default": "medium",
+            "enum": [
+              "none",
+              "small",
+              "medium",
+              "large",
+              "xlarge"
+            ],
+            "title": "Corner Radius",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2916,6 +2928,24 @@
       },
       "MeUpdate": {
         "properties": {
+          "corner_radius": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "small",
+                  "medium",
+                  "large",
+                  "xlarge"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corner Radius"
+          },
           "daily_summary_enabled": {
             "anyOf": [
               {
@@ -3746,7 +3776,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.46"
+    "version": "1.3.47"
   },
   "openapi": "3.1.0",
   "paths": {
