@@ -158,10 +158,15 @@ function MonthColumnImpl({
     len: number;
     lane: number;
     past: boolean;
+    pastDays: number;
   }[] = [];
   for (let day = 1; day <= dim; day += 1) {
     for (const p of (layout[day - 1] as DayLayout).rotated) {
       if (!p || !p.showTitle) continue;
+      let pastDays = 0;
+      while (strikePast && pastDays < p.blockLen && `${prefix}${pad(day + pastDays)}` < today) {
+        pastDays += 1;
+      }
       segments.push({
         key: `${p.input.key}:${day}`,
         title: verticalTitle(p.input),
@@ -169,7 +174,8 @@ function MonthColumnImpl({
         row: day - 1 + offset,
         len: p.blockLen,
         lane: p.lane,
-        past: strikePast && `${prefix}${pad(day + p.blockLen - 1)}` < today,
+        past: pastDays === p.blockLen,
+        pastDays,
       });
     }
   }
@@ -346,6 +352,7 @@ function MonthColumnImpl({
             data-lane={seg.lane}
             data-lines={plan?.lines.length ?? 1}
             data-past={seg.past || undefined}
+            data-past-days={seg.pastDays || undefined}
             style={
               {
                 ...catProps(seg.colour).style,
@@ -353,6 +360,7 @@ function MonthColumnImpl({
                 '--vl-w': `${tracks.lanes[seg.lane] ?? tracks.lane}px`,
                 '--seg-row': seg.row,
                 '--seg-len': seg.len,
+                '--past-days': seg.pastDays,
                 ...(plan ? { '--vl-fs': `${plan.size}px` } : null),
               } as CSSProperties
             }

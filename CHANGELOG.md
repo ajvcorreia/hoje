@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.51] — 2026-10-29
+
+### Fixed
+
+- Joined vertical events now show the past-day mark (fade, stripes, crosshatch, line or cross) over their past days; the joined box's fill had covered it, leaving only the struck-through name.
+
 ## [1.3.50] — 2026-10-28
 
 ### Added
