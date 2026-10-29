@@ -619,8 +619,7 @@
   --past-fade: 80%;
 }
 
-[data-past-style] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+[data-past-style] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   --past-c: color-mix(in srgb, var(--past-stripe, #9ca3af) var(--past-mix, 55%), transparent);
   --past-lo: calc(50% - var(--past-w, 2px));
   --past-hi: calc(50% + var(--past-w, 2px));
@@ -632,8 +631,23 @@
   border-radius: inherit;
 }
 
-[data-past-style='stripes'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style='stripes'] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+/* Above the vertical event names and joined boxes (.cal-vlabel, z-index 1), which are drawn over
+   the cells, so they are marked like every other event. */
+[data-past-style] .cal-cell[data-past]::after {
+  z-index: 2;
+}
+
+/* The hover filter would make the cell its own layer and drop the mark back under the vertical
+   names, so a past cell's hover shade is drawn on the mark instead. */
+[data-past-style] .cal-cell[data-past]:hover {
+  filter: none;
+}
+
+[data-past-style] .cal-cell[data-past]:hover::after {
+  box-shadow: inset 0 0 0 100vmax rgb(0 0 0 / 3%);
+}
+
+[data-past-style='stripes'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background: repeating-linear-gradient(
     135deg,
     var(--past-c) 0 var(--past-w, 2px),
@@ -641,8 +655,7 @@
   );
 }
 
-[data-past-style='crosshatch'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style='crosshatch'] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+[data-past-style='crosshatch'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background:
     repeating-linear-gradient(
       135deg,
@@ -657,8 +670,7 @@
 }
 
 /* One line from the bottom-left to the top-right corner. */
-[data-past-style='line'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style='line'] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+[data-past-style='line'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background: linear-gradient(
     to top right,
     transparent var(--past-lo),
@@ -668,8 +680,7 @@
 }
 
 /* Both diagonals: an X through the day. */
-[data-past-style='cross'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style='cross'] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+[data-past-style='cross'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background:
     linear-gradient(
       to top right,
@@ -686,24 +697,8 @@
 }
 
 /* No lines: the day is washed out with the page colour (the stripe colour is not used). */
-[data-past-style='fade'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after,
-[data-past-style='fade'] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
+[data-past-style='fade'] :is(.cal-cell, .yr-day, .m-day)[data-past]::after {
   background: color-mix(in srgb, var(--surface) var(--past-fade, 60%), transparent);
-}
-
-/* A joined vertical block covers the day cells with its own fill, so it draws the past-day mark
-   itself over its past days (from the top), repeated per day so lines and crosses mark each day. */
-[data-past-style] .cal-grid[data-join-vertical] .cal-vlabel[data-past-days]::after {
-  inset: 0 0 auto;
-  height: calc(var(--past-days) * var(--row-h));
-  background-size: 100% var(--row-h);
-}
-
-[data-past-style]
-  .cal-grid[data-join-vertical]
-  .cal-vlabel[data-past-days]:not([data-past])::after {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 .cal-vlabel[data-past] .cal-vlabel-text {

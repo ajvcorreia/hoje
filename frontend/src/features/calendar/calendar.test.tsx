@@ -520,31 +520,6 @@ describe('per-event vertical labels', () => {
     expect(cell('2026-03-10').querySelector('.cal-ev')).toHaveAttribute('data-join-next', 'true');
   });
 
-  it('counts the past days of a block, so a joined box can mark them itself', async () => {
-    storeStrikePast(true);
-    try {
-      mockApi(
-        baseRoutes([
-          makeEvent('trip', 'Trip', '2026-06-12', '2026-06-17', vertical),
-          makeEvent('old', 'Old', '2026-06-01', '2026-06-03', vertical),
-        ]),
-      );
-      renderApp();
-      await waitFor(() => expect(labels()).toHaveLength(2));
-      const [old, trip] = labels().sort((a, b) =>
-        (a.textContent ?? '').localeCompare(b.textContent ?? ''),
-      ) as [HTMLElement, HTMLElement];
-      // Today is 2026-06-15: three of Trip's six days are past, all of Old's.
-      expect(trip).toHaveAttribute('data-past-days', '3');
-      expect(trip).not.toHaveAttribute('data-past');
-      expect(trip.style.getPropertyValue('--past-days')).toBe('3');
-      expect(old).toHaveAttribute('data-past-days', '3');
-      expect(old).toHaveAttribute('data-past');
-    } finally {
-      storeStrikePast(false);
-    }
-  });
-
   it('keeps the horizontal title for multi-day events without the flag', async () => {
     mockApi(baseRoutes([makeEvent('trip', 'Trip', '2026-03-10', '2026-03-13')]));
     renderApp();

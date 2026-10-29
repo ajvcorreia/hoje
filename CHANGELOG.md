@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.53] — 2026-10-29
+
+### Fixed
+
+- Vertical events (their names and joined boxes) now take the past-day mark chosen in Settings (fade, stripes, crosshatch, line or cross), also while hovering a day; they were drawn above it and only got the strike-through. This replaces the 1.3.51 attempt, which did not take effect.
+
+## [1.3.52] — 2026-10-29
+
+Do not use: the v1.3.52 tag was pushed on the 1.3.51 commit by mistake, so its images are 1.3.51 without the fix. Skip to 1.3.53.
+
 ## [1.3.51] — 2026-10-29
 
 ### Fixed
