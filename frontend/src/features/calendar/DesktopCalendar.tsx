@@ -73,6 +73,17 @@ export function DesktopCalendar() {
     if (view !== 'months') setView('months');
   };
 
+  // Moving back lands on December and moving forward on January, so the months run on from the
+  // ones just left.
+  const stepYear = (step: -1 | 1) => {
+    setYear((y) => y + step);
+    setScrollRequest((r) => ({
+      month: step < 0 ? 11 : 0,
+      nonce: (r?.nonce ?? 0) + 1,
+      instant: true,
+    }));
+  };
+
   const pickSearchResult = (event: HojeEvent) => {
     setYear(Number(event.start_date.slice(0, 4)));
     setView('months');
@@ -119,7 +130,7 @@ export function DesktopCalendar() {
             type="button"
             className={`${btnSecondary} px-2`}
             aria-label="Previous year"
-            onClick={() => setYear((y) => y - 1)}
+            onClick={() => stepYear(-1)}
           >
             {'‹'}
           </button>
@@ -128,7 +139,7 @@ export function DesktopCalendar() {
             type="button"
             className={`${btnSecondary} px-2`}
             aria-label="Next year"
-            onClick={() => setYear((y) => y + 1)}
+            onClick={() => stepYear(1)}
           >
             {'›'}
           </button>

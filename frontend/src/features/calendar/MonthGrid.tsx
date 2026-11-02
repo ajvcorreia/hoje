@@ -75,6 +75,8 @@ export interface ScrollRequest {
   month: number;
   /** Change to re-trigger scrolling to the same month. */
   nonce: number;
+  /** Jump straight there (moving to another year), instead of scrolling smoothly. */
+  instant?: boolean;
 }
 
 interface MonthGridProps {
@@ -565,12 +567,12 @@ export function MonthGrid({
     userScrolled.current = true;
   }, []);
 
-  // Scroll a month into view on request (initial position, Today, search result).
+  // Scroll a month into view on request (initial position, Today, search result, year change).
   useEffect(() => {
     if (!scrollRequest) return;
     userScrolled.current = false;
     requestedMonth.current = scrollRequest.month;
-    centreMonth(scrollRequest.month, scrollRequest.nonce > 0);
+    centreMonth(scrollRequest.month, scrollRequest.nonce > 0 && !scrollRequest.instant);
   }, [scrollRequest, centreMonth]);
 
   useEffect(() => {

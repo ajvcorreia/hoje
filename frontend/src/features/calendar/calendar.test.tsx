@@ -284,6 +284,64 @@ describe('month grid', () => {
   });
 });
 
+describe('moving between years', () => {
+  // jsdom has no layout: give each month column a 100 px width in a 300 px viewport, and keep the
+  // scroll position the grid sets.
+  const props = ['offsetLeft', 'offsetWidth', 'clientWidth', 'scrollWidth', 'scrollLeft'] as const;
+  const saved = props.map((name) => Object.getOwnPropertyDescriptor(HTMLElement.prototype, name));
+  const scroll = new WeakMap<HTMLElement, number>();
+  beforeEach(() => {
+    const define = (name: string, get: (el: HTMLElement) => number) =>
+      Object.defineProperty(HTMLElement.prototype, name, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return get(this);
+        },
+      });
+    define('offsetLeft', (el) => Number(el.dataset.month ?? 0) * 100);
+    define('offsetWidth', () => 100);
+    define('clientWidth', () => 300);
+    define('scrollWidth', () => 1200);
+    Object.defineProperty(HTMLElement.prototype, 'scrollLeft', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return scroll.get(this) ?? 0;
+      },
+      set(this: HTMLElement, value: number) {
+        scroll.set(this, value);
+      },
+    });
+  });
+  afterEach(() => {
+    props.forEach((name, i) => {
+      const descriptor = saved[i];
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
+    });
+  });
+
+  const scroller = () => {
+    const column = document.querySelector<HTMLElement>('[data-month="0"]');
+    let el = column?.parentElement ?? null;
+    while (el && scroll.get(el) === undefined) el = el.parentElement;
+    return el;
+  };
+
+  it('lands on December of the previous year and January of the next', async () => {
+    mockApi(baseRoutes());
+    renderApp();
+    await gridReady();
+    // Today is June: centred.
+    await waitFor(() => expect(scroller()?.scrollLeft).toBe(400));
+    await userEvent.click(screen.getByRole('button', { name: 'Previous year' }));
+    expect(await screen.findByText('2025')).toBeInTheDocument();
+    await waitFor(() => expect(scroller()?.scrollLeft).toBe(900));
+    await userEvent.click(screen.getByRole('button', { name: 'Next year' }));
+    expect(await screen.findByText('2026')).toBeInTheDocument();
+    await waitFor(() => expect(scroller()?.scrollLeft).toBe(0));
+  });
+});
+
 describe('event editor', () => {
   it('keeps the More section collapsed until opened', async () => {
     mockApi(baseRoutes());
