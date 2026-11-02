@@ -117,7 +117,7 @@ services:
     restart: unless-stopped
 
   mailpit:
-    image: axllent/mailpit:v1.31.4
+    image: axllent/mailpit:v1.32.0
     <<: *hardening
     user: "10001:10001"
     environment:
