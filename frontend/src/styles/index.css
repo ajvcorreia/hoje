@@ -46,7 +46,7 @@
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
   --color-today: var(--today);
-  --color-weekend: var(--weekend);
+  --color-weekend: var(--weekend-day, var(--weekend));
   --color-danger: var(--danger);
   --color-cat-slate-fill: var(--cat-slate-fill);
   --color-cat-slate-text: var(--cat-slate-text);

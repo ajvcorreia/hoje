@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.55] — 2026-11-03
+
+### Added
+
+- Weekend shading (Settings → Appearance): Subtle (the theme's own look), Medium, Strong or Bold, making weekends and days off stand out in the Months view and the phone month view; Strong and Bold also set the weekend's weekday letters in bold. Saved on the account (`users.weekend_shade`, migration 0028).
+
+### Fixed
+
+- Multi-day events are rounded only at their first and last day, so they read as one bar instead of showing notches between days.
+
 ## [1.3.54] — 2026-11-02
 
 ### Changed

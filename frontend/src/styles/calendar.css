@@ -245,7 +245,13 @@
 .cal-wd[data-weekend],
 .cal-cell[data-holiday-off],
 .cal-cell[data-weekend] {
-  background: var(--weekend);
+  background: var(--weekend-day, var(--weekend));
+}
+
+/* Strong and bold weekend shading also set the weekend's weekday letters apart. */
+:root:is([data-weekend-shade='strong'], [data-weekend-shade='bold']) .cal-wd[data-weekend] {
+  color: var(--text);
+  font-weight: 700;
 }
 
 /* ISO week number: one outlined cell per week segment inside the month. */
@@ -356,6 +362,17 @@
 .cal-cell > .cal-hol,
 .cal-cell > .cal-more {
   grid-row: 1;
+}
+
+/* A multi-day event reads as one bar: only its first and last days are rounded. */
+.cal-ev[data-join-prev] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.cal-ev[data-join-next] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .cal-ev:not([data-edge]) {
@@ -726,7 +743,7 @@
 }
 
 .yr-day[data-holiday-off] {
-  background: var(--weekend);
+  background: var(--weekend-day, var(--weekend));
 }
 
 .yr-hol {

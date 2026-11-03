@@ -2,6 +2,12 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
 import { CORNERS, isCorners, useCorners, type Corners } from '../../lib/corners';
+import {
+  WEEKEND_SHADES,
+  isWeekendShade,
+  useWeekendShade,
+  type WeekendShade,
+} from '../../lib/weekendShade';
 import { TEXT_SIZES, type TextSize } from '../../lib/textSize';
 import { useWeekNumbers } from '../../lib/weekNumbers';
 import {
@@ -66,6 +72,12 @@ const CORNER_LABELS: Record<Corners, string> = {
   large: 'Large',
   xlarge: 'Extra large',
 };
+const WEEKEND_SHADE_LABELS: Record<WeekendShade, string> = {
+  subtle: 'Subtle',
+  medium: 'Medium',
+  strong: 'Strong',
+  bold: 'Bold',
+};
 const LABELS: Record<Theme, string> = {
   system: 'System',
   light: 'Light',
@@ -112,6 +124,7 @@ const SIZE_LABELS: Record<TextSize, string> = {
 export function SettingsPage() {
   const [theme, setTheme] = useTheme();
   const [corners, setCorners] = useCorners();
+  const [weekendShade, setWeekendShade] = useWeekendShade();
   const [textSize, setTextSize] = useTextSize();
   const [pillsPosition, setPillsPosition] = usePillsPosition();
   const [pillsWidth, setPillsWidth] = usePillsWidth();
@@ -182,6 +195,29 @@ export function SettingsPage() {
             <p className="mt-1 text-xs text-text-muted">
               How round buttons, fields, cards, dialogs and calendar events are. Saved to your
               account.
+            </p>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="weekend-shade" className="block text-sm font-medium">
+              Weekend shading
+            </label>
+            <select
+              id="weekend-shade"
+              value={weekendShade}
+              onChange={(e) => {
+                if (isWeekendShade(e.target.value)) setWeekendShade(e.target.value);
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              {WEEKEND_SHADES.map((s) => (
+                <option key={s} value={s}>
+                  {WEEKEND_SHADE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              How strongly weekends and days off stand out in the calendar; Strong and Bold also set
+              their weekday letters apart. Saved to your account.
             </p>
           </div>
           <div className="mt-4">

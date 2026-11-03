@@ -276,6 +276,7 @@ function MonthColumnImpl({
               className="cal-ev"
               data-rot={l}
               {...catProps(p.input.colour)}
+              data-join-prev={p.joinPrev || undefined}
               data-join-next={p.joinNext || undefined}
               data-edge={nothingAfterRotated && l === t.rotated - 1 ? '' : undefined}
               style={{ ...catProps(p.input.colour).style, '--c': 2 + l } as CSSProperties}
@@ -298,6 +299,7 @@ function MonthColumnImpl({
             className="cal-ev"
             data-slot={i}
             {...catProps(p.input.colour)}
+            data-join-prev={p.joinPrev || undefined}
             data-join-next={p.joinNext || undefined}
             data-edge={i === lastItem ? '' : undefined}
             style={{ ...catProps(p.input.colour).style, '--c': firstItemCol + i } as CSSProperties}

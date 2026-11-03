@@ -27,6 +27,8 @@ PastStyle = Literal["stripes", "crosshatch", "line", "cross", "fade"]
 PastStrength = Literal["light", "medium", "strong"]
 # How round the corners are; the frontend list is in src/lib/corners.ts.
 CornerRadius = Literal["none", "small", "medium", "large", "xlarge"]
+# How strongly weekends and days off are shaded; the frontend list is in src/lib/weekendShade.ts.
+WeekendShade = Literal["subtle", "medium", "strong", "bold"]
 # 'category' outlines each event in its category's own colour; otherwise the colour picked.
 EventOutlineColour = Literal["category"] | PastStripeColour
 
@@ -57,6 +59,7 @@ class Me(BaseModel):
     single_colour: bool = False
     single_colour_value: str = "blue"
     corner_radius: CornerRadius = "medium"
+    weekend_shade: WeekendShade = "subtle"
     event_outline: bool = False
     event_outline_colour: str = "category"
     join_vertical_events: bool = False
@@ -92,6 +95,7 @@ class MeUpdate(BaseModel):
     single_colour: bool | None = None
     single_colour_value: CategoryColour | None = None
     corner_radius: CornerRadius | None = None
+    weekend_shade: WeekendShade | None = None
     event_outline: bool | None = None
     event_outline_colour: EventOutlineColour | None = None
     join_vertical_events: bool | None = None

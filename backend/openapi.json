@@ -2920,6 +2920,17 @@
             },
             "title": "Weekend Days",
             "type": "array"
+          },
+          "weekend_shade": {
+            "default": "subtle",
+            "enum": [
+              "subtle",
+              "medium",
+              "strong",
+              "bold"
+            ],
+            "title": "Weekend Shade",
+            "type": "string"
           }
         },
         "required": [
@@ -3239,6 +3250,23 @@
               }
             ],
             "title": "Weekend Days"
+          },
+          "weekend_shade": {
+            "anyOf": [
+              {
+                "enum": [
+                  "subtle",
+                  "medium",
+                  "strong",
+                  "bold"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekend Shade"
           }
         },
         "title": "MeUpdate",
@@ -3829,7 +3857,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.54"
+    "version": "1.3.55"
   },
   "openapi": "3.1.0",
   "paths": {

@@ -1996,6 +1996,12 @@ export interface components {
             vertical_text_size: number;
             /** Weekend Days */
             weekend_days: number[];
+            /**
+             * Weekend Shade
+             * @default subtle
+             * @enum {string}
+             */
+            weekend_shade: "subtle" | "medium" | "strong" | "bold";
         };
         /** MeUpdate */
         MeUpdate: {
@@ -2043,6 +2049,8 @@ export interface components {
             vertical_text_size?: number | null;
             /** Weekend Days */
             weekend_days?: number[] | null;
+            /** Weekend Shade */
+            weekend_shade?: ("subtle" | "medium" | "strong" | "bold") | null;
         };
         /**
          * MfaRequest

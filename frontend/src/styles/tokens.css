@@ -94,3 +94,17 @@
   --weekend: #d8dce2;
   --danger: #8f0000;
 }
+
+/* Weekend shading (Settings, stored on the account): the theme's weekend colour pulled towards
+   the text colour, so it darkens in light themes and lightens in dark ones. */
+:root[data-weekend-shade='medium'] {
+  --weekend-day: color-mix(in srgb, var(--weekend), var(--text) 7%);
+}
+
+:root[data-weekend-shade='strong'] {
+  --weekend-day: color-mix(in srgb, var(--weekend), var(--text) 13%);
+}
+
+:root[data-weekend-shade='bold'] {
+  --weekend-day: color-mix(in srgb, var(--weekend), var(--text) 20%);
+}

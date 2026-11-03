@@ -585,6 +585,44 @@ describe('corners setting', () => {
   });
 });
 
+describe('weekend shading setting', () => {
+  afterEach(() => document.documentElement.removeAttribute('data-weekend-shade'));
+
+  it('applies the account shading and saves a new one', async () => {
+    let me = { ...ME, weekend_shade: 'strong' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('Weekend shading');
+    expect(select).toHaveValue('strong');
+    await waitFor(() =>
+      expect(document.documentElement).toHaveAttribute('data-weekend-shade', 'strong'),
+    );
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Subtle', 'Medium', 'Strong', 'Bold']);
+    await userEvent.selectOptions(select, 'bold');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ weekend_shade: 'bold' }),
+    );
+    await waitFor(() =>
+      expect(document.documentElement).toHaveAttribute('data-weekend-shade', 'bold'),
+    );
+    // Subtle is the theme's own look: no attribute.
+    await userEvent.selectOptions(select, 'subtle');
+    await waitFor(() => expect(document.documentElement).not.toHaveAttribute('data-weekend-shade'));
+  });
+});
+
 describe('join vertical events setting', () => {
   it('is off by default and saves the switch on the account', async () => {
     let me = { ...ME, join_vertical_events: false };

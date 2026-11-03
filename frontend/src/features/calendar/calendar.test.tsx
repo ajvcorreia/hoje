@@ -281,6 +281,10 @@ describe('month grid', () => {
     expect(within(cell('2026-04-02')).queryByText('Trip')).not.toBeInTheDocument();
     expect(cell('2026-03-30').querySelector('.cal-ev')).toHaveAttribute('data-join-next', 'true');
     expect(cell('2026-04-02').querySelector('.cal-ev')).not.toHaveAttribute('data-join-next');
+    // Only the bar's ends are rounded: inner days join the day before and after.
+    expect(cell('2026-03-30').querySelector('.cal-ev')).not.toHaveAttribute('data-join-prev');
+    expect(cell('2026-03-31').querySelector('.cal-ev')).toHaveAttribute('data-join-prev', 'true');
+    expect(cell('2026-04-02').querySelector('.cal-ev')).toHaveAttribute('data-join-prev', 'true');
   });
 });
 

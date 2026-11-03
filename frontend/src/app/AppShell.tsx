@@ -10,6 +10,7 @@ import { useAuthState } from './useAuthState';
 import { useThemeSync } from './useTheme';
 import { useCornersSync } from '../lib/corners';
 import { useEventOutlineSync } from '../lib/eventOutline';
+import { useWeekendShadeSync } from '../lib/weekendShade';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calendar', Icon: CalendarIcon, end: true },
@@ -85,6 +86,7 @@ export function AppShell() {
   useThemeSync();
   useCornersSync();
   useEventOutlineSync();
+  useWeekendShadeSync();
   return (
     <ToastProvider>
       <Shell isCalendar={isCalendar} />

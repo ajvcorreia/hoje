@@ -85,6 +85,10 @@ class User(Base):
     corner_radius: Mapped[str] = mapped_column(
         Text, default="medium", server_default=text("'medium'")
     )
+    # How strongly weekends and days off are shaded: subtle, medium, strong or bold.
+    weekend_shade: Mapped[str] = mapped_column(
+        Text, default="subtle", server_default=text("'subtle'")
+    )
     # The colour theme, on every device; NULL until the user picks one (devices keep their own).
     theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
@@ -128,6 +132,10 @@ class User(Base):
         CheckConstraint(
             "corner_radius in ('none', 'small', 'medium', 'large', 'xlarge')",
             name="corner_radius",
+        ),
+        CheckConstraint(
+            "weekend_shade in ('subtle', 'medium', 'strong', 'bold')",
+            name="weekend_shade",
         ),
         CheckConstraint(
             "event_outline_colour = 'category' or event_outline_colour ~ '^#[0-9a-fA-F]{6}$'",
