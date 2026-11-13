@@ -89,6 +89,8 @@ class User(Base):
     weekend_shade: Mapped[str] = mapped_column(
         Text, default="subtle", server_default=text("'subtle'")
     )
+    # A column listing every to-do beside the calendar: off, left or right.
+    todo_column: Mapped[str] = mapped_column(Text, default="off", server_default=text("'off'"))
     # The colour theme, on every device; NULL until the user picks one (devices keep their own).
     theme: Mapped[str | None] = mapped_column(Text)
     daily_summary_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
@@ -137,6 +139,7 @@ class User(Base):
             "weekend_shade in ('subtle', 'medium', 'strong', 'bold')",
             name="weekend_shade",
         ),
+        CheckConstraint("todo_column in ('off', 'left', 'right')", name="todo_column"),
         CheckConstraint(
             "event_outline_colour = 'category' or event_outline_colour ~ '^#[0-9a-fA-F]{6}$'",
             name="event_outline_colour",

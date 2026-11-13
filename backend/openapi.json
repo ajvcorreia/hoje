@@ -2890,6 +2890,16 @@
             "title": "Timezone",
             "type": "string"
           },
+          "todo_column": {
+            "default": "off",
+            "enum": [
+              "off",
+              "left",
+              "right"
+            ],
+            "title": "Todo Column",
+            "type": "string"
+          },
           "todo_marker": {
             "default": "ring",
             "enum": [
@@ -3189,6 +3199,22 @@
               }
             ],
             "title": "Timezone"
+          },
+          "todo_column": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "left",
+                  "right"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Todo Column"
           },
           "todo_marker": {
             "anyOf": [
@@ -3633,6 +3659,18 @@
             "title": "Done",
             "type": "boolean"
           },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -3857,7 +3895,7 @@
   "info": {
     "description": "Self-hosted personal planner.",
     "title": "Hoje API",
-    "version": "1.3.55"
+    "version": "1.3.56"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8538,6 +8576,82 @@
           }
         },
         "summary": "Create a to-do",
+        "tags": [
+          "todos"
+        ]
+      }
+    },
+    "/api/v1/todos/done": {
+      "get": {
+        "description": "The to-dos already done, sorted by when they were checked off (newest first).",
+        "operationId": "todos_done",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "CSRF or Origin check failed, or forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "summary": "Checked-off to-dos, most recent first",
         "tags": [
           "todos"
         ]

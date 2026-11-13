@@ -29,6 +29,8 @@ PastStrength = Literal["light", "medium", "strong"]
 CornerRadius = Literal["none", "small", "medium", "large", "xlarge"]
 # How strongly weekends and days off are shaded; the frontend list is in src/lib/weekendShade.ts.
 WeekendShade = Literal["subtle", "medium", "strong", "bold"]
+# Where the to-do column sits beside the calendar; the frontend list is in src/lib/todoColumn.ts.
+TodoColumn = Literal["off", "left", "right"]
 # 'category' outlines each event in its category's own colour; otherwise the colour picked.
 EventOutlineColour = Literal["category"] | PastStripeColour
 
@@ -60,6 +62,7 @@ class Me(BaseModel):
     single_colour_value: str = "blue"
     corner_radius: CornerRadius = "medium"
     weekend_shade: WeekendShade = "subtle"
+    todo_column: TodoColumn = "off"
     event_outline: bool = False
     event_outline_colour: str = "category"
     join_vertical_events: bool = False
@@ -96,6 +99,7 @@ class MeUpdate(BaseModel):
     single_colour_value: CategoryColour | None = None
     corner_radius: CornerRadius | None = None
     weekend_shade: WeekendShade | None = None
+    todo_column: TodoColumn | None = None
     event_outline: bool | None = None
     event_outline_colour: EventOutlineColour | None = None
     join_vertical_events: bool | None = None

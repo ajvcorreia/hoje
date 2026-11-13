@@ -39,6 +39,16 @@ async def todos_open(db: DbSession, user: CurrentUser) -> TodoList:
     return TodoList(todos=await service.open_todos(db, user))
 
 
+@router.get("/done", response_model=TodoList, summary="Checked-off to-dos, most recent first")
+async def todos_done(
+    db: DbSession,
+    user: CurrentUser,
+    limit: Annotated[int, Query(ge=1, le=service.MAX_DONE_LISTED)] = 200,
+) -> TodoList:
+    """The to-dos already done, sorted by when they were checked off (newest first)."""
+    return TodoList(todos=await service.done_todos(db, user, limit))
+
+
 @router.post("", response_model=Todo, status_code=201, summary="Create a to-do")
 async def todos_create(body: TodoCreate, db: DbSession, user: CurrentUser) -> Todo:
     todo = await service.create(db, user, body)

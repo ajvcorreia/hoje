@@ -585,6 +585,33 @@ describe('corners setting', () => {
   });
 });
 
+describe('to-do column setting', () => {
+  it('is off by default and saves the side on the account', async () => {
+    let me = { ...ME, todo_column: 'off' };
+    const api = mockApi({
+      ...base,
+      'GET /api/v1/auth/state': () => authState({ user: me }),
+      'GET /api/v1/me': () => me,
+      'PATCH /api/v1/me': (call) => {
+        me = { ...me, ...(call.body as object) };
+        return me;
+      },
+    });
+    renderApp('/settings');
+    const select = await screen.findByLabelText('To-do column');
+    expect(select).toHaveValue('off');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Off', 'Left', 'Right']);
+    await userEvent.selectOptions(select, 'left');
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', '/api/v1/me')[0]?.body).toEqual({ todo_column: 'left' }),
+    );
+  });
+});
+
 describe('weekend shading setting', () => {
   afterEach(() => document.documentElement.removeAttribute('data-weekend-shade'));
 

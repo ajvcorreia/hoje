@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '../../app/queryClient';
@@ -186,6 +186,101 @@ describe('TodoSection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(api.callsTo('PATCH', path)).toHaveLength(0);
+  });
+});
+
+describe('to-do column', () => {
+  const today = todayIso();
+  const later = '2099-03-04';
+  const routes = (column: string, extra: Record<string, unknown> = {}) => ({
+    ...base,
+    'GET /api/v1/auth/state': authState({ user: { ...ME, todo_column: column } }),
+    'GET /api/v1/todos/due': { todos: [] },
+    'GET /api/v1/todos/open': {
+      todos: [
+        todo({ title: 'Someday' }),
+        todo({ title: 'Later thing', due_date: later }),
+        todo({ title: 'Now thing', due_date: today }),
+        todo({ title: 'Late thing', due_date: '2020-01-02' }),
+      ],
+    },
+    'GET /api/v1/events/occurrences': { occurrences: [] },
+    'GET /api/v1/categories': { categories: [] },
+    'GET /api/v1/holidays/overlay': { days: [] },
+    ...extra,
+  });
+
+  it('is hidden while the setting is off', async () => {
+    mockApi(routes('off'));
+    renderApp('/');
+    await screen.findByRole('heading', { name: 'Calendar' });
+    expect(screen.queryByRole('complementary', { name: 'To-do list' })).not.toBeInTheDocument();
+  });
+
+  it('lists the open to-dos in their three sections', async () => {
+    mockApi(routes('right'));
+    renderApp('/');
+    const column = await screen.findByRole('complementary', { name: 'To-do list' });
+    const section = (name: string) => within(column).getByRole('region', { name });
+    await waitFor(() => expect(section('No due date')).toHaveTextContent('Someday'));
+    expect(section('Due today')).toHaveTextContent('Now thing');
+    expect(section('Due today')).toHaveTextContent(/Late thing.*Overdue/);
+    // Overdue first, then today.
+    expect(section('Due today').textContent?.indexOf('Late thing')).toBeLessThan(
+      section('Due today').textContent?.indexOf('Now thing') ?? 0,
+    );
+    expect(section('Due later')).toHaveTextContent('Later thing');
+    expect(section('No due date')).not.toHaveTextContent('Later thing');
+  });
+
+  it('adds a to-do with an optional due date', async () => {
+    const api = mockApi(
+      routes('left', { 'POST /api/v1/todos': todo({ title: 'New one', due_date: later }) }),
+    );
+    renderApp('/');
+    const column = await screen.findByRole('complementary', { name: 'To-do list' });
+    await userEvent.type(within(column).getByLabelText('Add a to-do'), 'New one');
+    fireEvent.change(within(column).getByLabelText('Due date (optional)'), {
+      target: { value: later },
+    });
+    await userEvent.click(within(column).getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(api.callsTo('POST', '/api/v1/todos')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/v1/todos')[0]?.body).toEqual({
+      title: 'New one',
+      due_date: later,
+    });
+  });
+
+  it('opens the done to-dos grouped by the day they were done, newest first', async () => {
+    const done = (title: string, on: string, at: string) =>
+      todo({ title, done: true, completed_on: on, shown_on: on, done_at: at });
+    const api = mockApi(
+      routes('right', {
+        'GET /api/v1/todos/done': {
+          todos: [
+            done('Filed taxes', '2026-11-12', '2026-11-12T18:00:00Z'),
+            done('Bought milk', '2026-11-12', '2026-11-12T09:00:00Z'),
+            done('Called mum', '2026-11-03', '2026-11-03T10:00:00Z'),
+          ],
+        },
+      }),
+    );
+    renderApp('/');
+    const column = await screen.findByRole('complementary', { name: 'To-do list' });
+    expect(api.callsTo('GET', '/api/v1/todos/done')).toHaveLength(0);
+    await userEvent.click(within(column).getByRole('button', { name: 'Done' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Done to-dos' });
+    const groups = await within(dialog).findAllByRole('region');
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Done on 2026-11-12',
+      'Done on 2026-11-03',
+    ]);
+    expect(groups[0]?.textContent?.indexOf('Filed taxes')).toBeLessThan(
+      groups[0]?.textContent?.indexOf('Bought milk') ?? 0,
+    );
+    expect(within(dialog).getByRole('checkbox', { name: /Called mum/ })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Done to-dos' })).not.toBeInTheDocument();
   });
 });
 

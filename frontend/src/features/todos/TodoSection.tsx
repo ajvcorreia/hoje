@@ -24,7 +24,6 @@ interface TodoSectionProps {
 export function TodoSection({ date, idPrefix = 'todo' }: TodoSectionProps) {
   const { data: todos } = useTodos(date, date);
   const create = useCreateTodo();
-  const remove = useDeleteTodo();
   const toast = useToast();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
@@ -48,41 +47,17 @@ export function TodoSection({ date, idPrefix = 'todo' }: TodoSectionProps) {
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">To-dos</h3>
       {todos && todos.length > 0 && (
         <ul className="space-y-0.5">
-          {todos.map((todo) =>
-            editing === todo.id ? (
-              <TodoEditor
-                key={todo.id}
-                todo={todo}
-                idPrefix={`${idPrefix}-edit`}
-                onClose={() => setEditing(null)}
-              />
-            ) : (
-              <TodoCheck key={todo.id} todo={todo} showOrigin>
-                <button
-                  type="button"
-                  aria-label={`Edit to-do ${todo.title}`}
-                  title="Edit"
-                  onClick={() => setEditing(todo.id)}
-                  className={rowButton}
-                >
-                  <span aria-hidden="true">✎</span>
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Delete to-do ${todo.title}`}
-                  title="Delete"
-                  onClick={() =>
-                    remove.mutate(todo.id, {
-                      onError: () => toast.show({ message: 'Could not delete the to-do' }),
-                    })
-                  }
-                  className={rowButton}
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-              </TodoCheck>
-            ),
-          )}
+          {todos.map((todo) => (
+            <TodoRow
+              key={todo.id}
+              todo={todo}
+              idPrefix={idPrefix}
+              showOrigin
+              editing={editing === todo.id}
+              onEdit={() => setEditing(todo.id)}
+              onClose={() => setEditing(null)}
+            />
+          ))}
         </ul>
       )}
       <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
@@ -116,6 +91,50 @@ export function TodoSection({ date, idPrefix = 'todo' }: TodoSectionProps) {
         </button>
       </form>
     </section>
+  );
+}
+
+interface TodoRowProps {
+  todo: Todo;
+  idPrefix: string;
+  /** Say where a carried-over to-do started. */
+  showOrigin?: boolean;
+  /** Shown as the edit form instead of the check. */
+  editing: boolean;
+  onEdit: () => void;
+  onClose: () => void;
+}
+
+/** One to-do with its Edit and Delete buttons, or its edit form while `editing`. */
+export function TodoRow({ todo, idPrefix, showOrigin, editing, onEdit, onClose }: TodoRowProps) {
+  const remove = useDeleteTodo();
+  const toast = useToast();
+  if (editing) return <TodoEditor todo={todo} idPrefix={`${idPrefix}-edit`} onClose={onClose} />;
+  return (
+    <TodoCheck todo={todo} showOrigin={showOrigin}>
+      <button
+        type="button"
+        aria-label={`Edit to-do ${todo.title}`}
+        title="Edit"
+        onClick={onEdit}
+        className={rowButton}
+      >
+        <span aria-hidden="true">✎</span>
+      </button>
+      <button
+        type="button"
+        aria-label={`Delete to-do ${todo.title}`}
+        title="Delete"
+        onClick={() =>
+          remove.mutate(todo.id, {
+            onError: () => toast.show({ message: 'Could not delete the to-do' }),
+          })
+        }
+        className={rowButton}
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </TodoCheck>
   );
 }
 

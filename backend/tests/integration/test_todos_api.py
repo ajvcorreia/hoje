@@ -96,6 +96,29 @@ async def test_open_lists_every_open_todo_whatever_its_day(alice):
     assert sorted(t["title"] for t in resp.json()["todos"]) == ["Later", "Old"]
 
 
+async def test_done_lists_checked_off_todos_most_recent_first(alice, frozen_clock):
+    ids = {}
+    for title in ("First", "Second", "Third", "Open"):
+        ids[title] = (await alice.post("/todos", {"title": title})).json()["id"]
+    for i, title in enumerate(("Second", "First", "Third")):
+        frozen_clock.now = NOW + dt.timedelta(hours=i)
+        await alice.patch(f"/todos/{ids[title]}", {"done": True})
+    resp = await alice.get("/todos/done")
+    assert resp.status_code == 200, resp.text
+    todos = resp.json()["todos"]
+    assert [t["title"] for t in todos] == ["Third", "First", "Second"]
+    assert todos[0]["done_at"] is not None and todos[0]["done"] is True
+    newest = (await alice.get("/todos/done", params={"limit": 1})).json()["todos"]
+    assert [t["title"] for t in newest] == ["Third"]
+    assert (await alice.get("/todos/done", params={"limit": 0})).status_code == 422
+
+
+async def test_done_is_per_user(alice, bob):
+    created = (await alice.post("/todos", {"title": "Mine"})).json()
+    await alice.patch(f"/todos/{created['id']}", {"done": True})
+    assert (await bob.get("/todos/done")).json()["todos"] == []
+
+
 async def test_open_is_per_user(alice, bob):
     await alice.post("/todos", {"title": "Mine"})
     assert (await bob.get("/todos/open")).json()["todos"] == []

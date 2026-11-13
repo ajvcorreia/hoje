@@ -20,6 +20,8 @@ class Todo(BaseModel):
     due_date: dt.date | None = None
     done: bool
     completed_on: dt.date | None = None
+    # When it was checked off (null while open).
+    done_at: dt.datetime | None = None
     # Where it is listed: the completion day once done, otherwise the later of `day` and today.
     shown_on: dt.date
     created_at: dt.datetime

@@ -3,6 +3,12 @@ import { useLocation } from 'react-router';
 import { THEMES, type Theme } from '../../lib/theme';
 import { CORNERS, isCorners, useCorners, type Corners } from '../../lib/corners';
 import {
+  TODO_COLUMNS,
+  isTodoColumnPlace,
+  useTodoColumn,
+  type TodoColumnPlace,
+} from '../../lib/todoColumn';
+import {
   WEEKEND_SHADES,
   isWeekendShade,
   useWeekendShade,
@@ -72,6 +78,11 @@ const CORNER_LABELS: Record<Corners, string> = {
   large: 'Large',
   xlarge: 'Extra large',
 };
+const TODO_COLUMN_LABELS: Record<TodoColumnPlace, string> = {
+  off: 'Off',
+  left: 'Left',
+  right: 'Right',
+};
 const WEEKEND_SHADE_LABELS: Record<WeekendShade, string> = {
   subtle: 'Subtle',
   medium: 'Medium',
@@ -125,6 +136,7 @@ export function SettingsPage() {
   const [theme, setTheme] = useTheme();
   const [corners, setCorners] = useCorners();
   const [weekendShade, setWeekendShade] = useWeekendShade();
+  const [todoColumn, setTodoColumn] = useTodoColumn();
   const [textSize, setTextSize] = useTextSize();
   const [pillsPosition, setPillsPosition] = usePillsPosition();
   const [pillsWidth, setPillsWidth] = usePillsWidth();
@@ -236,6 +248,29 @@ export function SettingsPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="todo-column" className="block text-sm font-medium">
+              To-do column
+            </label>
+            <select
+              id="todo-column"
+              value={todoColumn}
+              onChange={(e) => {
+                if (isTodoColumnPlace(e.target.value)) setTodoColumn(e.target.value);
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              {TODO_COLUMNS.map((place) => (
+                <option key={place} value={place}>
+                  {TODO_COLUMN_LABELS[place]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              Lists every open to-do beside the calendar on wide screens: no due date, due today and
+              due later, with the done ones a click away. Saved to your account.
+            </p>
           </div>
           <div className="mt-4">
             <label htmlFor="pills-position" className="block text-sm font-medium">

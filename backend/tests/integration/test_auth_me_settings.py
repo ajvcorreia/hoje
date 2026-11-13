@@ -138,6 +138,15 @@ async def test_weekend_shade_defaults_to_subtle_and_follows_the_account(api):
         assert resp.json()["weekend_shade"] == shade
 
 
+async def test_todo_column_is_off_until_placed(api):
+    await api.register_ok()
+    assert (await api.client.get("/api/v1/me")).json()["todo_column"] == "off"
+    for side in ("left", "right", "off"):
+        resp = await patch_me(api, {"todo_column": side})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["todo_column"] == side
+
+
 async def test_event_outline_is_off_with_the_category_colour_until_chosen(api):
     await api.register_ok()
     me = (await api.client.get("/api/v1/me")).json()
@@ -190,6 +199,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         {"single_colour_value": "#12345"},
         {"corner_radius": "huge"},
         {"weekend_shade": "loud"},
+        {"todo_column": "top"},
         {"event_outline_colour": "red"},
     ],
     ids=[
@@ -209,6 +219,7 @@ async def test_theme_is_unset_until_chosen_then_follows_the_account(api):
         "single-colour-short-hex",
         "unknown-corner-radius",
         "unknown-weekend-shade",
+        "unknown-todo-column",
         "event-outline-colour-name",
     ],
 )

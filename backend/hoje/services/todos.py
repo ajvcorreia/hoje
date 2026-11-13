@@ -19,6 +19,7 @@ from hoje.services.reminders import _zone
 NOT_FOUND = "To-do not found"
 MAX_RANGE_DAYS = 400
 MAX_OPEN_TODOS = 500
+MAX_DONE_LISTED = 1000
 
 
 def user_today(user: User, now: dt.datetime | None = None) -> dt.date:
@@ -41,6 +42,7 @@ def to_schema(todo: Todo, today: dt.date) -> TodoSchema:
         due_date=todo.due_date,
         done=todo.done_at is not None,
         completed_on=todo.completed_on,
+        done_at=todo.done_at,
         shown_on=shown_on(todo, today),
         created_at=todo.created_at,
         updated_at=todo.updated_at,
@@ -109,6 +111,18 @@ async def open_todos(db: AsyncSession, user: User) -> list[TodoSchema]:
     today = user_today(user)
     rows = await db.scalars(select(Todo).where(Todo.user_id == user.id, Todo.done_at.is_(None)))
     return _sorted(list(rows), today)
+
+
+async def done_todos(db: AsyncSession, user: User, limit: int) -> list[TodoSchema]:
+    """Checked-off to-dos, the most recently done first (at most ``limit``)."""
+    today = user_today(user)
+    rows = await db.scalars(
+        select(Todo)
+        .where(Todo.user_id == user.id, Todo.done_at.is_not(None))
+        .order_by(Todo.done_at.desc(), Todo.id)
+        .limit(limit)
+    )
+    return [to_schema(t, today) for t in rows.all()]
 
 
 async def _load(db: AsyncSession, user: User, todo_id: uuid.UUID) -> Todo:

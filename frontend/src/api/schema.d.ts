@@ -786,6 +786,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/todos/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Checked-off to-dos, most recent first
+         * @description The to-dos already done, sorted by when they were checked off (newest first).
+         */
+        get: operations["todos_done"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todos/due": {
         parameters: {
             query?: never;
@@ -1980,6 +2000,12 @@ export interface components {
             /** Timezone */
             timezone: string;
             /**
+             * Todo Column
+             * @default off
+             * @enum {string}
+             */
+            todo_column: "off" | "left" | "right";
+            /**
              * Todo Marker
              * @default ring
              * @enum {string}
@@ -2041,6 +2067,8 @@ export interface components {
             theme?: ("system" | "light" | "light-contrast" | "dim" | "dark") | null;
             /** Timezone */
             timezone?: string | null;
+            /** Todo Column */
+            todo_column?: ("off" | "left" | "right") | null;
             /** Todo Marker */
             todo_marker?: ("ring" | "bar" | "badge" | "triangle") | null;
             /** Todo Marker Colour */
@@ -2194,6 +2222,8 @@ export interface components {
             day: string;
             /** Done */
             done: boolean;
+            /** Done At */
+            done_at?: string | null;
             /** Due Date */
             due_date?: string | null;
             /**
@@ -6063,6 +6093,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Todo"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CSRF or Origin check failed, or forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not implemented yet */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    todos_done: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoList"];
                 };
             };
             /** @description Not authenticated */

@@ -4,7 +4,10 @@ import { api, unwrap } from '../../api/client';
 import type { Todo, TodoCreate, TodoUpdate } from '../../api/types';
 import { NO_TODO_DAYS, todoDays, type TodoDays } from './todoDays';
 
-/** Root of every to-do query: `['todos', 'range', from, to]`, `['todos', 'due']`, `['todos', 'open']`. */
+/**
+ * Root of every to-do query: `['todos', 'range', from, to]`, `['todos', 'due']`, `['todos', 'open']`
+ * and `['todos', 'done']`.
+ */
 export const TODOS_KEY = ['todos'] as const;
 
 /** To-dos listed on the days `[from, to]` (open ones carry over to today, done ones stay). */
@@ -29,6 +32,15 @@ export function useOpenTodos() {
   return useQuery({
     queryKey: [...TODOS_KEY, 'open'] as const,
     queryFn: async () => unwrap(await api.GET('/api/v1/todos/open')).todos,
+  });
+}
+
+/** Checked-off to-dos, the most recently done first; fetched only while `enabled`. */
+export function useDoneTodos(enabled = true) {
+  return useQuery({
+    queryKey: [...TODOS_KEY, 'done'] as const,
+    queryFn: async () => unwrap(await api.GET('/api/v1/todos/done')).todos,
+    enabled,
   });
 }
 

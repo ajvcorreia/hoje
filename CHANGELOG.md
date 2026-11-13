@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.56] — 2026-11-13
+
+### Added
+
+- To-do column beside the calendar on wide screens (Settings → Appearance → To-do column: Off, Left or Right; saved on the account as `users.todo_column`, migration 0029). It lists every open to-do in three sections, No due date, Due today (overdue ones included, oldest first) and Due later, with a field to add one and edit, delete and check-off on each row.
+- Done to-dos: the column's Done button lists the checked-off to-dos grouped by the day they were done, most recent first; unticking one puts it back on the list. New endpoint `GET /api/v1/todos/done` (newest first, `limit` up to 1000), and to-dos now include `done_at`.
+
 ## [1.3.55] — 2026-11-03
 
 ### Added
