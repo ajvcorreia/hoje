@@ -25,8 +25,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go get github.com/caddyserver/caddy/v2@${CADDY_VERSION} \
         github.com/go-jose/go-jose/v4@v4.1.6 \
         github.com/klauspost/compress@v1.18.7 \
-        golang.org/x/crypto@v0.57.0 \
-        golang.org/x/net@v0.60.0 \
+        golang.org/x/crypto@v0.58.0 \
+        golang.org/x/net@v0.62.0 \
         google.golang.org/grpc@v1.83.2 \
  && go mod tidy \
  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /usr/bin/caddy .

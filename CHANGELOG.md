@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.57] — 2026-11-13
+
+### Security
+
+- golang.org/x/net v0.62.0 (CVE-2026-78661) and golang.org/x/crypto v0.58.0 in the web image's Caddy build. 1.3.56 failed the image scan on this and published only its API image; this release carries its changes, so skip 1.3.56.
+
 ## [1.3.56] — 2026-11-13
 
 ### Added
