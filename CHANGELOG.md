@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.59] — 2026-11-16
+
+### Security
+
+- dnspython 2.9.2 (CVE-2026-128089) and opentelemetry-api 1.45.2 (CVE-2026-126360) in the API image. 1.3.58 failed the image scan on these and published only its web image; this release carries its changes, so skip 1.3.58.
+
 ## [1.3.58] — 2026-11-16
 
 ### Changed
