@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.58] — 2026-11-16
+
+### Changed
+
+- The to-do column's done to-dos are now a collapsible Done section at the bottom of the column (closed by default, remembered per device) instead of a Done button and pop-up. It lists them by the day they were done, most recent first; unticking one puts it back among the open to-dos.
+
 ## [1.3.57] — 2026-11-13
 
 ### Security

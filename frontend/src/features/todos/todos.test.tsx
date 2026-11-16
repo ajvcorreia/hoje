@@ -251,26 +251,32 @@ describe('to-do column', () => {
     });
   });
 
-  it('opens the done to-dos grouped by the day they were done, newest first', async () => {
+  it('lists the done to-dos in a collapsible section, grouped by day, and unticks one', async () => {
     const done = (title: string, on: string, at: string) =>
       todo({ title, done: true, completed_on: on, shown_on: on, done_at: at });
+    const called = done('Called mum', '2026-11-03', '2026-11-03T10:00:00Z');
     const api = mockApi(
       routes('right', {
         'GET /api/v1/todos/done': {
           todos: [
             done('Filed taxes', '2026-11-12', '2026-11-12T18:00:00Z'),
             done('Bought milk', '2026-11-12', '2026-11-12T09:00:00Z'),
-            done('Called mum', '2026-11-03', '2026-11-03T10:00:00Z'),
+            called,
           ],
         },
+        [`PATCH /api/v1/todos/${String(called.id)}`]: { ...called, done: false },
       }),
     );
     renderApp('/');
     const column = await screen.findByRole('complementary', { name: 'To-do list' });
+    const toggle = within(column).getByRole('button', { name: /Done/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(api.callsTo('GET', '/api/v1/todos/done')).toHaveLength(0);
-    await userEvent.click(within(column).getByRole('button', { name: 'Done' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Done to-dos' });
-    const groups = await within(dialog).findAllByRole('region');
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const section = within(column).getByRole('region', { name: 'Done' });
+    const groups = await within(section).findAllByRole('region');
     expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
       'Done on 2026-11-12',
       'Done on 2026-11-03',
@@ -278,9 +284,20 @@ describe('to-do column', () => {
     expect(groups[0]?.textContent?.indexOf('Filed taxes')).toBeLessThan(
       groups[0]?.textContent?.indexOf('Bought milk') ?? 0,
     );
-    expect(within(dialog).getByRole('checkbox', { name: /Called mum/ })).toBeChecked();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog', { name: 'Done to-dos' })).not.toBeInTheDocument();
+    expect(toggle).toHaveTextContent('3');
+
+    const box = within(section).getByRole('checkbox', { name: /Called mum/ });
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    await waitFor(() =>
+      expect(api.callsTo('PATCH', `/api/v1/todos/${String(called.id)}`)[0]?.body).toEqual({
+        done: false,
+      }),
+    );
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(within(column).queryByText('Filed taxes')).not.toBeInTheDocument();
   });
 });
 

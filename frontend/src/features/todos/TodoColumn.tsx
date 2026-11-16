@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import type { Todo } from '../../api/types';
-import { Dialog } from '../../components/ui/Dialog';
-import { btnPrimary, btnSecondary, inputClass } from '../../components/ui/classes';
+import { btnSecondary, inputClass } from '../../components/ui/classes';
 import { useToast } from '../../components/ui/useToast';
+import { createBooleanPreference } from '../../lib/booleanPreference';
 import { formatDayHeading } from '../../lib/dates';
 import { describeError } from '../../lib/errors';
 import { useCreateTodo, useDoneTodos, useOpenTodos } from './api';
@@ -13,6 +13,9 @@ interface TodoColumnProps {
   /** Today (ISO), which splits the due dates. */
   today: string;
 }
+
+/** Whether the column's Done section is expanded, remembered per device. */
+const doneOpen = createBooleanPreference('hoje.todoColumn.doneOpen', false);
 
 /** The open to-dos split by due date: none, today (or overdue) and later. */
 function splitTodos(todos: readonly Todo[], today: string) {
@@ -30,12 +33,11 @@ function splitTodos(todos: readonly Todo[], today: string) {
 
 /**
  * Every open to-do beside the calendar, in three sections (no due date, due today or overdue,
- * due later), with a field to add one and a Done button listing the ones already checked off.
+ * due later), with a field to add one and a collapsible Done section below them.
  */
 export function TodoColumn({ today }: TodoColumnProps) {
   const { data: todos } = useOpenTodos();
   const [editing, setEditing] = useState<string | null>(null);
-  const [showDone, setShowDone] = useState(false);
   const { none, now, later } = splitTodos(todos ?? [], today);
 
   const section = (title: string, list: Todo[]) =>
@@ -65,12 +67,7 @@ export function TodoColumn({ today }: TodoColumnProps) {
       aria-label="To-do list"
       className="flex max-h-full w-72 shrink-0 flex-col gap-3 self-start overflow-y-auto rounded-lg border border-border bg-surface p-2"
     >
-      <div className="flex items-center justify-between gap-2 px-2">
-        <h2 className="text-sm font-semibold">To-dos</h2>
-        <button type="button" className={btnSecondary} onClick={() => setShowDone(true)}>
-          Done
-        </button>
-      </div>
+      <h2 className="px-2 text-sm font-semibold">To-dos</h2>
       <AddTodo />
       {todos && todos.length === 0 ? (
         <p className="px-2 text-sm text-text-muted">Nothing to do.</p>
@@ -78,7 +75,7 @@ export function TodoColumn({ today }: TodoColumnProps) {
       {section('No due date', none)}
       {section('Due today', now)}
       {section('Due later', later)}
-      {showDone ? <DoneTodosDialog onClose={() => setShowDone(false)} /> : null}
+      <DoneSection />
     </aside>
   );
 }
@@ -135,9 +132,13 @@ function AddTodo() {
   );
 }
 
-/** The checked-off to-dos, grouped by the day they were done, most recent first. */
-export function DoneTodosDialog({ onClose }: { onClose: () => void }) {
-  const { data: todos, isPending } = useDoneTodos();
+/**
+ * The checked-off to-dos, collapsed by default and loaded only when expanded, grouped by the day
+ * they were done, most recent first. Unticking one moves it back to the open sections.
+ */
+function DoneSection() {
+  const [open, setOpen] = doneOpen.use();
+  const { data: todos, isPending } = useDoneTodos(open);
   const groups: { day: string; todos: Todo[] }[] = [];
   for (const todo of todos ?? []) {
     const day = todo.completed_on ?? '';
@@ -146,33 +147,43 @@ export function DoneTodosDialog({ onClose }: { onClose: () => void }) {
     else groups.push({ day, todos: [todo] });
   }
   return (
-    <Dialog title="Done to-dos" onClose={onClose}>
-      {isPending ? (
-        <p className="text-sm text-text-muted">Loading…</p>
-      ) : groups.length === 0 ? (
-        <p className="text-sm text-text-muted">Nothing done yet.</p>
-      ) : (
-        <div className="max-h-[60vh] space-y-3 overflow-y-auto">
-          {groups.map((group) => (
-            <section key={group.day} aria-label={`Done on ${group.day}`}>
-              <h3 className="px-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                {group.day ? formatDayHeading(group.day) : ''}
-              </h3>
-              <ul className="space-y-0.5">
-                {group.todos.map((todo) => (
-                  <TodoCheck key={todo.id} todo={todo} />
-                ))}
-              </ul>
-            </section>
-          ))}
+    <section aria-label="Done" className="space-y-1 border-t border-border pt-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="todo-column-done"
+        onClick={() => setOpen(!open)}
+        className="flex min-h-9 w-full items-center gap-1 rounded-md px-2 text-xs font-semibold uppercase tracking-wide text-text-muted hover:bg-surface-muted"
+      >
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span className="flex-1 text-left">Done</span>
+        {open && todos ? <span className="tabular-nums">{todos.length}</span> : null}
+      </button>
+      {open ? (
+        <div id="todo-column-done" className="space-y-2">
+          {isPending ? (
+            <p className="px-2 text-sm text-text-muted">Loading…</p>
+          ) : groups.length === 0 ? (
+            <p className="px-2 text-sm text-text-muted">Nothing done yet.</p>
+          ) : (
+            <>
+              <p className="px-2 text-xs text-text-muted">Untick one to put it back on the list.</p>
+              {groups.map((group) => (
+                <section key={group.day} aria-label={`Done on ${group.day}`}>
+                  <h3 className="px-2 text-xs text-text-muted">
+                    {group.day ? formatDayHeading(group.day) : ''}
+                  </h3>
+                  <ul className="space-y-0.5">
+                    {group.todos.map((todo) => (
+                      <TodoCheck key={todo.id} todo={todo} />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </>
+          )}
         </div>
-      )}
-      <p className="mt-3 text-xs text-text-muted">Untick one to put it back on the list.</p>
-      <div className="mt-4 flex justify-end">
-        <button type="button" data-autofocus className={btnPrimary} onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </Dialog>
+      ) : null}
+    </section>
   );
 }
