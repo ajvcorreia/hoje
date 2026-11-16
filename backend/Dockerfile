@@ -17,7 +17,7 @@ COPY migrations ./migrations
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-FROM python:3.13-slim-bookworm@sha256:5024f48ba9441d4b13a95d3945abc6365538e3a31109833367a1923523c6efed AS runtime
+FROM python:3.15-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9 AS runtime
 LABEL org.opencontainers.image.title="hoje-api" \
       org.opencontainers.image.description="Hoje self-hosted personal planner: API and worker" \
       org.opencontainers.image.vendor="Hoje"
