@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.61] — 2026-11-26
+
+### Fixed
+
+- The calendar's Import button shows its label only on very wide screens (1536 px and up) and is an icon elsewhere, so the toolbar and category pills stay on one line at 1440 px instead of wrapping and shortening the calendar.
+
 ## [1.3.60] — 2026-11-26
 
 ### Added

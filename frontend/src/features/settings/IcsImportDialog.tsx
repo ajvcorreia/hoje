@@ -54,7 +54,7 @@ function CalendarIcon({ className }: { className: string }) {
 
 /**
  * The calendar's Import button and the window it opens. `compact` shows only the icon (phone
- * header); otherwise the label shows from wide screens up.
+ * header); otherwise the label shows only on very wide screens, so the toolbar stays on one line.
  */
 export function ImportIcsButton({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +68,7 @@ export function ImportIcsButton({ compact = false }: { compact?: boolean }) {
         onClick={() => setOpen(true)}
       >
         <ImportIcon />
-        {compact ? null : <span className="hidden lg:inline">Import</span>}
+        {compact ? null : <span className="hidden 2xl:inline">Import</span>}
       </button>
       {open ? <IcsImportDialog onClose={() => setOpen(false)} /> : null}
     </>
