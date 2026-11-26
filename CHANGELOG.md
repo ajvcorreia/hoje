@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.60] — 2026-11-26
+
+### Added
+
+- Import button on the calendar, after Today (icon only on phones): it opens the calendar-file import in a window over the calendar. Choose or drop an .ics file, pick the category, see what would be added, then import; the calendar refreshes straight away. The import under Settings › Your data stays and works the same way.
+
 ## [1.3.59] — 2026-11-16
 
 ### Security

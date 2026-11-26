@@ -14,6 +14,7 @@ import { EventEditor } from '../events/EventEditor';
 import { filterVisible, groupByDay } from '../events/occurrences';
 import { useHolidayOverlay } from '../holidays/api';
 import { useTodoDays } from '../todos/api';
+import { ImportIcsButton } from '../settings/IcsImportDialog';
 import { TodoColumn } from '../todos/TodoColumn';
 import { AgendaView } from './AgendaView';
 import { DayPopover } from './DayPopover';
@@ -149,6 +150,7 @@ export function DesktopCalendar() {
           <button type="button" className={btnSecondary} onClick={goToday}>
             Today
           </button>
+          <ImportIcsButton />
         </div>
 
         {pillsPosition === 'top' ? (

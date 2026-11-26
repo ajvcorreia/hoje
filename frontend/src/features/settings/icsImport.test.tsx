@@ -152,3 +152,60 @@ describe('calendar file import', () => {
     expect(screen.queryByRole('heading', { name: /What importing/ })).not.toBeInTheDocument();
   });
 });
+
+describe('calendar file import from the calendar', () => {
+  const calendar = {
+    ...base,
+    'GET /api/v1/todos/due': { todos: [] },
+    'GET /api/v1/todos/open': { todos: [] },
+    'GET /api/v1/events/occurrences': { occurrences: [] },
+    'GET /api/v1/categories': { categories: [] },
+    'GET /api/v1/holidays/overlay': { days: [] },
+  };
+
+  it('opens a window from the toolbar, previews the file and imports it', async () => {
+    const final = { ...PREVIEW, dry_run: false, warnings: [] };
+    const api = mockApi({ ...calendar, 'POST /api/v1/import/ics': reply(final) });
+    renderApp('/');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import a calendar file' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Import a calendar file' });
+    expect(within(dialog).getByRole('button', { name: /Choose an \.ics file/ })).toHaveFocus();
+
+    await userEvent.upload(within(dialog).getByLabelText('Calendar file to import'), icsFile());
+    const category = await within(dialog).findByLabelText('Add the events to this category');
+    await waitFor(() => expect(category).toHaveFocus());
+    expect(within(dialog).getByText('work.ics')).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText('12 to add, 3 already there (skipped)'),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Import 12 events' }));
+    expect(
+      await within(dialog).findByText(
+        'Import finished: 12 events and 1 category added, 3 duplicates skipped.',
+      ),
+    ).toBeInTheDocument();
+    const calls = api.callsTo('POST', '/api/v1/import/ics');
+    expect(calls.at(-1)?.body).toEqual({ ics: ICS, category: 'Imported', dry_run: false });
+
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    await waitFor(() => expect(close).toHaveFocus());
+    await userEvent.click(close);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('says when the chosen file is not a calendar file', async () => {
+    const api = mockApi({ ...calendar });
+    renderApp('/');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import a calendar file' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Import a calendar file' });
+    await userEvent.upload(
+      within(dialog).getByLabelText('Calendar file to import'),
+      icsFile('hello', 'notes.ics'),
+    );
+    expect(
+      await within(dialog).findByText('This is not an iCalendar (.ics) file.'),
+    ).toBeInTheDocument();
+    expect(api.callsTo('POST', '/api/v1/import/ics')).toHaveLength(0);
+  });
+});

@@ -12,6 +12,7 @@ import { occurrencesQuery, useOccurrences } from '../../events/api';
 import { EventEditor } from '../../events/EventEditor';
 import { filterVisible, groupByDay } from '../../events/occurrences';
 import { useHolidayOverlay } from '../../holidays/api';
+import { ImportIcsButton } from '../../settings/IcsImportDialog';
 import { useTodoDays } from '../../todos/api';
 import { usePastDays } from '../../../lib/pastDays';
 import { DayView } from './DayView';
@@ -104,9 +105,12 @@ export function MobileCalendar() {
             </button>
           ))}
         </div>
-        <button type="button" className={btnSecondary} onClick={() => setSelected(today)}>
-          Today
-        </button>
+        <div className="flex gap-2">
+          <ImportIcsButton compact />
+          <button type="button" className={btnSecondary} onClick={() => setSelected(today)}>
+            Today
+          </button>
+        </div>
       </div>
 
       <CategoryChips scroll occurrences={occurrences.data} />
